@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "113203546446",
+    "project_id": "fitfusiondiet",
+    "storage_bucket": "fitfusiondiet.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:113203546446:android:5629da303686014a15361f",
+        "android_client_info": {
+          "package_name": "com.example.fitfusion"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBxmY5mXrfjQaaRm_6Y4M62Li3yta805-4"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
