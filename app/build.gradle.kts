@@ -63,6 +63,8 @@ dependencies {
     debugImplementation(libs.androidx.compose.ui.tooling)
     debugImplementation(libs.androidx.compose.ui.test.manifest)
 
+    implementation("androidx.health.connect:connect-client:1.2.0-alpha02")
+
     implementation(platform("com.google.firebase:firebase-bom:34.11.0"))
 
     implementation("com.google.firebase:firebase-auth")
