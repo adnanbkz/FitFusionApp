@@ -70,4 +70,5 @@ dependencies {
     implementation("com.google.firebase:firebase-functions")
 
     implementation("com.google.firebase:firebase-storage")
+    implementation("com.google.firebase:firebase-appcheck-playintegrity")
 }
