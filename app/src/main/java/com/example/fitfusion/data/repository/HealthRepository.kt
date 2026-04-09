@@ -1,6 +1,8 @@
 package com.exemple.fitfusion.app.data.repository
 
-import com.fitfusion.app.data.health.DailyHealthData
+import android.os.Build
+import androidx.annotation.RequiresApi
+import com.exemple.fitfusion.app.data.health.DailyHealthData
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FirebaseFirestore
 import java.time.Instant
@@ -9,6 +11,7 @@ class HealthRepository(
     private val firestore: FirebaseFirestore,
     private val auth: FirebaseAuth,
 ) {
+    @RequiresApi(Build.VERSION_CODES.O)
     suspend fun saveDailyHealthData(data: DailyHealthData) {
         val uid = auth.currentUser?.uid ?: return
 

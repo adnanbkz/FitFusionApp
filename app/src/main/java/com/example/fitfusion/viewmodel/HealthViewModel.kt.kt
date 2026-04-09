@@ -1,10 +1,12 @@
 package com.example.fitfusion.viewmodel
 
+import android.os.Build
+import androidx.annotation.RequiresApi
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.fitfusion.app.data.health.HealthConnectManager
-import com.fitfusion.app.data.health.HealthConnectSyncService
-import com.fitfusion.app.data.repository.HealthRepository
+import com.exemple.fitfusion.app.data.health.HealthConnectManager
+import com.exemple.fitfusion.app.data.health.HealthConnectSyncService
+import com.exemple.fitfusion.app.data.repository.HealthRepository
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
@@ -40,6 +42,7 @@ class HealthViewModel(
         }
     }
 
+    @RequiresApi(Build.VERSION_CODES.O)
     fun syncToday() {
         viewModelScope.launch {
             _state.value = _state.value.copy(isSyncing = true, lastSyncError = null)

@@ -1,5 +1,7 @@
 package com.exemple.fitfusion.app.data.health
 
+import android.os.Build
+import androidx.annotation.RequiresApi
 import androidx.health.connect.client.HealthConnectClient
 import androidx.health.connect.client.request.AggregateRequest
 import androidx.health.connect.client.request.ReadRecordsRequest
@@ -13,15 +15,16 @@ import java.time.ZoneId
 data class DailyHealthData(
     val date: String,
     val steps: Long,
-    val stepCaloriesEStimated: Int,
+    val stepCaloriesEstimated: Int,
     val averageHeartRate: Long?,
-    val source: String  "health_connect",
+    val source: String = "health_connect",
 )
 
 class HealthConnectSyncService(
     private val client: HealthConnectClient
 ) {
-    suspend fun readDailyData(date: LocalDate = LocalDate.now()): DAilyHealthDAta {
+    @RequiresApi(Build.VERSION_CODES.O)
+    suspend fun readDailyData(date: LocalDate = LocalDate.now()): DailyHealthData {
         val zone = ZoneId.systemDefault()
         val startInstant = date.atStartOfDay(zone).toInstant()
         val endInstant = date.plusDays(1).atStartOfDay(zone).toInstant()
