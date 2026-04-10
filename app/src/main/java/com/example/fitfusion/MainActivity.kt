@@ -1,4 +1,4 @@
-package com.fitfusion.app
+package com.example.fitfusion
 
 import android.os.Bundle
 import androidx.activity.ComponentActivity
@@ -36,9 +36,11 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
-import com.example.fitfusion.R
+import com.example.fitfusion.ui.screens.PantallaLogin
+import com.example.fitfusion.ui.screens.PantallaProfile
 import com.example.fitfusion.ui.screens.Screens
 import com.example.fitfusion.viewmodel.AuthViewModel
+import com.example.fitfusion.ui.screens.*
 
 @OptIn(ExperimentalMaterial3Api::class)
 class MainActivity : ComponentActivity() {

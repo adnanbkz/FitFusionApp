@@ -1,4 +1,4 @@
-package com.fitfusion.app.ui.screens
+package com.example.fitfusion.ui.screens
 
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
@@ -23,10 +23,19 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavHostController
-import com.fitfusion.app.R
-import com.fitfusion.app.ui.components.*
-import com.fitfusion.app.ui.theme.*
-import com.fitfusion.app.viewmodel.SettingsViewModel
+import com.example.fitfusion.ui.components.SectionTitle
+import com.example.fitfusion.ui.components.SettingsRow
+import com.example.fitfusion.ui.components.SettingsToggleRow
+import com.example.fitfusion.ui.theme.OnSurface
+import com.example.fitfusion.ui.theme.OnSurfaceVariant
+import com.example.fitfusion.ui.theme.Primary
+import com.example.fitfusion.ui.theme.Surface
+import com.example.fitfusion.ui.theme.SurfaceContainerHigh
+import com.example.fitfusion.ui.theme.SurfaceContainerLow
+import com.example.fitfusion.ui.theme.SurfaceContainerLowest
+import com.example.fitfusion.ui.theme.Tertiary
+import com.example.fitfusion.viewmodel.SettingsViewModel
+import com.example.fitfusion.R
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
