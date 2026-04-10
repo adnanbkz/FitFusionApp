@@ -4,9 +4,9 @@ import android.os.Build
 import androidx.annotation.RequiresApi
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.exemple.fitfusion.app.data.health.HealthConnectManager
-import com.exemple.fitfusion.app.data.health.HealthConnectSyncService
-import com.exemple.fitfusion.app.data.repository.HealthRepository
+import com.example.fitfusion.data.health.HealthConnectManager
+import com.example.fitfusion.data.health.HealthConnectSyncService
+import com.example.fitfusion.data.repository.HealthRepository
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch

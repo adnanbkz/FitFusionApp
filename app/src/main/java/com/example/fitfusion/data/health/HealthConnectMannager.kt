@@ -1,4 +1,4 @@
-package com.exemple.fitfusion.app.data.health
+package com.example.fitfusion.data.health
 
 import android.content.Context
 import androidx.health.connect.client.HealthConnectClient

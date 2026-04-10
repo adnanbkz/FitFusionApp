@@ -1,4 +1,4 @@
-package com.exemple.fitfusion.app.data.health
+package com.example.fitfusion.data.health
 
 import android.os.Build
 import androidx.annotation.RequiresApi
@@ -8,7 +8,6 @@ import androidx.health.connect.client.request.ReadRecordsRequest
 import androidx.health.connect.client.records.HeartRateRecord
 import androidx.health.connect.client.records.StepsRecord
 import androidx.health.connect.client.time.TimeRangeFilter
-import java.time.Instant
 import java.time.LocalDate
 import java.time.ZoneId
 

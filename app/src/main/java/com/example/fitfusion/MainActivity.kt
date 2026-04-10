@@ -25,15 +25,20 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.painter.Painter
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import com.example.fitfusion.R
+import com.example.fitfusion.ui.screens.Screens
+import com.example.fitfusion.viewmodel.AuthViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
 class MainActivity : ComponentActivity() {
@@ -43,7 +48,7 @@ class MainActivity : ComponentActivity() {
         setContent {
             var selectedItem by remember { mutableIntStateOf(0) }
             val items = listOf("HOME", "TRACK", "PROFILE")
-            val icons = listOf(
+            val icons: List<Any> = listOf(
                 Icons.Outlined.Home,
                 painterResource(R.drawable.ic_tracking),
                 Icons.Outlined.Person
@@ -53,8 +58,8 @@ class MainActivity : ComponentActivity() {
             val currentRoute = navBackStackEntry?.destination?.route
             var loggedUser by remember { mutableStateOf<String?>(null) }
 
-            val isAuthScreen = currentRoute == Screens.LoginScreen.name ||
-                    currentRoute == Screens.SignUpScreen.name
+            // Shared AuthViewModel for Login + SignUp
+            val authViewModel: AuthViewModel = viewModel()
 
             val isMainScreen = currentRoute == Screens.HomeScreen.name ||
                     currentRoute == Screens.TrackingScreen.name ||
@@ -90,10 +95,8 @@ class MainActivity : ComponentActivity() {
                                     },
                                     icon = {
                                         when (val ic = icons[index]) {
-                                            is androidx.compose.ui.graphics.vector.ImageVector ->
-                                                Icon(ic, null, Modifier.size(24.dp))
-                                            is androidx.compose.ui.graphics.painter.Painter ->
-                                                Icon(ic, null, Modifier.size(24.dp))
+                                            is ImageVector -> Icon(ic, null, Modifier.size(24.dp))
+                                            is Painter -> Icon(ic, null, Modifier.size(24.dp))
                                         }
                                     },
                                     label = {
@@ -138,7 +141,8 @@ class MainActivity : ComponentActivity() {
                                     navController.navigate(Screens.HomeScreen.name) {
                                         popUpTo(Screens.LoginScreen.name) { inclusive = true }
                                     }
-                                }
+                                },
+                                authViewModel = authViewModel
                             )
                         }
 
@@ -152,12 +156,16 @@ class MainActivity : ComponentActivity() {
                                 },
                                 onNavigateToLogin = {
                                     navController.popBackStack()
-                                }
+                                },
+                                authViewModel = authViewModel
                             )
                         }
 
                         composable(Screens.HomeScreen.name) {
-                            PantallaHome(navController = navController, userName = loggedUser)
+                            PantallaHome(
+                                navController = navController,
+                                userName = loggedUser
+                            )
                         }
 
                         composable(Screens.TrackingScreen.name) {
@@ -165,7 +173,10 @@ class MainActivity : ComponentActivity() {
                         }
 
                         composable(Screens.ProfileScreen.name) {
-                            PantallaProfile(navController = navController, userName = loggedUser)
+                            PantallaProfile(
+                                navController = navController,
+                                userName = loggedUser
+                            )
                         }
 
                         composable(Screens.SettingsScreen.name) {

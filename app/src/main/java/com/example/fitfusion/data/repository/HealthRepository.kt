@@ -1,8 +1,8 @@
-package com.exemple.fitfusion.app.data.repository
+package com.example.fitfusion.data.repository
 
 import android.os.Build
 import androidx.annotation.RequiresApi
-import com.exemple.fitfusion.app.data.health.DailyHealthData
+import com.example.fitfusion.data.health.DailyHealthData
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FirebaseFirestore
 import java.time.Instant
