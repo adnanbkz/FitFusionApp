@@ -1,4 +1,4 @@
-package com.fitfusion.app
+package com.example.fitfusion
 
 import android.os.Bundle
 import androidx.activity.ComponentActivity
@@ -25,6 +25,8 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.painter.Painter
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -33,7 +35,6 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
-import com.example.fitfusion.R
 
 @OptIn(ExperimentalMaterial3Api::class)
 class MainActivity : ComponentActivity() {
@@ -90,9 +91,9 @@ class MainActivity : ComponentActivity() {
                                     },
                                     icon = {
                                         when (val ic = icons[index]) {
-                                            is androidx.compose.ui.graphics.vector.ImageVector ->
+                                            is ImageVector ->
                                                 Icon(ic, null, Modifier.size(24.dp))
-                                            is androidx.compose.ui.graphics.painter.Painter ->
+                                            is Painter ->
                                                 Icon(ic, null, Modifier.size(24.dp))
                                         }
                                     },
