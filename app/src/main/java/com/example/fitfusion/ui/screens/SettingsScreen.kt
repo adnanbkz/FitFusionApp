@@ -51,9 +51,9 @@ fun PantallaSettings(
         modifier = Modifier.fillMaxSize().background(Surface).verticalScroll(rememberScrollState())
     ) {
         TopAppBar(
-            title = { Text("Settings", fontWeight = FontWeight.Bold, fontSize = 20.sp) },
-            navigationIcon = { IconButton(onClick = { navController.popBackStack() }) { Icon(Icons.AutoMirrored.Filled.ArrowBack, "Back") } },
-            actions = { IconButton(onClick = { }) { Icon(Icons.Default.Search, "Search") } },
+            title = { Text("Ajustes", fontWeight = FontWeight.Bold, fontSize = 20.sp) },
+            navigationIcon = { IconButton(onClick = { navController.popBackStack() }) { Icon(Icons.AutoMirrored.Filled.ArrowBack, "Atrás") } },
+            actions = { IconButton(onClick = { }) { Icon(Icons.Default.Search, "Buscar") } },
             colors = TopAppBarDefaults.topAppBarColors(containerColor = Surface)
         )
 
@@ -81,12 +81,12 @@ fun PantallaSettings(
         }
 
         Spacer(modifier = Modifier.height(24.dp))
-        SectionTitle("ACCOUNT SETTINGS")
-        SettingsRow(Icons.Default.Person, "Account", "Manage your profile, email, and password") { }
-        SettingsRow(Icons.Default.Lock, "Privacy", "Control who sees your activity and data") { }
+        SectionTitle("CONFIGURACIÓN DE CUENTA")
+        SettingsRow(Icons.Default.Person, "Cuenta", "Gestiona tu perfil, correo y contraseña") { }
+        SettingsRow(Icons.Default.Lock, "Privacidad", "Controla quién ve tu actividad y datos") { }
 
         Spacer(modifier = Modifier.height(24.dp))
-        SectionTitle("PREFERENCES")
+        SectionTitle("PREFERENCIAS")
         Card(
             shape = RoundedCornerShape(20.dp),
             colors = CardDefaults.cardColors(containerColor = SurfaceContainerLow),
@@ -94,14 +94,14 @@ fun PantallaSettings(
             modifier = Modifier.fillMaxWidth().padding(horizontal = 24.dp)
         ) {
             Column {
-                SettingsToggleRow(icon = Icons.Default.Notifications, title = "Push Notifications", subtitle = "Daily reminders and social alerts", checked = state.pushNotifications, onCheckedChange = settingsViewModel::onPushNotificationsChange)
-                SettingsToggleRow(iconPainter = R.drawable.ic_tracking, title = "Health Data Sync", subtitle = "Auto-sync with Apple Health/Google Fit", checked = state.healthSync, onCheckedChange = settingsViewModel::onHealthSyncChange)
+                SettingsToggleRow(icon = Icons.Default.Notifications, title = "Notificaciones push", subtitle = "Recordatorios diarios y alertas sociales", checked = state.pushNotifications, onCheckedChange = settingsViewModel::onPushNotificationsChange)
+                SettingsToggleRow(iconPainter = R.drawable.ic_tracking, title = "Sincronización de datos de salud", subtitle = "Sincronización automática con Apple Health/Google Fit", checked = state.healthSync, onCheckedChange = settingsViewModel::onHealthSyncChange)
             }
         }
 
         Spacer(modifier = Modifier.height(8.dp))
-        SettingsRow(Icons.Default.Settings, "Data & Storage", "Cache management and data exports") { }
-        SettingsRow(Icons.Default.Email, "Help & Support", "FAQs, contact us, and legal") { }
+        SettingsRow(Icons.Default.Settings, "Datos y almacenamiento", "Gestión de caché y exportación de datos") { }
+        SettingsRow(Icons.Default.Email, "Ayuda y soporte", "Preguntas frecuentes, contacto y avisos legales") { }
 
         Spacer(modifier = Modifier.height(32.dp))
         OutlinedButton(
@@ -112,7 +112,7 @@ fun PantallaSettings(
         ) {
             Icon(Icons.AutoMirrored.Filled.ExitToApp, null, Modifier.size(18.dp), tint = Tertiary)
             Spacer(modifier = Modifier.width(8.dp))
-            Text("Logout from Kinetic", color = Tertiary, fontWeight = FontWeight.SemiBold)
+            Text("Cerrar sesión en Kinetic", color = Tertiary, fontWeight = FontWeight.SemiBold)
         }
 
         Spacer(modifier = Modifier.height(16.dp))

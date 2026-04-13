@@ -54,7 +54,7 @@ fun PantallaTracking(
                     Spacer(modifier = Modifier.width(8.dp))
                     Text("Kinetic", fontSize = 22.sp, fontWeight = FontWeight.Black, color = OnSurface)
                 }
-                IconButton(onClick = { }) { Icon(Icons.Default.Search, "Search", tint = OnSurface) }
+                IconButton(onClick = { }) { Icon(Icons.Default.Search, "Buscar", tint = OnSurface) }
             }
         }
 
@@ -70,19 +70,19 @@ fun PantallaTracking(
                     modifier = Modifier.padding(24.dp).fillMaxWidth(),
                     horizontalAlignment = Alignment.CenterHorizontally
                 ) {
-                    Text("DAILY GOAL", fontSize = 12.sp, fontWeight = FontWeight.Bold, letterSpacing = 2.sp, color = Primary)
+                    Text("OBJETIVO DIARIO", fontSize = 12.sp, fontWeight = FontWeight.Bold, letterSpacing = 2.sp, color = Primary)
                     Spacer(modifier = Modifier.height(16.dp))
                     Box(contentAlignment = Alignment.Center) {
                         MomentumRing(progress = 0.65f, size = 140)
                         Column(horizontalAlignment = Alignment.CenterHorizontally) {
                             Text("${state.kcalLeft}", fontSize = 40.sp, fontWeight = FontWeight.Bold, color = OnSurface)
-                            Text("KCAL LEFT", fontSize = 12.sp, fontWeight = FontWeight.Medium, color = OnSurfaceVariant, letterSpacing = 1.sp)
+                            Text("KCAL RESTANTES", fontSize = 12.sp, fontWeight = FontWeight.Medium, color = OnSurfaceVariant, letterSpacing = 1.sp)
                         }
                     }
                     Spacer(modifier = Modifier.height(16.dp))
                     Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly) {
-                        StatColumn("EATEN", "${state.eaten}")
-                        StatColumn("BURNED", "${state.burned}")
+                        StatColumn("INGERIDAS", "${state.eaten}")
+                        StatColumn("QUEMADAS", "${state.burned}")
                     }
                 }
             }
@@ -97,13 +97,13 @@ fun PantallaTracking(
                 modifier = Modifier.fillMaxWidth()
             ) {
                 Column(modifier = Modifier.padding(24.dp)) {
-                    Text("Macro Balance", fontSize = 20.sp, fontWeight = FontWeight.Bold, color = OnSurface)
+                    Text("Balance de macros", fontSize = 20.sp, fontWeight = FontWeight.Bold, color = OnSurface)
                     Spacer(modifier = Modifier.height(16.dp))
-                    MacroRow("PROTEIN", state.protein, state.proteinGoal, Primary)
+                    MacroRow("PROTEÍNAS", state.protein, state.proteinGoal, Primary)
                     Spacer(modifier = Modifier.height(12.dp))
-                    MacroRow("CARBS", state.carbs, state.carbsGoal, Secondary)
+                    MacroRow("CARBOHIDRATOS", state.carbs, state.carbsGoal, Secondary)
                     Spacer(modifier = Modifier.height(12.dp))
-                    MacroRow("FATS", state.fats, state.fatsGoal, Tertiary)
+                    MacroRow("GRASAS", state.fats, state.fatsGoal, Tertiary)
                     Spacer(modifier = Modifier.height(16.dp))
                     Card(
                         shape = RoundedCornerShape(12.dp),
@@ -126,19 +126,19 @@ fun PantallaTracking(
                 OutlinedButton(
                     onClick = { }, modifier = Modifier.weight(1f).height(48.dp),
                     shape = RoundedCornerShape(12.dp), border = BorderStroke(1.dp, OnSurface.copy(alpha = 0.15f))
-                ) { Text("Log Food", color = OnSurface, fontWeight = FontWeight.SemiBold) }
+                ) { Text("Registrar comida", color = OnSurface, fontWeight = FontWeight.SemiBold) }
                 OutlinedButton(
                     onClick = { }, modifier = Modifier.weight(1f).height(48.dp),
                     shape = RoundedCornerShape(12.dp), border = BorderStroke(1.dp, OnSurface.copy(alpha = 0.15f))
-                ) { Text("Log Workout", color = OnSurface, fontWeight = FontWeight.SemiBold) }
+                ) { Text("Registrar entrenamiento", color = OnSurface, fontWeight = FontWeight.SemiBold) }
             }
         }
 
         // Recent Logs
         item {
             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
-                Text("Recent Logs", fontSize = 18.sp, fontWeight = FontWeight.Bold, color = OnSurface)
-                TextButton(onClick = { }) { Text("VIEW ALL", fontSize = 12.sp, color = Primary, fontWeight = FontWeight.Bold) }
+                Text("Registros recientes", fontSize = 18.sp, fontWeight = FontWeight.Bold, color = OnSurface)
+                TextButton(onClick = { }) { Text("VER TODO", fontSize = 12.sp, color = Primary, fontWeight = FontWeight.Bold) }
             }
         }
         items(state.recentLogs) { log ->
@@ -159,14 +159,14 @@ fun PantallaTracking(
                         contentAlignment = Alignment.Center
                     ) { Icon(Icons.Default.Person, null, Modifier.size(48.dp), tint = Primary.copy(alpha = 0.4f)) }
                     Spacer(modifier = Modifier.height(12.dp))
-                    Text("NEW CHALLENGE", fontSize = 11.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.5.sp, color = Tertiary)
+                    Text("NUEVO RETO", fontSize = 11.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.5.sp, color = Tertiary)
                     Spacer(modifier = Modifier.height(4.dp))
-                    Text("The 10k Sprint Week", fontSize = 22.sp, fontWeight = FontWeight.Bold, color = OnSurface)
+                    Text("La semana de Sprint 10k", fontSize = 22.sp, fontWeight = FontWeight.Bold, color = OnSurface)
                     Spacer(modifier = Modifier.height(8.dp))
-                    Text("Push your limits this week. Complete five 10k sessions to unlock the 'Endurance Elite' badge.", fontSize = 14.sp, color = OnSurfaceVariant)
+                    Text("Supera tus límites esta semana. Completa cinco sesiones de 10k para desbloquear la insignia 'Élite de resistencia'.", fontSize = 14.sp, color = OnSurfaceVariant)
                     Spacer(modifier = Modifier.height(12.dp))
                     Button(onClick = { }, shape = RoundedCornerShape(12.dp), colors = ButtonDefaults.buttonColors(containerColor = OnSurface)) {
-                        Text("Join Challenge", color = SurfaceContainerLowest)
+                        Text("Unirse al reto", color = SurfaceContainerLowest)
                     }
                 }
             }

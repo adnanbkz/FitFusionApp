@@ -41,14 +41,14 @@ fun PantallaWorkoutSummary(
                 .verticalScroll(rememberScrollState())
         ) {
             TopAppBar(
-                title = { Text("Workout Summary", fontWeight = FontWeight.Bold, fontSize = 18.sp) },
+                title = { Text("Resumen del entrenamiento", fontWeight = FontWeight.Bold, fontSize = 18.sp) },
                 navigationIcon = {
                     IconButton(onClick = { navController.popBackStack() }) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, "Back")
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, "Atrás")
                     }
                 },
                 actions = {
-                    IconButton(onClick = { }) { Icon(Icons.Default.Share, "Share") }
+                    IconButton(onClick = { }) { Icon(Icons.Default.Share, "Compartir") }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(containerColor = Surface)
             )
@@ -81,7 +81,7 @@ fun PantallaWorkoutSummary(
                 ) {
                     Column(modifier = Modifier.padding(24.dp)) {
                         Text(
-                            "TOTAL ENERGY BURNED",
+                            "ENERGÍA TOTAL QUEMADA",
                             fontSize = 11.sp,
                             fontWeight = FontWeight.Bold,
                             letterSpacing = 2.sp,
@@ -118,7 +118,7 @@ fun PantallaWorkoutSummary(
                     ) {
                         Column(modifier = Modifier.padding(16.dp)) {
                             Text(
-                                "DURATION",
+                                "DURACIÓN",
                                 fontSize = 10.sp,
                                 fontWeight = FontWeight.Bold,
                                 letterSpacing = 1.5.sp,
@@ -149,7 +149,7 @@ fun PantallaWorkoutSummary(
                     ) {
                         Column(modifier = Modifier.padding(16.dp)) {
                             Text(
-                                "AVERAGE PACE",
+                                "RITMO MEDIO",
                                 fontSize = 10.sp,
                                 fontWeight = FontWeight.Bold,
                                 letterSpacing = 1.5.sp,
@@ -216,14 +216,14 @@ fun PantallaWorkoutSummary(
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Text(
-                        "Intensity Zones",
+                        "Zonas de intensidad",
                         fontSize = 20.sp,
                         fontWeight = FontWeight.Bold,
                         color = OnSurface
                     )
                     TextButton(onClick = { }) {
                         Text(
-                            "View Details",
+                            "Ver detalles",
                             color = Primary,
                             fontWeight = FontWeight.SemiBold,
                             fontSize = 13.sp
@@ -265,7 +265,7 @@ fun PantallaWorkoutSummary(
                         ) {
                             Column(modifier = Modifier.weight(1f)) {
                                 Text(
-                                    "Daily Goal\nReached!",
+                                    "¡Objetivo\ndiario alcanzado!",
                                     fontSize = 22.sp,
                                     fontWeight = FontWeight.Bold,
                                     color = Primary,
@@ -304,7 +304,6 @@ fun PantallaWorkoutSummary(
             }
         }
 
-        // FAB
         FloatingActionButton(
             onClick = { },
             containerColor = Primary,
@@ -314,7 +313,7 @@ fun PantallaWorkoutSummary(
                 .align(Alignment.BottomEnd)
                 .padding(end = 32.dp, bottom = 16.dp)
         ) {
-            Icon(Icons.Default.Add, "New")
+            Icon(Icons.Default.Add, "Nuevo")
         }
     }
 }

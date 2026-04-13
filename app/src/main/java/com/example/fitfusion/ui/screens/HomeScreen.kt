@@ -54,7 +54,7 @@ fun PantallaHome(
                         Text("Kinetic", fontSize = 22.sp, fontWeight = FontWeight.Black, color = OnSurface)
                     }
                     IconButton(onClick = { }) {
-                        Icon(Icons.Default.Search, "Search", tint = OnSurface)
+                        Icon(Icons.Default.Search, "Buscar", tint = OnSurface)
                     }
                 }
             }
@@ -73,13 +73,13 @@ fun PantallaHome(
                         horizontalArrangement = Arrangement.SpaceBetween
                     ) {
                         Column {
-                            Text("DAILY MOMENTUM", fontSize = 11.sp, fontWeight = FontWeight.Bold, letterSpacing = 2.sp, color = OnSurfaceVariant)
+                            Text("IMPULSO DIARIO", fontSize = 11.sp, fontWeight = FontWeight.Bold, letterSpacing = 2.sp, color = OnSurfaceVariant)
                             Spacer(modifier = Modifier.height(4.dp))
                             Row(verticalAlignment = Alignment.Bottom) {
                                 Text("${state.momentumPercent}", fontSize = 48.sp, fontWeight = FontWeight.Bold, color = OnSurface)
                                 Text("%", fontSize = 20.sp, fontWeight = FontWeight.Medium, color = OnSurfaceVariant, modifier = Modifier.padding(bottom = 8.dp))
                             }
-                            Text("${state.kcalRemaining} kcal remaining", fontSize = 14.sp, color = OnSurfaceVariant)
+                            Text("${state.kcalRemaining} kcal restantes", fontSize = 14.sp, color = OnSurfaceVariant)
                         }
                         MomentumRing(progress = state.momentumPercent / 100f, size = 80)
                     }
@@ -108,6 +108,6 @@ fun PantallaHome(
             contentColor = Color.White,
             shape = CircleShape,
             modifier = Modifier.align(Alignment.BottomEnd).padding(end = 32.dp, bottom = 16.dp)
-        ) { Icon(Icons.Default.Add, "New post") }
+        ) { Icon(Icons.Default.Add, "Nueva publicación") }
     }
 }

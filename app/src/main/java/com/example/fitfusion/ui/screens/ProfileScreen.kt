@@ -39,7 +39,7 @@ fun PantallaProfile(
     profileViewModel: ProfileViewModel = viewModel()
 ) {
     val state by profileViewModel.uiState.collectAsState()
-    val tabs = listOf("MY POSTS", "STATS", "LIKED")
+    val tabs = listOf("MIS PUBLICACIONES", "ESTADÍSTICAS", "ME GUSTA")
 
     LaunchedEffect(userName) { profileViewModel.updateFromUser(userName) }
 
@@ -62,9 +62,9 @@ fun PantallaProfile(
                     Text("Kinetic", fontSize = 22.sp, fontWeight = FontWeight.Black, color = OnSurface)
                 }
                 Row {
-                    IconButton(onClick = { }) { Icon(Icons.Default.Search, "Search", tint = OnSurface) }
+                    IconButton(onClick = { }) { Icon(Icons.Default.Search, "Buscar", tint = OnSurface) }
                     IconButton(onClick = { navController.navigate(Screens.SettingsScreen.name) }) {
-                        Icon(Icons.Default.Settings, "Settings", tint = OnSurface)
+                        Icon(Icons.Default.Settings, "Ajustes", tint = OnSurface)
                     }
                 }
             }
@@ -102,7 +102,7 @@ fun PantallaProfile(
                         Row(verticalAlignment = Alignment.CenterVertically) {
                             Icon(Icons.Default.Edit, null, Modifier.size(16.dp), tint = Color.White)
                             Spacer(modifier = Modifier.width(8.dp))
-                            Text("Edit Profile", fontWeight = FontWeight.Bold, color = Color.White)
+                            Text("Editar perfil", fontWeight = FontWeight.Bold, color = Color.White)
                         }
                     }
                 }
@@ -129,12 +129,12 @@ fun PantallaProfile(
                 Column(modifier = Modifier.padding(24.dp)) {
                     Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
                         Column {
-                            Text("Momentum Tracking", fontSize = 18.sp, fontWeight = FontWeight.Bold, color = OnSurface)
-                            Text("WEEKLY ACTIVITY TREND", fontSize = 10.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.5.sp, color = OnSurfaceVariant)
+                            Text("Seguimiento de impulso", fontSize = 18.sp, fontWeight = FontWeight.Bold, color = OnSurface)
+                            Text("TENDENCIA ACTIVIDAD SEMANAL", fontSize = 10.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.5.sp, color = OnSurfaceVariant)
                         }
                         Column(horizontalAlignment = Alignment.End) {
                             Text(state.weeklyChange, fontSize = 20.sp, fontWeight = FontWeight.Bold, color = Primary)
-                            Text("VS LAST WEEK", fontSize = 10.sp, color = OnSurfaceVariant)
+                            Text("VS SEMANA ANTERIOR", fontSize = 10.sp, color = OnSurfaceVariant)
                         }
                     }
                     Spacer(modifier = Modifier.height(16.dp))
@@ -192,7 +192,7 @@ fun PantallaProfile(
                     ) {
                         Column(horizontalAlignment = Alignment.CenterHorizontally) {
                             Icon(Icons.Default.Add, null, Modifier.size(28.dp), tint = OnSurfaceVariant.copy(alpha = 0.4f))
-                            Text("NEW ENTRY", fontSize = 10.sp, letterSpacing = 1.sp, color = OnSurfaceVariant.copy(alpha = 0.4f))
+                            Text("NUEVA ENTRADA", fontSize = 10.sp, letterSpacing = 1.sp, color = OnSurfaceVariant.copy(alpha = 0.4f))
                         }
                     }
                 }

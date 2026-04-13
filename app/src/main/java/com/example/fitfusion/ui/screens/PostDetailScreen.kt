@@ -38,10 +38,10 @@ fun PantallaPostDetail(
         Column(modifier = Modifier.fillMaxSize().verticalScroll(rememberScrollState())) {
             TopAppBar(
                 title = { Text("FitSocial", fontWeight = FontWeight.Black, fontSize = 20.sp, color = Primary) },
-                navigationIcon = { IconButton(onClick = { navController.popBackStack() }) { Icon(Icons.AutoMirrored.Filled.ArrowBack, "Back") } },
+                navigationIcon = { IconButton(onClick = { navController.popBackStack() }) { Icon(Icons.AutoMirrored.Filled.ArrowBack, "Atrás") } },
                 actions = {
-                    IconButton(onClick = { }) { Icon(Icons.Default.Share, "Share") }
-                    IconButton(onClick = { }) { Icon(Icons.Default.MoreVert, "More") }
+                    IconButton(onClick = { }) { Icon(Icons.Default.Share, "Compartir") }
+                    IconButton(onClick = { }) { Icon(Icons.Default.MoreVert, "Más opciones") }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(containerColor = Surface)
             )
@@ -63,7 +63,7 @@ fun PantallaPostDetail(
                     }
                 }
                 OutlinedButton(onClick = { }, shape = RoundedCornerShape(20.dp), border = BorderStroke(1.dp, Primary)) {
-                    Text("Follow", color = Primary, fontWeight = FontWeight.SemiBold, fontSize = 13.sp)
+                    Text("Seguir", color = Primary, fontWeight = FontWeight.SemiBold, fontSize = 13.sp)
                 }
             }
 
@@ -74,14 +74,14 @@ fun PantallaPostDetail(
                 modifier = Modifier.fillMaxWidth().padding(horizontal = 24.dp).height(320.dp).clip(RoundedCornerShape(20.dp)).background(PrimaryContainer.copy(alpha = 0.15f))
             ) {
                 Icon(Icons.Default.Person, null, Modifier.size(80.dp).align(Alignment.Center), tint = Primary.copy(alpha = 0.2f))
-                Text("MORNING + WORK", fontSize = 18.sp, fontWeight = FontWeight.Black, color = Color.White, letterSpacing = 2.sp, modifier = Modifier.align(Alignment.BottomCenter).padding(bottom = 60.dp))
+                Text("MAÑANA + ENTRENAMIENTO", fontSize = 18.sp, fontWeight = FontWeight.Black, color = Color.White, letterSpacing = 2.sp, modifier = Modifier.align(Alignment.BottomCenter).padding(bottom = 60.dp))
                 Row(
                     modifier = Modifier.align(Alignment.BottomCenter).fillMaxWidth().background(OnSurface.copy(alpha = 0.6f)).padding(16.dp),
                     horizontalArrangement = Arrangement.SpaceEvenly
                 ) {
-                    OverlayStat(state.miles, "MILES")
-                    OverlayStat(state.time, "TIME")
-                    OverlayStat(state.pace, "PACE")
+                    OverlayStat(state.miles, "MILLAS")
+                    OverlayStat(state.time, "TIEMPO")
+                    OverlayStat(state.pace, "RITMO")
                 }
             }
 
@@ -121,8 +121,8 @@ fun PantallaPostDetail(
 
             // Stat cards
             Row(modifier = Modifier.fillMaxWidth().padding(horizontal = 24.dp), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                StatCard("AVERAGE HEART RATE", state.avgHeartRate, "BPM", "❤\uFE0F", Modifier.weight(1f))
-                StatCard("CALORIES BURNED", state.caloriesBurned, "KCAL", "\uD83D\uDD25", Modifier.weight(1f))
+                StatCard("FRECUENCIA CARDÍACA MEDIA", state.avgHeartRate, "PPM", "❤\uFE0F", Modifier.weight(1f))
+                StatCard("CALORÍAS QUEMADAS", state.caloriesBurned, "KCAL", "\uD83D\uDD25", Modifier.weight(1f))
             }
 
             Spacer(modifier = Modifier.height(24.dp))
@@ -131,10 +131,10 @@ fun PantallaPostDetail(
             Column(modifier = Modifier.padding(horizontal = 24.dp)) {
                 Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
-                        Text("Comments", fontSize = 18.sp, fontWeight = FontWeight.Bold, color = OnSurface)
+                        Text("Comentarios", fontSize = 18.sp, fontWeight = FontWeight.Bold, color = OnSurface)
                         Text("  (${state.commentCount})", fontSize = 14.sp, color = OnSurfaceVariant)
                     }
-                    Text("Recent ▾", fontSize = 13.sp, color = Primary, fontWeight = FontWeight.SemiBold)
+                    Text("Recientes ▾", fontSize = 13.sp, color = Primary, fontWeight = FontWeight.SemiBold)
                 }
                 Spacer(modifier = Modifier.height(16.dp))
 
@@ -151,12 +151,12 @@ fun PantallaPostDetail(
                                     Text(comment.author, fontWeight = FontWeight.Bold, fontSize = 13.sp, color = Primary)
                                     Spacer(modifier = Modifier.width(6.dp))
                                     Text(
-                                        "AUTHOR", fontSize = 9.sp, fontWeight = FontWeight.Bold, color = Primary,
+                                        "AUTOR", fontSize = 9.sp, fontWeight = FontWeight.Bold, color = Primary,
                                         modifier = Modifier.background(PrimaryContainer.copy(alpha = 0.2f), RoundedCornerShape(4.dp)).padding(horizontal = 6.dp, vertical = 2.dp)
                                     )
                                 }
                                 Text(comment.text, fontSize = 13.sp, color = Primary.copy(alpha = 0.85f))
-                                Text("${comment.time} • Reply", fontSize = 11.sp, color = OnSurfaceVariant)
+                                Text("${comment.time} • Responder", fontSize = 11.sp, color = OnSurfaceVariant)
                             }
                         }
                     } else {
@@ -181,7 +181,7 @@ fun PantallaPostDetail(
             OutlinedTextField(
                 value = state.commentText,
                 onValueChange = postDetailViewModel::onCommentTextChange,
-                placeholder = { Text("Add a comment...", color = OnSurfaceVariant, fontSize = 14.sp) },
+                placeholder = { Text("Añadir un comentario...", color = OnSurfaceVariant, fontSize = 14.sp) },
                 modifier = Modifier.weight(1f).height(48.dp),
                 shape = RoundedCornerShape(24.dp),
                 colors = OutlinedTextFieldDefaults.colors(

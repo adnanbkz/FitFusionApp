@@ -77,9 +77,9 @@ fun PantallaSignUp(
             }
 
             Spacer(modifier = Modifier.height(20.dp))
-            Text("Create Account", fontSize = 28.sp, fontWeight = FontWeight.Bold, color = OnSurface)
+            Text("Crear cuenta", fontSize = 28.sp, fontWeight = FontWeight.Bold, color = OnSurface)
             Spacer(modifier = Modifier.height(6.dp))
-            Text("Start your fitness journey today.", fontSize = 15.sp, color = OnSurfaceVariant)
+            Text("Comienza tu camino fitness hoy.", fontSize = 15.sp, color = OnSurfaceVariant)
 
             Spacer(modifier = Modifier.height(28.dp))
 
@@ -90,18 +90,18 @@ fun PantallaSignUp(
                 modifier = Modifier.fillMaxWidth()
             ) {
                 Column(modifier = Modifier.padding(20.dp)) {
-                    AuthField("Full Name", state.displayName, authViewModel::onSignUpNameChange, "John Doe", Icons.Default.Person)
+                    AuthField("Nombre completo", state.displayName, authViewModel::onSignUpNameChange, "Juan García", Icons.Default.Person)
                     Spacer(modifier = Modifier.height(16.dp))
-                    AuthField("Email Address", state.email, authViewModel::onSignUpEmailChange, "name@example.com", Icons.Default.Email)
+                    AuthField("Correo electrónico", state.email, authViewModel::onSignUpEmailChange, "nombre@ejemplo.com", Icons.Default.Email)
                     Spacer(modifier = Modifier.height(16.dp))
-                    AuthField("Password", state.password, authViewModel::onSignUpPasswordChange, "••••••••", Icons.Default.Lock, isPassword = true)
+                    AuthField("Contraseña", state.password, authViewModel::onSignUpPasswordChange, "••••••••", Icons.Default.Lock, isPassword = true)
                     Spacer(modifier = Modifier.height(16.dp))
-                    AuthField("Confirm Password", state.confirmPassword, authViewModel::onSignUpConfirmPasswordChange, "••••••••", Icons.Default.Lock, isPassword = true)
+                    AuthField("Confirmar contraseña", state.confirmPassword, authViewModel::onSignUpConfirmPasswordChange, "••••••••", Icons.Default.Lock, isPassword = true)
 
                     Spacer(modifier = Modifier.height(24.dp))
-                    GreenGradientButton("Create Account") { authViewModel.attemptSignUp(onSignUpSuccess) }
+                    GreenGradientButton("Crear cuenta") { authViewModel.attemptSignUp(onSignUpSuccess) }
                     Spacer(modifier = Modifier.height(20.dp))
-                    DividerWithText("Or continue with")
+                    DividerWithText("O continúa con")
                     Spacer(modifier = Modifier.height(16.dp))
                     SocialButtonsRow()
                 }
@@ -109,9 +109,9 @@ fun PantallaSignUp(
 
             Spacer(modifier = Modifier.height(24.dp))
             Row(verticalAlignment = Alignment.CenterVertically) {
-                Text("Already have an account?", fontSize = 14.sp, color = OnSurfaceVariant)
+                Text("¿Ya tienes cuenta?", fontSize = 14.sp, color = OnSurfaceVariant)
                 TextButton(onClick = onNavigateToLogin) {
-                    Text("Sign In", fontSize = 14.sp, fontWeight = FontWeight.Bold, color = Primary)
+                    Text("Iniciar sesión", fontSize = 14.sp, fontWeight = FontWeight.Bold, color = Primary)
                 }
             }
             Spacer(modifier = Modifier.height(24.dp))

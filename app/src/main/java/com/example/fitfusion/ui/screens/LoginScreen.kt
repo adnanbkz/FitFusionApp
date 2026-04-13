@@ -81,9 +81,9 @@ fun PantallaLogin(
             }
 
             Spacer(modifier = Modifier.height(20.dp))
-            Text("Welcome Back", fontSize = 28.sp, fontWeight = FontWeight.Bold, color = OnSurface)
+            Text("Bienvenido de nuevo", fontSize = 28.sp, fontWeight = FontWeight.Bold, color = OnSurface)
             Spacer(modifier = Modifier.height(6.dp))
-            Text("Precision tracking for your fitness journey.", fontSize = 15.sp, color = OnSurfaceVariant, textAlign = TextAlign.Center)
+            Text("Seguimiento preciso para tu camino fitness.", fontSize = 15.sp, color = OnSurfaceVariant, textAlign = TextAlign.Center)
 
             Spacer(modifier = Modifier.height(28.dp))
 
@@ -94,28 +94,25 @@ fun PantallaLogin(
                 modifier = Modifier.fillMaxWidth()
             ) {
                 Column(modifier = Modifier.padding(20.dp)) {
-                    Text("Email Address", fontSize = 14.sp, fontWeight = FontWeight.Medium, color = OnSurface)
-                    Spacer(modifier = Modifier.height(8.dp))
-                    AuthField("Email Address", state.email, authViewModel::onLoginEmailChange, "name@example.com", Icons.Default.Email)
+                    AuthField("Correo electrónico", state.email, authViewModel::onLoginEmailChange, "nombre@ejemplo.com", Icons.Default.Email)
 
                     Spacer(modifier = Modifier.height(16.dp))
 
                     Row(
                         modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween,
+                        horizontalArrangement = Arrangement.End,
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Text("Password", fontSize = 14.sp, fontWeight = FontWeight.Medium, color = OnSurface)
                         TextButton(onClick = { }) {
-                            Text("Forgot Password?", fontSize = 13.sp, fontWeight = FontWeight.SemiBold, color = Primary)
+                            Text("¿Olvidaste tu contraseña?", fontSize = 13.sp, fontWeight = FontWeight.SemiBold, color = Primary)
                         }
                     }
-                    AuthField("Password", state.password, authViewModel::onLoginPasswordChange, "••••••••", Icons.Default.Lock, isPassword = true)
+                    AuthField("Contraseña", state.password, authViewModel::onLoginPasswordChange, "••••••••", Icons.Default.Lock, isPassword = true)
 
                     Spacer(modifier = Modifier.height(24.dp))
-                    GreenGradientButton("Sign In") { authViewModel.attemptLogin(onLoginSuccess) }
+                    GreenGradientButton("Iniciar sesión") { authViewModel.attemptLogin(onLoginSuccess) }
                     Spacer(modifier = Modifier.height(20.dp))
-                    DividerWithText("Or continue with")
+                    DividerWithText("O continúa con")
                     Spacer(modifier = Modifier.height(16.dp))
                     SocialButtonsRow()
                 }
@@ -123,9 +120,9 @@ fun PantallaLogin(
 
             Spacer(modifier = Modifier.height(24.dp))
             Row(verticalAlignment = Alignment.CenterVertically) {
-                Text("Don't have an account?", fontSize = 14.sp, color = OnSurfaceVariant)
+                Text("¿No tienes cuenta?", fontSize = 14.sp, color = OnSurfaceVariant)
                 TextButton(onClick = onNavigateToSignUp) {
-                    Text("Create New Account", fontSize = 14.sp, fontWeight = FontWeight.Bold, color = Primary)
+                    Text("Crear nueva cuenta", fontSize = 14.sp, fontWeight = FontWeight.Bold, color = Primary)
                 }
             }
             Spacer(modifier = Modifier.height(24.dp))
