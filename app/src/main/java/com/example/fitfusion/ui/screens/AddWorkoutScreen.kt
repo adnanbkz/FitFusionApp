@@ -1,23 +1,46 @@
 package com.example.fitfusion.ui.screens
 
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.PlayArrow
+import androidx.compose.material.icons.filled.Clear
 import androidx.compose.material.icons.filled.Search
-import androidx.compose.material3.*
-import androidx.compose.runtime.*
+import androidx.compose.material3.AssistChip
+import androidx.compose.material3.AssistChipDefaults
+import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.ElevatedCard
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.FilterChip
+import androidx.compose.material3.FilterChipDefaults
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.OutlinedTextFieldDefaults
+import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
+import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.TopAppBarDefaults
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -25,271 +48,261 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavHostController
-import com.example.fitfusion.ui.theme.*
+import com.example.fitfusion.data.models.ExerciseCatalogItem
+import com.example.fitfusion.ui.theme.OnSurface
+import com.example.fitfusion.ui.theme.OnSurfaceVariant
+import com.example.fitfusion.ui.theme.Primary
+import com.example.fitfusion.ui.theme.PrimaryContainer
+import com.example.fitfusion.ui.theme.Surface
+import com.example.fitfusion.ui.theme.SurfaceContainerLow
+import com.example.fitfusion.ui.theme.SurfaceContainerLowest
 import com.example.fitfusion.viewmodel.AddWorkoutViewModel
-import com.example.fitfusion.viewmodel.FeaturedWorkout
-import com.example.fitfusion.viewmodel.RecentWorkout
-import com.example.fitfusion.viewmodel.WorkoutCategory
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun PantallaAddWorkout(
     navController: NavHostController,
     addWorkoutViewModel: AddWorkoutViewModel = viewModel()
 ) {
     val state by addWorkoutViewModel.uiState.collectAsState()
+    val errorMessage = state.errorMessage
 
-    Box(modifier = Modifier.fillMaxSize().background(Surface)) {
-        LazyColumn(
-            modifier = Modifier.fillMaxSize(),
-            verticalArrangement = Arrangement.spacedBy(0.dp)
-        ) {
-            // Top Bar
-            item {
-                Spacer(modifier = Modifier.height(16.dp))
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 16.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.SpaceBetween
-                ) {
+    LazyColumn(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(Surface),
+        contentPadding = PaddingValues(bottom = 32.dp),
+        verticalArrangement = Arrangement.spacedBy(0.dp)
+    ) {
+        item {
+            TopAppBar(
+                title = { Text("Añadir entrenamiento", fontWeight = FontWeight.Bold, fontSize = 18.sp) },
+                navigationIcon = {
                     IconButton(onClick = { navController.popBackStack() }) {
-                        Icon(
-                            Icons.AutoMirrored.Filled.ArrowBack,
-                            contentDescription = "Volver",
-                            tint = OnSurface
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Volver")
+                    }
+                },
+                colors = TopAppBarDefaults.topAppBarColors(containerColor = Surface)
+            )
+        }
+
+        item {
+            Text(
+                "Explora el catálogo global de Firestore y elige ejercicios reales para el flujo de entrenamientos.",
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp),
+                fontSize = 14.sp,
+                color = OnSurfaceVariant
+            )
+            Spacer(modifier = Modifier.height(16.dp))
+        }
+
+        item {
+            OutlinedTextField(
+                value = state.searchQuery,
+                onValueChange = addWorkoutViewModel::onSearchQueryChange,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp),
+                placeholder = {
+                    Text("Buscar por nombre del ejercicio")
+                },
+                leadingIcon = {
+                    Icon(Icons.Default.Search, contentDescription = null, tint = OnSurfaceVariant)
+                },
+                trailingIcon = {
+                    if (state.searchQuery.isNotBlank()) {
+                        IconButton(onClick = addWorkoutViewModel::clearSearchQuery) {
+                            Icon(Icons.Default.Clear, contentDescription = "Limpiar búsqueda")
+                        }
+                    }
+                },
+                shape = RoundedCornerShape(14.dp),
+                singleLine = true,
+                colors = OutlinedTextFieldDefaults.colors(
+                    unfocusedContainerColor = SurfaceContainerLowest,
+                    focusedContainerColor = SurfaceContainerLowest,
+                    unfocusedBorderColor = Color.Transparent,
+                    focusedBorderColor = Primary
+                )
+            )
+            Spacer(modifier = Modifier.height(16.dp))
+        }
+
+        item {
+            LazyRow(
+                modifier = Modifier.fillMaxWidth(),
+                contentPadding = PaddingValues(horizontal = 16.dp),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                items(state.availableMuscleGroups) { muscleGroup ->
+                    FilterChip(
+                        selected = muscleGroup == state.selectedMuscleGroup,
+                        onClick = { addWorkoutViewModel.onMuscleGroupSelected(muscleGroup) },
+                        label = { Text(muscleGroup) },
+                        colors = FilterChipDefaults.filterChipColors(
+                            selectedContainerColor = PrimaryContainer,
+                            selectedLabelColor = Primary,
+                            containerColor = SurfaceContainerLowest
                         )
-                    }
-                    Text(
-                        "Añadir entrenamiento",
-                        fontSize = 18.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = OnSurface
                     )
-                    IconButton(onClick = { }) {
-                        Icon(Icons.Default.Search, contentDescription = "Buscar", tint = OnSurface)
-                    }
                 }
             }
+            Spacer(modifier = Modifier.height(20.dp))
+        }
 
-            // Featured Workout of the Day
-            item {
-                Spacer(modifier = Modifier.height(8.dp))
-                FeaturedWorkoutCard(
-                    workout = state.featured,
-                    onPlay = addWorkoutViewModel::startFeaturedWorkout
+        item {
+            ElevatedCard(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp),
+                colors = CardDefaults.elevatedCardColors(
+                    containerColor = SurfaceContainerLowest
                 )
-            }
-
-            // Quick Start Header
-            item {
-                Spacer(modifier = Modifier.height(24.dp))
+            ) {
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(horizontal = 16.dp),
+                        .padding(horizontal = 16.dp, vertical = 14.dp),
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Text(
-
-
-                        "Inicio rápido",
-                        fontSize = 16.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = OnSurface
-                    )
-                    TextButton(onClick = { }) {
+                    Column {
+                        Text("Catálogo de Firestore", fontWeight = FontWeight.Bold, color = OnSurface)
                         Text(
-                            "VER TODO",
-                            fontSize = 12.sp,
-                            fontWeight = FontWeight.Bold,
-                            letterSpacing = 0.5.sp,
-                            color = Primary
+                            "${state.filteredExercises.size} ejercicios cargados",
+                            fontSize = 13.sp,
+                            color = OnSurfaceVariant
                         )
                     }
+                    AssistChip(
+                        onClick = addWorkoutViewModel::refreshExercises,
+                        label = { Text("Recargar") },
+                        colors = AssistChipDefaults.assistChipColors(
+                            containerColor = SurfaceContainerLow
+                        )
+                    )
                 }
             }
-
-            // Quick Start Grid (2 rows of 2)
-            item {
-                Spacer(modifier = Modifier.height(4.dp))
-                val categories = WorkoutCategory.entries
-                Column(
-                    modifier = Modifier.padding(horizontal = 16.dp),
-                    verticalArrangement = Arrangement.spacedBy(10.dp)
-                ) {
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(10.dp)
-                    ) {
-                        categories.take(2).forEach { cat ->
-                            QuickStartCard(
-                                category = cat,
-                                onClick = { addWorkoutViewModel.startCategory(cat) },
-                                modifier = Modifier.weight(1f)
-                            )
-                        }
-                    }
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(10.dp)
-                    ) {
-                        categories.drop(2).forEach { cat ->
-                            QuickStartCard(
-                                category = cat,
-                                onClick = { addWorkoutViewModel.startCategory(cat) },
-                                modifier = Modifier.weight(1f)
-                            )
-                        }
-                    }
-                }
-            }
-
-            // Recent Workouts Header
-            item {
-                Spacer(modifier = Modifier.height(24.dp))
-                Text(
-                    "Entrenamientos recientes",
-                    fontSize = 16.sp,
-                    fontWeight = FontWeight.Bold,
-                    color = OnSurface,
-                    modifier = Modifier.padding(horizontal = 16.dp)
-                )
-                Spacer(modifier = Modifier.height(12.dp))
-            }
-
-            // Recent Workout Items
-            items(state.recentWorkouts) { workout ->
-                RecentWorkoutRow(
-                    workout = workout,
-                    isLogged = workout.id in state.loggedWorkoutIds,
-                    onLog = { addWorkoutViewModel.logRecentWorkout(workout.id) }
-                )
-                Spacer(modifier = Modifier.height(8.dp))
-            }
-
-            item { Spacer(modifier = Modifier.height(88.dp)) }
+            Spacer(modifier = Modifier.height(12.dp))
         }
 
-        // FAB
-        FloatingActionButton(
-            onClick = { },
-            modifier = Modifier
-                .align(Alignment.BottomEnd)
-                .padding(end = 20.dp, bottom = 20.dp),
-            containerColor = Primary,
-            contentColor = Color.White,
-            shape = CircleShape
-        ) {
-            Icon(Icons.Default.Add, contentDescription = "Nuevo entrenamiento")
+        when {
+            state.isLoading -> {
+                item {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(top = 48.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                            CircularProgressIndicator(color = Primary)
+                            Spacer(modifier = Modifier.height(12.dp))
+                            Text("Cargando ejercicios desde Firestore...", color = OnSurfaceVariant)
+                        }
+                    }
+                }
+            }
+
+            errorMessage != null -> {
+                item {
+                    ErrorStateCard(
+                        message = errorMessage,
+                        onRetry = addWorkoutViewModel::refreshExercises
+                    )
+                }
+            }
+
+            state.filteredExercises.isEmpty() -> {
+                item {
+                    EmptyExerciseState(
+                        hasSearchOrFilter = state.searchQuery.isNotBlank() ||
+                            state.selectedMuscleGroup != "Todos"
+                    )
+                }
+            }
+
+            else -> {
+                items(state.filteredExercises, key = { it.documentId }) { exercise ->
+                    ExerciseCatalogRow(exercise = exercise)
+                }
+                item {
+                    LoadMoreSection(
+                        isLoadingMore = state.isLoadingMore,
+                        hasMore = state.hasMore,
+                        onLoadMore = addWorkoutViewModel::loadMoreExercises
+                    )
+                }
+            }
         }
     }
 }
 
 @Composable
-private fun FeaturedWorkoutCard(
-    workout: FeaturedWorkout,
-    onPlay: () -> Unit
-) {
-    Card(
-        shape = RoundedCornerShape(20.dp),
-        elevation = CardDefaults.cardElevation(0.dp),
+private fun ExerciseCatalogRow(exercise: ExerciseCatalogItem) {
+    ElevatedCard(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = 16.dp)
-            .height(160.dp)
+            .padding(horizontal = 16.dp, vertical = 6.dp),
+        colors = CardDefaults.elevatedCardColors(
+            containerColor = SurfaceContainerLowest
+        )
     ) {
-        Box(modifier = Modifier.fillMaxSize()) {
-            // Dark gradient background
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .background(
-                        Brush.linearGradient(
-                            colors = listOf(
-                                Color(0xFF1A2E1A),
-                                Color(0xFF0D1F0D)
-                            )
-                        )
-                    )
-            )
-            // Subtle green glow in top-right
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .background(
-                        Brush.radialGradient(
-                            colors = listOf(
-                                Primary.copy(alpha = 0.3f),
-                                Color.Transparent
-                            ),
-                            radius = 400f
-                        )
-                    )
-            )
-            // Emoji figure centered
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(end = 80.dp),
-                contentAlignment = Alignment.Center
+        Column(modifier = Modifier.padding(16.dp)) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.Top
             ) {
-                Text(workout.emoji, fontSize = 64.sp)
-            }
-
-            Column(
-                modifier = Modifier
-                    .align(Alignment.TopStart)
-                    .padding(16.dp)
-            ) {
-                // "WORKOUT OF THE DAY" badge
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        exercise.name,
+                        fontSize = 17.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = OnSurface,
+                        maxLines = 2,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                    Spacer(modifier = Modifier.height(4.dp))
+                    Text(
+                        exercise.exerciseId,
+                        fontSize = 12.sp,
+                        color = OnSurfaceVariant
+                    )
+                }
                 Box(
                     modifier = Modifier
-                        .clip(RoundedCornerShape(6.dp))
-                        .background(Primary)
-                        .padding(horizontal = 8.dp, vertical = 3.dp)
+                        .clip(RoundedCornerShape(10.dp))
+                        .background(Primary.copy(alpha = 0.1f))
+                        .padding(horizontal = 10.dp, vertical = 6.dp)
                 ) {
                     Text(
-                        "ENTRENAMIENTO DEL DÍA",
-                        fontSize = 9.sp,
-                        fontWeight = FontWeight.Bold,
-                        letterSpacing = 0.5.sp,
-                        color = Color.White
+                        exercise.difficultyLevel ?: "Sin nivel",
+                        fontSize = 12.sp,
+                        fontWeight = FontWeight.SemiBold,
+                        color = Primary
                     )
-                }
-                Spacer(modifier = Modifier.height(8.dp))
-                Text(
-                    workout.title,
-                    fontSize = 20.sp,
-                    fontWeight = FontWeight.Black,
-                    color = Color.White,
-                    maxLines = 2,
-                    overflow = TextOverflow.Ellipsis
-                )
-                Spacer(modifier = Modifier.height(8.dp))
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    WorkoutStatPill("${workout.durationMin} min")
-                    WorkoutStatPill(workout.intensity)
                 }
             }
 
-            // Play button
-            Box(
-                modifier = Modifier
-                    .align(Alignment.CenterEnd)
-                    .padding(end = 16.dp)
-                    .size(44.dp)
-                    .clip(CircleShape)
-                    .background(Primary)
-                    .clickable(onClick = onPlay),
-                contentAlignment = Alignment.Center
-            ) {
-                Icon(
-                    Icons.Default.PlayArrow,
-                    contentDescription = "Iniciar",
-                    tint = Color.White,
-                    modifier = Modifier.size(24.dp)
+            Spacer(modifier = Modifier.height(12.dp))
+
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                ExerciseMetaPill(label = exercise.displayMuscleGroup)
+                ExerciseMetaPill(label = exercise.displayEquipment)
+                exercise.posture?.let { posture ->
+                    ExerciseMetaPill(label = posture)
+                }
+            }
+
+            if (exercise.shortYoutubeDemoUrl != null || exercise.inDepthYoutubeTechniqueUrl != null) {
+                Spacer(modifier = Modifier.height(12.dp))
+                Text(
+                    "Enlaces de demostración disponibles",
+                    fontSize = 12.sp,
+                    color = OnSurfaceVariant
                 )
             }
         }
@@ -297,60 +310,78 @@ private fun FeaturedWorkoutCard(
 }
 
 @Composable
-private fun WorkoutStatPill(text: String) {
+private fun ExerciseMetaPill(label: String) {
     Box(
         modifier = Modifier
-            .clip(RoundedCornerShape(20.dp))
-            .background(Color.White.copy(alpha = 0.15f))
-            .padding(horizontal = 8.dp, vertical = 3.dp)
+            .clip(RoundedCornerShape(999.dp))
+            .background(SurfaceContainerLow)
+            .padding(horizontal = 10.dp, vertical = 6.dp)
     ) {
-        Text(text, fontSize = 11.sp, fontWeight = FontWeight.SemiBold, color = Color.White)
+        Text(
+            label,
+            fontSize = 12.sp,
+            color = OnSurfaceVariant
+        )
     }
 }
 
 @Composable
-private fun QuickStartCard(
-    category: WorkoutCategory,
-    onClick: () -> Unit,
-    modifier: Modifier = Modifier
+private fun ErrorStateCard(
+    message: String,
+    onRetry: () -> Unit,
 ) {
-    Card(
-        shape = RoundedCornerShape(16.dp),
-        colors = CardDefaults.cardColors(containerColor = SurfaceContainerLowest),
-        elevation = CardDefaults.cardElevation(0.dp),
-        modifier = modifier
-            .height(84.dp)
-            .clickable(onClick = onClick)
+    ElevatedCard(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp, vertical = 8.dp),
+        colors = CardDefaults.elevatedCardColors(
+            containerColor = SurfaceContainerLowest
+        )
     ) {
-        Row(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(horizontal = 14.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(10.dp)
-        ) {
-            Box(
-                modifier = Modifier
-                    .size(40.dp)
-                    .clip(CircleShape)
-                    .background(Primary.copy(alpha = 0.1f)),
-                contentAlignment = Alignment.Center
-            ) {
-                Text(category.emoji, fontSize = 20.sp)
+        Column(modifier = Modifier.padding(16.dp)) {
+            Text("No se pudo cargar el catálogo de ejercicios", fontWeight = FontWeight.Bold, color = OnSurface)
+            Spacer(modifier = Modifier.height(8.dp))
+            Text(message, color = OnSurfaceVariant, fontSize = 14.sp)
+            Spacer(modifier = Modifier.height(12.dp))
+            TextButton(onClick = onRetry) {
+                Text("Reintentar", color = Primary)
             }
-            Column {
+        }
+    }
+}
+
+@Composable
+private fun LoadMoreSection(
+    isLoadingMore: Boolean,
+    hasMore: Boolean,
+    onLoadMore: () -> Unit,
+) {
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp, vertical = 16.dp),
+        contentAlignment = Alignment.Center
+    ) {
+        when {
+            isLoadingMore -> {
+                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    CircularProgressIndicator(color = Primary)
+                    Spacer(modifier = Modifier.height(12.dp))
+                    Text("Cargando más ejercicios...", color = OnSurfaceVariant)
+                }
+            }
+
+            hasMore -> {
+                TextButton(onClick = onLoadMore) {
+                    Text("Cargar más", color = Primary)
+                }
+            }
+
+            else -> {
                 Text(
-                    category.displayName,
-                    fontWeight = FontWeight.Bold,
-                    fontSize = 14.sp,
-                    color = OnSurface
-                )
-                Text(
-                    category.label,
-                    fontSize = 11.sp,
+                    "Fin de los resultados cargados",
                     color = OnSurfaceVariant,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
+                    fontSize = 13.sp,
                 )
             }
         }
@@ -358,86 +389,33 @@ private fun QuickStartCard(
 }
 
 @Composable
-private fun RecentWorkoutRow(
-    workout: RecentWorkout,
-    isLogged: Boolean,
-    onLog: () -> Unit
-) {
-    Card(
-        shape = RoundedCornerShape(16.dp),
-        colors = CardDefaults.cardColors(containerColor = SurfaceContainerLowest),
-        elevation = CardDefaults.cardElevation(0.dp),
+private fun EmptyExerciseState(hasSearchOrFilter: Boolean) {
+    Box(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = 16.dp)
+            .padding(horizontal = 16.dp, vertical = 48.dp),
+        contentAlignment = Alignment.Center
     ) {
-        Row(
-            modifier = Modifier
-                .padding(12.dp)
-                .fillMaxWidth(),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            // Emoji icon
-            Box(
-                modifier = Modifier
-                    .size(48.dp)
-                    .clip(RoundedCornerShape(12.dp))
-                    .background(Primary.copy(alpha = 0.1f)),
-                contentAlignment = Alignment.Center
-            ) {
-                Text(workout.emoji, fontSize = 22.sp)
-            }
-            Spacer(modifier = Modifier.width(12.dp))
-            // Info
-            Column(modifier = Modifier.weight(1f)) {
-                Text(
-                    workout.name,
-                    fontWeight = FontWeight.SemiBold,
-                    fontSize = 15.sp,
-                    color = OnSurface,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
-                )
-                Spacer(modifier = Modifier.height(3.dp))
-                Row(
-                    horizontalArrangement = Arrangement.spacedBy(6.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Text(
-                        "${workout.durationMin} min",
-                        fontSize = 12.sp,
-                        color = OnSurfaceVariant
-                    )
-                    Text("•", fontSize = 12.sp, color = OnSurfaceVariant)
-                    Text(
-                        workout.intensity,
-                        fontSize = 12.sp,
-                        color = OnSurfaceVariant
-                    )
-                    Text("•", fontSize = 12.sp, color = OnSurfaceVariant)
-                    Text(
-                        workout.metric,
-                        fontSize = 12.sp,
-                        color = OnSurfaceVariant
-                    )
-                }
-            }
-            // Add button
-            Box(
-                modifier = Modifier
-                    .size(36.dp)
-                    .clip(CircleShape)
-                    .background(if (isLogged) Primary.copy(alpha = 0.2f) else Primary)
-                    .clickable(enabled = !isLogged, onClick = onLog),
-                contentAlignment = Alignment.Center
-            ) {
-                Icon(
-                    Icons.Default.Add,
-                    contentDescription = "Registrar",
-                    tint = if (isLogged) Primary else Color.White,
-                    modifier = Modifier.size(20.dp)
-                )
-            }
+        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+            Text(
+                if (hasSearchOrFilter) {
+                    "No hay ejercicios que coincidan con los filtros actuales"
+                } else {
+                    "No se encontraron ejercicios en Firestore"
+                },
+                fontWeight = FontWeight.Bold,
+                color = OnSurface
+            )
+            Spacer(modifier = Modifier.height(8.dp))
+            Text(
+                if (hasSearchOrFilter) {
+                    "Prueba otra búsqueda o limpia el filtro de grupo muscular."
+                } else {
+                    "Comprueba que la colección global exercises está poblada."
+                },
+                color = OnSurfaceVariant,
+                fontSize = 14.sp
+            )
         }
     }
 }
