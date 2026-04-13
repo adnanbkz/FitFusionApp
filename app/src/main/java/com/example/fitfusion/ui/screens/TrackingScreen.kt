@@ -124,11 +124,13 @@ fun PantallaTracking(
         item {
             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                 OutlinedButton(
-                    onClick = { }, modifier = Modifier.weight(1f).height(48.dp),
+                    onClick = { navController.navigate(Screens.AddFoodScreen.name) },
+                    modifier = Modifier.weight(1f).height(48.dp),
                     shape = RoundedCornerShape(12.dp), border = BorderStroke(1.dp, OnSurface.copy(alpha = 0.15f))
                 ) { Text("Registrar comida", color = OnSurface, fontWeight = FontWeight.SemiBold) }
                 OutlinedButton(
-                    onClick = { }, modifier = Modifier.weight(1f).height(48.dp),
+                    onClick = { navController.navigate(Screens.AddWorkoutScreen.name) },
+                    modifier = Modifier.weight(1f).height(48.dp),
                     shape = RoundedCornerShape(12.dp), border = BorderStroke(1.dp, OnSurface.copy(alpha = 0.15f))
                 ) { Text("Registrar entrenamiento", color = OnSurface, fontWeight = FontWeight.SemiBold) }
             }

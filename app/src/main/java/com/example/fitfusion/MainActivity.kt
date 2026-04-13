@@ -209,6 +209,14 @@ class MainActivity : ComponentActivity() {
                         composable(Screens.WorkoutSummaryScreen.name) {
                             PantallaWorkoutSummary(navController = navController)
                         }
+
+                        composable(Screens.AddFoodScreen.name) {
+                            PantallaAddFood(navController = navController)
+                        }
+
+                        composable(Screens.AddWorkoutScreen.name) {
+                            PantallaAddWorkout(navController = navController)
+                        }
                     }
                 }
             }
