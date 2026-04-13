@@ -58,10 +58,14 @@ class MainActivity : ComponentActivity() {
             val navController = rememberNavController()
             val navBackStackEntry by navController.currentBackStackEntryAsState()
             val currentRoute = navBackStackEntry?.destination?.route
-            var loggedUser by remember { mutableStateOf<String?>(null) }
 
             // Shared AuthViewModel for Login + SignUp
             val authViewModel: AuthViewModel = viewModel()
+            val initialLoggedUser = remember(authViewModel) { authViewModel.getSignedInDisplayName() }
+            val startDestination = remember(authViewModel) {
+                if (authViewModel.isUserSignedIn()) Screens.HomeScreen.name else Screens.LoginScreen.name
+            }
+            var loggedUser by remember { mutableStateOf(initialLoggedUser) }
 
             val isMainScreen = currentRoute == Screens.HomeScreen.name ||
                     currentRoute == Screens.TrackingScreen.name ||
@@ -125,12 +129,13 @@ class MainActivity : ComponentActivity() {
                 Box(modifier = Modifier.padding(innerPadding)) {
                     NavHost(
                         navController = navController,
-                        startDestination = Screens.LoginScreen.name
+                        startDestination = startDestination
                     ) {
                         composable(Screens.LoginScreen.name) {
                             PantallaLogin(
                                 onLoginSuccess = { username ->
                                     loggedUser = username
+                                    selectedItem = 0
                                     navController.navigate(Screens.HomeScreen.name) {
                                         popUpTo(Screens.LoginScreen.name) { inclusive = true }
                                     }
@@ -152,6 +157,7 @@ class MainActivity : ComponentActivity() {
                             PantallaSignUp(
                                 onSignUpSuccess = { username ->
                                     loggedUser = username
+                                    selectedItem = 0
                                     navController.navigate(Screens.HomeScreen.name) {
                                         popUpTo(Screens.SignUpScreen.name) { inclusive = true }
                                     }
@@ -186,7 +192,9 @@ class MainActivity : ComponentActivity() {
                                 navController = navController,
                                 userName = loggedUser,
                                 onLogout = {
+                                    authViewModel.signOut()
                                     loggedUser = null
+                                    selectedItem = 0
                                     navController.navigate(Screens.LoginScreen.name) {
                                         popUpTo(0) { inclusive = true }
                                     }
