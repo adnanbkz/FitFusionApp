@@ -61,7 +61,7 @@ fun PantallaAddWorkout(
                         )
                     }
                     Text(
-                        "Add Workout",
+                        "Añadir entrenamiento",
                         fontSize = 18.sp,
                         fontWeight = FontWeight.Bold,
                         color = OnSurface
@@ -92,14 +92,16 @@ fun PantallaAddWorkout(
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Text(
-                        "Quick Start",
+
+
+                        "Inicio rápido",
                         fontSize = 16.sp,
                         fontWeight = FontWeight.Bold,
                         color = OnSurface
                     )
                     TextButton(onClick = { }) {
                         Text(
-                            "VIEW ALL",
+                            "VER TODO",
                             fontSize = 12.sp,
                             fontWeight = FontWeight.Bold,
                             letterSpacing = 0.5.sp,
@@ -148,7 +150,7 @@ fun PantallaAddWorkout(
             item {
                 Spacer(modifier = Modifier.height(24.dp))
                 Text(
-                    "Recent Workouts",
+                    "Entrenamientos recientes",
                     fontSize = 16.sp,
                     fontWeight = FontWeight.Bold,
                     color = OnSurface,
@@ -249,7 +251,7 @@ private fun FeaturedWorkoutCard(
                         .padding(horizontal = 8.dp, vertical = 3.dp)
                 ) {
                     Text(
-                        "WORKOUT OF THE DAY",
+                        "ENTRENAMIENTO DEL DÍA",
                         fontSize = 9.sp,
                         fontWeight = FontWeight.Bold,
                         letterSpacing = 0.5.sp,
@@ -338,8 +340,7 @@ private fun QuickStartCard(
             }
             Column {
                 Text(
-                    category.name.lowercase()
-                        .replaceFirstChar { it.uppercase() },
+                    category.displayName,
                     fontWeight = FontWeight.Bold,
                     fontSize = 14.sp,
                     color = OnSurface

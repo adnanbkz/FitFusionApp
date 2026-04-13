@@ -188,6 +188,7 @@ class AuthViewModel : ViewModel() {
 
     fun isUserSignedIn(): Boolean = auth.currentUser != null
 
+
     fun signOut() {
         auth.signOut()
         _loginState.value = LoginUiState()

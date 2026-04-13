@@ -6,11 +6,11 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 
-enum class WorkoutCategory(val label: String, val emoji: String) {
-    STRENGTH("Multi-muscle", "🏋️"),
-    CARDIO("Gymnastics", "🤸"),
-    YOGA("Flexibility", "🧘"),
-    HIIT("Like Nike Run", "⚡")
+enum class WorkoutCategory(val label: String, val emoji: String, val displayName: String) {
+    STRENGTH("Multimúsculo", "🏋️", "Fuerza"),
+    CARDIO("Gimnasia", "🤸", "Cardio"),
+    YOGA("Flexibilidad", "🧘", "Yoga"),
+    HIIT("Cardio libre", "⚡", "HIIT")
 }
 
 data class FeaturedWorkout(
@@ -31,9 +31,9 @@ data class RecentWorkout(
 
 data class AddWorkoutUiState(
     val featured: FeaturedWorkout = FeaturedWorkout(
-        title = "Explosive Power Circuit",
+        title = "Circuito de potencia explosiva",
         durationMin = 45,
-        intensity = "High Intensity",
+        intensity = "Alta intensidad",
         emoji = "🔥"
     ),
     val recentWorkouts: List<RecentWorkout> = emptyList(),
@@ -45,9 +45,9 @@ class AddWorkoutViewModel : ViewModel() {
     private val _uiState = MutableStateFlow(
         AddWorkoutUiState(
             recentWorkouts = listOf(
-                RecentWorkout(1, "Morning Jog", 22, "Moderate", "4.2 km", "🏃"),
-                RecentWorkout(2, "Upper Body Push", 48, "Hard", "12 sets", "🏋️"),
-                RecentWorkout(3, "Swim Session", 55, "Low", "1,800m", "🏊")
+                RecentWorkout(1, "Carrera matutina", 22, "Moderado", "4.2 km", "🏃"),
+                RecentWorkout(2, "Empuje tren superior", 48, "Fuerte", "12 series", "🏋️"),
+                RecentWorkout(3, "Sesión de natación", 55, "Suave", "1.800 m", "🏊")
             )
         )
     )

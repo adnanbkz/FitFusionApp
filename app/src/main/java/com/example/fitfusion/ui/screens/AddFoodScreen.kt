@@ -64,7 +64,7 @@ fun PantallaAddFood(
                     )
                 }
                 Text(
-                    "Add Food",
+                    "Añadir comida",
                     fontSize = 18.sp,
                     fontWeight = FontWeight.Bold,
                     color = OnSurface
@@ -88,7 +88,7 @@ fun PantallaAddFood(
                 onValueChange = addFoodViewModel::onSearchQueryChange,
                 placeholder = {
                     Text(
-                        "Search foods, brands, recipes...",
+                        "Busca alimentos, marcas, recetas...",
                         color = OnSurfaceVariant,
                         fontSize = 14.sp
                     )
@@ -114,7 +114,7 @@ fun PantallaAddFood(
         item {
             Spacer(modifier = Modifier.height(20.dp))
             Text(
-                "Quick Add",
+                "Acceso rápido",
                 fontSize = 16.sp,
                 fontWeight = FontWeight.Bold,
                 color = OnSurface,
@@ -149,14 +149,14 @@ fun PantallaAddFood(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Text(
-                    "Recently Logged",
+                    "Registrado recientemente",
                     fontSize = 16.sp,
                     fontWeight = FontWeight.Bold,
                     color = OnSurface
                 )
                 TextButton(onClick = { }) {
                     Text(
-                        "View All",
+                        "Ver todo",
                         fontSize = 13.sp,
                         fontWeight = FontWeight.SemiBold,
                         color = Primary
@@ -179,7 +179,7 @@ fun PantallaAddFood(
         item {
             Spacer(modifier = Modifier.height(8.dp))
             Text(
-                "Suggested for You",
+                "Sugerido para ti",
                 fontSize = 16.sp,
                 fontWeight = FontWeight.Bold,
                 color = OnSurface,
@@ -231,9 +231,9 @@ private fun QuickAddChip(
     modifier: Modifier = Modifier
 ) {
     val (emoji, label) = when (meal) {
-        MealType.BREAKFAST -> "☀️" to "BREAKFAST"
-        MealType.LUNCH -> "🍴" to "LUNCH"
-        MealType.DINNER -> "🌙" to "DINNER"
+        MealType.BREAKFAST -> "☀️" to "DESAYUNO"
+        MealType.LUNCH -> "🍴" to "ALMUERZO"
+        MealType.DINNER -> "🌙" to "CENA"
     }
     Card(
         shape = RoundedCornerShape(14.dp),
@@ -398,7 +398,7 @@ private fun FeaturedSuggestionCard(
                     .padding(horizontal = 8.dp, vertical = 4.dp)
             ) {
                 Text(
-                    "FOR BREAKFAST",
+                    "PARA DESAYUNO",
                     fontSize = 10.sp,
                     fontWeight = FontWeight.Bold,
                     color = Color.White,
