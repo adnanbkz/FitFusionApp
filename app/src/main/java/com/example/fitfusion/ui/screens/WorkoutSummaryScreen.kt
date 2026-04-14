@@ -36,9 +36,7 @@ fun PantallaWorkoutSummary(
 
     Box(modifier = Modifier.fillMaxSize().background(Surface)) {
         Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .verticalScroll(rememberScrollState())
+            modifier = Modifier.fillMaxSize().verticalScroll(rememberScrollState())
         ) {
             TopAppBar(
                 title = { Text("Resumen del entrenamiento", fontWeight = FontWeight.Bold, fontSize = 18.sp) },
@@ -47,32 +45,26 @@ fun PantallaWorkoutSummary(
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, "Atrás")
                     }
                 },
-                actions = {
-                    IconButton(onClick = { }) { Icon(Icons.Default.Share, "Compartir") }
-                },
+                actions = { IconButton(onClick = { }) { Icon(Icons.Default.Share, "Compartir") } },
                 colors = TopAppBarDefaults.topAppBarColors(containerColor = Surface)
             )
 
-            Column(modifier = Modifier.padding(horizontal = 24.dp)) {
+            Column(
+                modifier = Modifier.padding(horizontal = 24.dp),
+                verticalArrangement = Arrangement.spacedBy(16.dp)
+            ) {
+                Column {
+                    Text(
+                        state.sessionType,
+                        fontSize = 11.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.5.sp, color = Primary,
+                        modifier = Modifier
+                            .background(PrimaryContainer.copy(alpha = 0.15f), RoundedCornerShape(6.dp))
+                            .padding(horizontal = 12.dp, vertical = 4.dp)
+                    )
+                    Text(state.title, fontSize = 28.sp, fontWeight = FontWeight.Bold, color = OnSurface, modifier = Modifier.padding(top = 8.dp))
+                    Text(state.loggedDate, fontSize = 14.sp, color = OnSurfaceVariant)
+                }
 
-                // Session tag
-                Text(
-                    state.sessionType,
-                    fontSize = 11.sp,
-                    fontWeight = FontWeight.Bold,
-                    letterSpacing = 1.5.sp,
-                    color = Primary,
-                    modifier = Modifier
-                        .background(PrimaryContainer.copy(alpha = 0.15f), RoundedCornerShape(6.dp))
-                        .padding(horizontal = 12.dp, vertical = 4.dp)
-                )
-                Spacer(modifier = Modifier.height(8.dp))
-                Text(state.title, fontSize = 28.sp, fontWeight = FontWeight.Bold, color = OnSurface)
-                Text(state.loggedDate, fontSize = 14.sp, color = OnSurfaceVariant)
-
-                Spacer(modifier = Modifier.height(24.dp))
-
-                // Total energy
                 Card(
                     shape = RoundedCornerShape(20.dp),
                     colors = CardDefaults.cardColors(containerColor = SurfaceContainerLowest),
@@ -80,35 +72,17 @@ fun PantallaWorkoutSummary(
                     modifier = Modifier.fillMaxWidth()
                 ) {
                     Column(modifier = Modifier.padding(24.dp)) {
-                        Text(
-                            "ENERGÍA TOTAL QUEMADA",
-                            fontSize = 11.sp,
-                            fontWeight = FontWeight.Bold,
-                            letterSpacing = 2.sp,
-                            color = OnSurfaceVariant
-                        )
-                        Spacer(modifier = Modifier.height(8.dp))
-                        Row(verticalAlignment = Alignment.Bottom) {
-                            Text(
-                                state.totalKcal,
-                                fontSize = 56.sp,
-                                fontWeight = FontWeight.Bold,
-                                color = OnSurface
-                            )
-                            Text(
-                                " KCAL",
-                                fontSize = 18.sp,
-                                fontWeight = FontWeight.Medium,
-                                color = OnSurfaceVariant,
-                                modifier = Modifier.padding(bottom = 10.dp)
-                            )
+                        Text("ENERGÍA TOTAL QUEMADA", fontSize = 11.sp, fontWeight = FontWeight.Bold, letterSpacing = 2.sp, color = OnSurfaceVariant)
+                        Row(
+                            verticalAlignment = Alignment.Bottom,
+                            modifier = Modifier.padding(top = 8.dp)
+                        ) {
+                            Text(state.totalKcal, fontSize = 56.sp, fontWeight = FontWeight.Bold, color = OnSurface)
+                            Text(" KCAL", fontSize = 18.sp, fontWeight = FontWeight.Medium, color = OnSurfaceVariant, modifier = Modifier.padding(bottom = 10.dp))
                         }
                     }
                 }
 
-                Spacer(modifier = Modifier.height(16.dp))
-
-                // Duration + Pace
                 Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                     Card(
                         shape = RoundedCornerShape(16.dp),
@@ -117,27 +91,10 @@ fun PantallaWorkoutSummary(
                         modifier = Modifier.weight(1f)
                     ) {
                         Column(modifier = Modifier.padding(16.dp)) {
-                            Text(
-                                "DURACIÓN",
-                                fontSize = 10.sp,
-                                fontWeight = FontWeight.Bold,
-                                letterSpacing = 1.5.sp,
-                                color = OnSurfaceVariant
-                            )
-                            Spacer(modifier = Modifier.height(4.dp))
-                            Row(verticalAlignment = Alignment.Bottom) {
-                                Text(
-                                    state.duration,
-                                    fontSize = 28.sp,
-                                    fontWeight = FontWeight.Bold,
-                                    color = OnSurface
-                                )
-                                Text(
-                                    " MINS",
-                                    fontSize = 12.sp,
-                                    color = OnSurfaceVariant,
-                                    modifier = Modifier.padding(bottom = 4.dp)
-                                )
+                            Text("DURACIÓN", fontSize = 10.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.5.sp, color = OnSurfaceVariant)
+                            Row(verticalAlignment = Alignment.Bottom, modifier = Modifier.padding(top = 4.dp)) {
+                                Text(state.duration, fontSize = 28.sp, fontWeight = FontWeight.Bold, color = OnSurface)
+                                Text(" MINS", fontSize = 12.sp, color = OnSurfaceVariant, modifier = Modifier.padding(bottom = 4.dp))
                             }
                         }
                     }
@@ -148,172 +105,94 @@ fun PantallaWorkoutSummary(
                         modifier = Modifier.weight(1f)
                     ) {
                         Column(modifier = Modifier.padding(16.dp)) {
-                            Text(
-                                "RITMO MEDIO",
-                                fontSize = 10.sp,
-                                fontWeight = FontWeight.Bold,
-                                letterSpacing = 1.5.sp,
-                                color = OnSurfaceVariant
-                            )
-                            Spacer(modifier = Modifier.height(4.dp))
-                            Row(verticalAlignment = Alignment.Bottom) {
-                                Text(
-                                    state.pace,
-                                    fontSize = 28.sp,
-                                    fontWeight = FontWeight.Bold,
-                                    color = OnSurface
-                                )
-                                Text(
-                                    " /MI",
-                                    fontSize = 12.sp,
-                                    color = OnSurfaceVariant,
-                                    modifier = Modifier.padding(bottom = 4.dp)
-                                )
+                            Text("RITMO MEDIO", fontSize = 10.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.5.sp, color = OnSurfaceVariant)
+                            Row(verticalAlignment = Alignment.Bottom, modifier = Modifier.padding(top = 4.dp)) {
+                                Text(state.pace, fontSize = 28.sp, fontWeight = FontWeight.Bold, color = OnSurface)
+                                Text(" /MI", fontSize = 12.sp, color = OnSurfaceVariant, modifier = Modifier.padding(bottom = 4.dp))
                             }
                         }
                     }
                 }
 
-                Spacer(modifier = Modifier.height(16.dp))
-
-                // Map placeholder
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
                         .height(180.dp)
                         .clip(RoundedCornerShape(20.dp))
-                        .background(
-                            Brush.verticalGradient(
-                                listOf(
-                                    PrimaryContainer.copy(alpha = 0.1f),
-                                    SurfaceContainerLow
-                                )
-                            )
-                        ),
+                        .background(Brush.verticalGradient(listOf(PrimaryContainer.copy(alpha = 0.1f), SurfaceContainerLow))),
                     contentAlignment = Alignment.BottomStart
                 ) {
                     Column(modifier = Modifier.padding(16.dp)) {
-                        Text(
-                            state.mapLocation,
-                            fontSize = 16.sp,
-                            fontWeight = FontWeight.Bold,
-                            color = OnSurface
-                        )
-                        Row(verticalAlignment = Alignment.CenterVertically) {
+                        Text(state.mapLocation, fontSize = 16.sp, fontWeight = FontWeight.Bold, color = OnSurface)
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(4.dp),
+                            modifier = Modifier.padding(top = 2.dp)
+                        ) {
                             Text("\uD83D\uDCCD", fontSize = 12.sp)
-                            Spacer(modifier = Modifier.width(4.dp))
                             Text(state.mapCity, fontSize = 13.sp, color = OnSurfaceVariant)
                         }
                     }
                 }
 
-                Spacer(modifier = Modifier.height(24.dp))
-
-                // Intensity Zones
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Text(
-                        "Zonas de intensidad",
-                        fontSize = 20.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = OnSurface
-                    )
+                    Text("Zonas de intensidad", fontSize = 20.sp, fontWeight = FontWeight.Bold, color = OnSurface)
                     TextButton(onClick = { }) {
-                        Text(
-                            "Ver detalles",
-                            color = Primary,
-                            fontWeight = FontWeight.SemiBold,
-                            fontSize = 13.sp
+                        Text("Ver detalles", color = Primary, fontWeight = FontWeight.SemiBold, fontSize = 13.sp)
+                    }
+                }
+
+                Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
+                    state.zones.forEach { zone ->
+                        IntensityZoneRow(
+                            label = zone.label, duration = zone.duration,
+                            bpmRange = zone.bpmRange, percentage = zone.percentage,
+                            color = zone.color, progress = zone.progress
                         )
                     }
                 }
 
-                Spacer(modifier = Modifier.height(8.dp))
-
-                state.zones.forEachIndexed { index, zone ->
-                    IntensityZoneRow(
-                        label = zone.label,
-                        duration = zone.duration,
-                        bpmRange = zone.bpmRange,
-                        percentage = zone.percentage,
-                        color = zone.color,
-                        progress = zone.progress
-                    )
-                    if (index < state.zones.lastIndex) {
-                        Spacer(modifier = Modifier.height(16.dp))
-                    }
-                }
-
-                Spacer(modifier = Modifier.height(24.dp))
-
-                // Daily Goal Reached
                 if (state.goalReached) {
                     Card(
                         shape = RoundedCornerShape(20.dp),
-                        colors = CardDefaults.cardColors(
-                            containerColor = PrimaryContainer.copy(alpha = 0.1f)
-                        ),
+                        colors = CardDefaults.cardColors(containerColor = PrimaryContainer.copy(alpha = 0.1f)),
                         elevation = CardDefaults.cardElevation(0.dp),
                         modifier = Modifier.fillMaxWidth()
                     ) {
                         Row(
                             modifier = Modifier.padding(24.dp),
-                            verticalAlignment = Alignment.CenterVertically
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(16.dp)
                         ) {
                             Column(modifier = Modifier.weight(1f)) {
-                                Text(
-                                    "¡Objetivo\ndiario alcanzado!",
-                                    fontSize = 22.sp,
-                                    fontWeight = FontWeight.Bold,
-                                    color = Primary,
-                                    lineHeight = 26.sp
-                                )
-                                Spacer(modifier = Modifier.height(8.dp))
-                                Text(
-                                    state.goalMessage,
-                                    fontSize = 14.sp,
-                                    color = OnSurfaceVariant
-                                )
+                                Text("¡Objetivo\ndiario alcanzado!", fontSize = 22.sp, fontWeight = FontWeight.Bold, color = Primary, lineHeight = 26.sp)
+                                Text(state.goalMessage, fontSize = 14.sp, color = OnSurfaceVariant, modifier = Modifier.padding(top = 8.dp))
                             }
-                            Spacer(modifier = Modifier.width(16.dp))
                             Box(
-                                modifier = Modifier
-                                    .size(64.dp)
-                                    .clip(CircleShape)
-                                    .background(Primary.copy(alpha = 0.15f)),
+                                modifier = Modifier.size(64.dp).clip(CircleShape).background(Primary.copy(alpha = 0.15f)),
                                 contentAlignment = Alignment.Center
                             ) {
                                 Box(
-                                    modifier = Modifier
-                                        .size(48.dp)
-                                        .clip(CircleShape)
-                                        .background(Primary),
+                                    modifier = Modifier.size(48.dp).clip(CircleShape).background(Primary),
                                     contentAlignment = Alignment.Center
-                                ) {
-                                    Text("\uD83C\uDFAF", fontSize = 24.sp)
-                                }
+                                ) { Text("\uD83C\uDFAF", fontSize = 24.sp) }
                             }
                         }
                     }
                 }
 
-                Spacer(modifier = Modifier.height(32.dp))
+                Box(modifier = Modifier.height(16.dp))
             }
         }
 
         FloatingActionButton(
             onClick = { },
-            containerColor = Primary,
-            contentColor = Color.White,
-            shape = CircleShape,
-            modifier = Modifier
-                .align(Alignment.BottomEnd)
-                .padding(end = 32.dp, bottom = 16.dp)
-        ) {
-            Icon(Icons.Default.Add, "Nuevo")
-        }
+            containerColor = Primary, contentColor = Color.White, shape = CircleShape,
+            modifier = Modifier.align(Alignment.BottomEnd).padding(end = 32.dp, bottom = 16.dp)
+        ) { Icon(Icons.Default.Add, "Nuevo") }
     }
 }

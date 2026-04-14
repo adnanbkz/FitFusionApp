@@ -6,7 +6,6 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -62,22 +61,17 @@ import com.example.fitfusion.ui.theme.*
 fun GreenGradientButton(text: String, onClick: () -> Unit) {
     Button(
         onClick = onClick,
-        modifier = Modifier
-            .fillMaxWidth()
-            .height(54.dp),
+        modifier = Modifier.fillMaxWidth().height(54.dp),
         shape = RoundedCornerShape(14.dp),
         colors = ButtonDefaults.buttonColors(containerColor = Color.Transparent),
         contentPadding = ButtonDefaults.ContentPadding
     ) {
         Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .background(GreenGradientBrush, RoundedCornerShape(14.dp)),
+            modifier = Modifier.fillMaxSize().background(GreenGradientBrush, RoundedCornerShape(14.dp)),
             contentAlignment = Alignment.Center
         ) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 Text(text, fontSize = 17.sp, fontWeight = FontWeight.Bold, color = Color.White)
-                Spacer(modifier = Modifier.width(8.dp))
                 Icon(Icons.AutoMirrored.Filled.ArrowForward, null, tint = Color.White, modifier = Modifier.size(20.dp))
             }
         }
@@ -103,9 +97,10 @@ fun SocialButtonsRow() {
             border = BorderStroke(1.dp, OutlineVariant.copy(alpha = 0.3f)),
             colors = ButtonDefaults.outlinedButtonColors(containerColor = SurfaceContainerLowest)
         ) {
-            Icon(painter = painterResource(R.drawable.ic_google), null, Modifier.size(18.dp), tint = Color.Unspecified)
-            Spacer(modifier = Modifier.width(8.dp))
-            Text("Google", color = OnSurface, fontWeight = FontWeight.Medium)
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
+                Icon(painter = painterResource(R.drawable.ic_google), null, Modifier.size(18.dp), tint = Color.Unspecified)
+                Text("Google", color = OnSurface, fontWeight = FontWeight.Medium)
+            }
         }
         OutlinedButton(
             onClick = { },
@@ -114,9 +109,10 @@ fun SocialButtonsRow() {
             border = BorderStroke(1.dp, OutlineVariant.copy(alpha = 0.3f)),
             colors = ButtonDefaults.outlinedButtonColors(containerColor = SurfaceContainerLowest)
         ) {
-            Icon(painter = painterResource(R.drawable.ic_facebook), null, Modifier.size(18.dp), tint = Color.Unspecified)
-            Spacer(modifier = Modifier.width(8.dp))
-            Text("Facebook", color = OnSurface, fontWeight = FontWeight.Medium)
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
+                Icon(painter = painterResource(R.drawable.ic_facebook), null, Modifier.size(18.dp), tint = Color.Unspecified)
+                Text("Facebook", color = OnSurface, fontWeight = FontWeight.Medium)
+            }
         }
     }
 }
@@ -127,7 +123,6 @@ fun AuthField(
     placeholder: String, icon: ImageVector, isPassword: Boolean = false
 ) {
     Text(label, fontSize = 14.sp, fontWeight = FontWeight.Medium, color = OnSurface)
-    Spacer(modifier = Modifier.height(8.dp))
     OutlinedTextField(
         value = value,
         onValueChange = onValueChange,
@@ -142,7 +137,7 @@ fun AuthField(
             focusedBorderColor = Primary
         ),
         singleLine = true,
-        modifier = Modifier.fillMaxWidth()
+        modifier = Modifier.fillMaxWidth().padding(top = 8.dp)
     )
 }
 
@@ -193,8 +188,7 @@ fun MacroRow(label: String, current: Int, goal: Int, color: Color) {
             modifier = Modifier.weight(1f).height(6.dp).clip(RoundedCornerShape(3.dp)),
             color = color, trackColor = color.copy(alpha = 0.15f)
         )
-        Spacer(modifier = Modifier.width(12.dp))
-        Text("$current", fontWeight = FontWeight.Bold, fontSize = 15.sp, color = OnSurface)
+        Text("$current", fontWeight = FontWeight.Bold, fontSize = 15.sp, color = OnSurface, modifier = Modifier.padding(start = 12.dp))
         Text(" / ${goal}g", fontSize = 13.sp, color = OnSurfaceVariant)
     }
 }
@@ -212,12 +206,15 @@ fun RecentLogItem(emoji: String, title: String, subtitle: String, calories: Stri
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.SpaceBetween
         ) {
-            Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.weight(1f)) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
+                modifier = Modifier.weight(1f)
+            ) {
                 Box(
                     modifier = Modifier.size(40.dp).clip(RoundedCornerShape(10.dp)).background(SurfaceContainerLow),
                     contentAlignment = Alignment.Center
                 ) { Text(emoji, fontSize = 18.sp) }
-                Spacer(modifier = Modifier.width(12.dp))
                 Column {
                     Text(title, fontWeight = FontWeight.SemiBold, fontSize = 15.sp, color = OnSurface, maxLines = 1, overflow = TextOverflow.Ellipsis)
                     Text(subtitle, fontSize = 12.sp, color = OnSurfaceVariant)
@@ -241,10 +238,7 @@ fun FeedPost(
         shape = RoundedCornerShape(20.dp),
         colors = CardDefaults.cardColors(containerColor = SurfaceContainerLowest),
         elevation = CardDefaults.cardElevation(0.dp),
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 24.dp)
-            .clickable { navController.navigate(Screens.PostDetailScreen.name) }
+        modifier = Modifier.fillMaxWidth().padding(horizontal = 24.dp).clickable { navController.navigate(Screens.PostDetailScreen.name) }
     ) {
         Column {
             Row(
@@ -252,12 +246,11 @@ fun FeedPost(
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.SpaceBetween
             ) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
+                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                     Box(
                         modifier = Modifier.size(40.dp).clip(CircleShape).background(SurfaceContainerHigh),
                         contentAlignment = Alignment.Center
                     ) { Icon(Icons.Default.Person, null, Modifier.size(22.dp), tint = OnSurfaceVariant) }
-                    Spacer(modifier = Modifier.width(12.dp))
                     Column {
                         Text(author, fontWeight = FontWeight.Bold, fontSize = 15.sp, color = OnSurface)
                         Text("$time • $tag", fontSize = 12.sp, color = OnSurfaceVariant)
@@ -274,24 +267,21 @@ fun FeedPost(
                 horizontalArrangement = Arrangement.spacedBy(16.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
+                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
                     Icon(Icons.Default.Favorite, null, Modifier.size(20.dp), tint = Primary)
-                    Spacer(modifier = Modifier.width(4.dp))
                     Text("$likes", fontWeight = FontWeight.SemiBold, fontSize = 14.sp)
                 }
-                Row(verticalAlignment = Alignment.CenterVertically) {
+                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
                     Icon(Icons.Default.Email, null, Modifier.size(18.dp), tint = OnSurfaceVariant)
-                    Spacer(modifier = Modifier.width(4.dp))
                     Text("$comments", fontWeight = FontWeight.SemiBold, fontSize = 14.sp)
                 }
                 Icon(Icons.Default.Share, null, Modifier.size(18.dp), tint = OnSurfaceVariant)
             }
             Text(
                 "$author $description",
-                modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
+                modifier = Modifier.padding(start = 16.dp, end = 16.dp, bottom = 16.dp),
                 fontSize = 14.sp, color = OnSurface, lineHeight = 20.sp
             )
-            Spacer(modifier = Modifier.height(8.dp))
         }
     }
 }
@@ -330,17 +320,17 @@ fun WeeklyBarChart() {
                         .clip(RoundedCornerShape(topStart = 4.dp, topEnd = 4.dp))
                         .background(if (index == 3) Primary else SurfaceContainerHigh)
                 )
-                Spacer(modifier = Modifier.height(4.dp))
                 Text(
-                    day, fontSize = 9.sp,
+                    day,
+                    fontSize = 9.sp,
                     fontWeight = if (index == 3) FontWeight.Bold else FontWeight.Normal,
-                    color = if (index == 3) Primary else OnSurfaceVariant
+                    color = if (index == 3) Primary else OnSurfaceVariant,
+                    modifier = Modifier.padding(top = 4.dp)
                 )
             }
         }
     }
 }
-
 
 @Composable
 fun SectionTitle(text: String) {
@@ -353,19 +343,19 @@ fun SectionTitle(text: String) {
 @Composable
 fun SettingsRow(icon: ImageVector, title: String, subtitle: String, onClick: () -> Unit) {
     Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clickable(onClick = onClick)
-            .padding(horizontal = 24.dp, vertical = 14.dp),
+        modifier = Modifier.fillMaxWidth().clickable(onClick = onClick).padding(horizontal = 24.dp, vertical = 14.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.SpaceBetween
     ) {
-        Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.weight(1f)) {
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(16.dp),
+            modifier = Modifier.weight(1f)
+        ) {
             Box(
                 modifier = Modifier.size(40.dp).clip(RoundedCornerShape(10.dp)).background(SurfaceContainerLow),
                 contentAlignment = Alignment.Center
             ) { Icon(icon, null, Modifier.size(20.dp), tint = OnSurfaceVariant) }
-            Spacer(modifier = Modifier.width(16.dp))
             Column {
                 Text(title, fontSize = 15.sp, fontWeight = FontWeight.Medium, color = OnSurface)
                 Text(subtitle, fontSize = 13.sp, color = OnSurfaceVariant)
@@ -385,19 +375,20 @@ fun SettingsToggleRow(
     onCheckedChange: (Boolean) -> Unit
 ) {
     Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(16.dp),
+        modifier = Modifier.fillMaxWidth().padding(16.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.SpaceBetween
     ) {
-        Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.weight(1f)) {
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(16.dp),
+            modifier = Modifier.weight(1f)
+        ) {
             if (icon != null) {
                 Icon(icon, null, Modifier.size(24.dp), tint = OnSurfaceVariant)
             } else if (iconPainter != null) {
                 Icon(painterResource(iconPainter), null, Modifier.size(24.dp), tint = OnSurfaceVariant)
             }
-            Spacer(modifier = Modifier.width(16.dp))
             Column {
                 Text(title, fontSize = 15.sp, fontWeight = FontWeight.Medium, color = OnSurface)
                 Text(subtitle, fontSize = 13.sp, color = OnSurfaceVariant)
@@ -410,7 +401,6 @@ fun SettingsToggleRow(
         )
     }
 }
-
 
 @Composable
 fun OverlayStat(value: String, label: String) {
@@ -428,11 +418,13 @@ fun StatCard(label: String, value: String, unit: String, emoji: String, modifier
         elevation = CardDefaults.cardElevation(0.dp),
         modifier = modifier
     ) {
-        Column(modifier = Modifier.padding(16.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+        Column(
+            modifier = Modifier.padding(16.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.spacedBy(4.dp)
+        ) {
             Text(emoji, fontSize = 20.sp)
-            Spacer(modifier = Modifier.height(4.dp))
             Text(label, fontSize = 10.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.sp, color = OnSurfaceVariant, textAlign = TextAlign.Center)
-            Spacer(modifier = Modifier.height(4.dp))
             Row(verticalAlignment = Alignment.Bottom) {
                 Text(value, fontSize = 28.sp, fontWeight = FontWeight.Bold, color = OnSurface)
                 Text(" $unit", fontSize = 12.sp, color = OnSurfaceVariant, modifier = Modifier.padding(bottom = 4.dp))
@@ -443,23 +435,24 @@ fun StatCard(label: String, value: String, unit: String, emoji: String, modifier
 
 @Composable
 fun CommentItem(author: String, text: String, time: String, likes: Int) {
-    Row {
+    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
         Box(
             modifier = Modifier.size(36.dp).clip(CircleShape).background(SurfaceContainerHigh),
             contentAlignment = Alignment.Center
         ) { Icon(Icons.Default.Person, null, Modifier.size(18.dp), tint = OnSurfaceVariant) }
-        Spacer(modifier = Modifier.width(8.dp))
         Column {
             Text(author, fontWeight = FontWeight.Bold, fontSize = 14.sp, color = OnSurface)
             Text(text, fontSize = 13.sp, color = OnSurface, lineHeight = 18.sp)
-            Row(verticalAlignment = Alignment.CenterVertically) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
                 Text(time, fontSize = 11.sp, color = OnSurfaceVariant)
-                Spacer(modifier = Modifier.width(12.dp))
                 Text("Reply", fontSize = 11.sp, color = OnSurfaceVariant, fontWeight = FontWeight.SemiBold)
-                Spacer(modifier = Modifier.width(12.dp))
-                Icon(Icons.Default.Favorite, null, Modifier.size(12.dp), tint = Tertiary)
-                Spacer(modifier = Modifier.width(2.dp))
-                Text("$likes", fontSize = 11.sp, color = OnSurfaceVariant)
+                Row(horizontalArrangement = Arrangement.spacedBy(2.dp), verticalAlignment = Alignment.CenterVertically) {
+                    Icon(Icons.Default.Favorite, null, Modifier.size(12.dp), tint = Tertiary)
+                    Text("$likes", fontSize = 11.sp, color = OnSurfaceVariant)
+                }
             }
         }
     }
@@ -470,18 +463,16 @@ fun IntensityZoneRow(
     label: String, duration: String, bpmRange: String,
     percentage: String, color: Color, progress: Float
 ) {
-    Column {
+    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
         Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
             Text(label, fontWeight = FontWeight.Bold, fontSize = 15.sp, color = color)
             Text(duration, fontWeight = FontWeight.Bold, fontSize = 15.sp, color = OnSurface)
         }
-        Spacer(modifier = Modifier.height(4.dp))
         LinearProgressIndicator(
             progress = { progress },
             modifier = Modifier.fillMaxWidth().height(6.dp).clip(RoundedCornerShape(3.dp)),
             color = color, trackColor = color.copy(alpha = 0.12f)
         )
-        Spacer(modifier = Modifier.height(4.dp))
         Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
             Text(bpmRange, fontSize = 11.sp, color = OnSurfaceVariant)
             Text(percentage, fontSize = 11.sp, fontWeight = FontWeight.Bold, letterSpacing = 0.5.sp, color = OnSurfaceVariant)

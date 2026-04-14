@@ -62,9 +62,11 @@ fun PantallaAddWorkout(
                     }
                     Text(
                         "Añadir entrenamiento",
-                        fontSize = 18.sp,
+                        fontSize = 15.sp,
                         fontWeight = FontWeight.Bold,
-                        color = OnSurface
+                        color = OnSurface,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
                     )
                     IconButton(onClick = { }) {
                         Icon(Icons.Default.Search, contentDescription = "Buscar", tint = OnSurface)
@@ -261,7 +263,7 @@ private fun FeaturedWorkoutCard(
                 Spacer(modifier = Modifier.height(8.dp))
                 Text(
                     workout.title,
-                    fontSize = 20.sp,
+                    fontSize = 17.sp,
                     fontWeight = FontWeight.Black,
                     color = Color.White,
                     maxLines = 2,
@@ -399,28 +401,13 @@ private fun RecentWorkoutRow(
                     overflow = TextOverflow.Ellipsis
                 )
                 Spacer(modifier = Modifier.height(3.dp))
-                Row(
-                    horizontalArrangement = Arrangement.spacedBy(6.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Text(
-                        "${workout.durationMin} min",
-                        fontSize = 12.sp,
-                        color = OnSurfaceVariant
-                    )
-                    Text("•", fontSize = 12.sp, color = OnSurfaceVariant)
-                    Text(
-                        workout.intensity,
-                        fontSize = 12.sp,
-                        color = OnSurfaceVariant
-                    )
-                    Text("•", fontSize = 12.sp, color = OnSurfaceVariant)
-                    Text(
-                        workout.metric,
-                        fontSize = 12.sp,
-                        color = OnSurfaceVariant
-                    )
-                }
+                Text(
+                    "${workout.durationMin} min • ${workout.intensity} • ${workout.metric}",
+                    fontSize = 12.sp,
+                    color = OnSurfaceVariant,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
             }
             // Add button
             Box(
