@@ -18,6 +18,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -36,22 +37,24 @@ fun PantallaTracking(
 
     LazyColumn(
         modifier = Modifier.fillMaxSize().background(Surface).padding(horizontal = 24.dp),
-        verticalArrangement = Arrangement.spacedBy(16.dp)
+        verticalArrangement = Arrangement.spacedBy(16.dp),
+        contentPadding = PaddingValues(top = 16.dp, bottom = 16.dp)
     ) {
         // Top bar
         item {
-            Spacer(modifier = Modifier.height(16.dp))
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
                     Box(
                         modifier = Modifier.size(36.dp).clip(CircleShape).background(Primary),
                         contentAlignment = Alignment.Center
                     ) { Icon(painterResource(R.drawable.ic_dumbbell), null, Modifier.size(18.dp), tint = Color.White) }
-                    Spacer(modifier = Modifier.width(8.dp))
                     Text("Kinetic", fontSize = 22.sp, fontWeight = FontWeight.Black, color = OnSurface)
                 }
                 IconButton(onClick = { }) { Icon(Icons.Default.Search, "Buscar", tint = OnSurface) }
@@ -68,10 +71,10 @@ fun PantallaTracking(
             ) {
                 Column(
                     modifier = Modifier.padding(24.dp).fillMaxWidth(),
-                    horizontalAlignment = Alignment.CenterHorizontally
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.spacedBy(16.dp)
                 ) {
                     Text("OBJETIVO DIARIO", fontSize = 12.sp, fontWeight = FontWeight.Bold, letterSpacing = 2.sp, color = Primary)
-                    Spacer(modifier = Modifier.height(16.dp))
                     Box(contentAlignment = Alignment.Center) {
                         MomentumRing(progress = 0.65f, size = 140)
                         Column(horizontalAlignment = Alignment.CenterHorizontally) {
@@ -79,7 +82,6 @@ fun PantallaTracking(
                             Text("KCAL RESTANTES", fontSize = 12.sp, fontWeight = FontWeight.Medium, color = OnSurfaceVariant, letterSpacing = 1.sp)
                         }
                     }
-                    Spacer(modifier = Modifier.height(16.dp))
                     Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly) {
                         StatColumn("INGERIDAS", "${state.eaten}")
                         StatColumn("QUEMADAS", "${state.burned}")
@@ -97,22 +99,29 @@ fun PantallaTracking(
                 modifier = Modifier.fillMaxWidth()
             ) {
                 Column(modifier = Modifier.padding(24.dp)) {
-                    Text("Balance de macros", fontSize = 20.sp, fontWeight = FontWeight.Bold, color = OnSurface)
-                    Spacer(modifier = Modifier.height(16.dp))
-                    MacroRow("PROTEÍNAS", state.protein, state.proteinGoal, Primary)
-                    Spacer(modifier = Modifier.height(12.dp))
-                    MacroRow("CARBOHIDRATOS", state.carbs, state.carbsGoal, Secondary)
-                    Spacer(modifier = Modifier.height(12.dp))
-                    MacroRow("GRASAS", state.fats, state.fatsGoal, Tertiary)
-                    Spacer(modifier = Modifier.height(16.dp))
+                    Text(
+                        "Balance de macros",
+                        fontSize = 20.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = OnSurface,
+                        modifier = Modifier.padding(bottom = 16.dp)
+                    )
+                    Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                        MacroRow("PROTEÍNAS", state.protein, state.proteinGoal, Primary)
+                        MacroRow("CARBOHIDRATOS", state.carbs, state.carbsGoal, Secondary)
+                        MacroRow("GRASAS", state.fats, state.fatsGoal, Tertiary)
+                    }
                     Card(
                         shape = RoundedCornerShape(12.dp),
                         colors = CardDefaults.cardColors(containerColor = SurfaceContainerLow),
-                        modifier = Modifier.fillMaxWidth()
+                        modifier = Modifier.fillMaxWidth().padding(top = 16.dp)
                     ) {
-                        Row(modifier = Modifier.padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
+                        Row(
+                            modifier = Modifier.padding(12.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
                             Text("\uD83E\uDD16", fontSize = 20.sp)
-                            Spacer(modifier = Modifier.width(8.dp))
                             Text(state.aiTip, fontSize = 13.sp, color = OnSurfaceVariant)
                         }
                     }
@@ -126,13 +135,29 @@ fun PantallaTracking(
                 OutlinedButton(
                     onClick = { navController.navigate(Screens.AddFoodScreen.name) },
                     modifier = Modifier.weight(1f).height(48.dp),
-                    shape = RoundedCornerShape(12.dp), border = BorderStroke(1.dp, OnSurface.copy(alpha = 0.15f))
-                ) { Text("Registrar comida", color = OnSurface, fontWeight = FontWeight.SemiBold) }
+                    shape = RoundedCornerShape(12.dp),
+                    border = BorderStroke(1.dp, OnSurface.copy(alpha = 0.15f)),
+                    contentPadding = PaddingValues(horizontal = 8.dp, vertical = 8.dp)
+                ) {
+                    Text(
+                        "Registrar comida",
+                        color = OnSurface, fontWeight = FontWeight.SemiBold,
+                        fontSize = 12.sp, maxLines = 1, overflow = TextOverflow.Ellipsis
+                    )
+                }
                 OutlinedButton(
                     onClick = { navController.navigate(Screens.AddWorkoutScreen.name) },
                     modifier = Modifier.weight(1f).height(48.dp),
-                    shape = RoundedCornerShape(12.dp), border = BorderStroke(1.dp, OnSurface.copy(alpha = 0.15f))
-                ) { Text("Registrar entrenamiento", color = OnSurface, fontWeight = FontWeight.SemiBold) }
+                    shape = RoundedCornerShape(12.dp),
+                    border = BorderStroke(1.dp, OnSurface.copy(alpha = 0.15f)),
+                    contentPadding = PaddingValues(horizontal = 8.dp, vertical = 8.dp)
+                ) {
+                    Text(
+                        "Registrar entrenamiento",
+                        color = OnSurface, fontWeight = FontWeight.SemiBold,
+                        fontSize = 12.sp, maxLines = 1, overflow = TextOverflow.Ellipsis
+                    )
+                }
             }
         }
 
@@ -160,20 +185,30 @@ fun PantallaTracking(
                         modifier = Modifier.fillMaxWidth().height(140.dp).clip(RoundedCornerShape(12.dp)).background(PrimaryContainer.copy(alpha = 0.2f)),
                         contentAlignment = Alignment.Center
                     ) { Icon(Icons.Default.Person, null, Modifier.size(48.dp), tint = Primary.copy(alpha = 0.4f)) }
-                    Spacer(modifier = Modifier.height(12.dp))
-                    Text("NUEVO RETO", fontSize = 11.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.5.sp, color = Tertiary)
-                    Spacer(modifier = Modifier.height(4.dp))
-                    Text("La semana de Sprint 10k", fontSize = 22.sp, fontWeight = FontWeight.Bold, color = OnSurface)
-                    Spacer(modifier = Modifier.height(8.dp))
-                    Text("Supera tus límites esta semana. Completa cinco sesiones de 10k para desbloquear la insignia 'Élite de resistencia'.", fontSize = 14.sp, color = OnSurfaceVariant)
-                    Spacer(modifier = Modifier.height(12.dp))
-                    Button(onClick = { }, shape = RoundedCornerShape(12.dp), colors = ButtonDefaults.buttonColors(containerColor = OnSurface)) {
+                    Text(
+                        "NUEVO RETO",
+                        fontSize = 11.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.5.sp, color = Tertiary,
+                        modifier = Modifier.padding(top = 12.dp, bottom = 4.dp)
+                    )
+                    Text(
+                        "La semana de Sprint 10k",
+                        fontSize = 22.sp, fontWeight = FontWeight.Bold, color = OnSurface,
+                        modifier = Modifier.padding(bottom = 8.dp)
+                    )
+                    Text(
+                        "Supera tus límites esta semana. Completa cinco sesiones de 10k para desbloquear la insignia 'Élite de resistencia'.",
+                        fontSize = 14.sp, color = OnSurfaceVariant,
+                        modifier = Modifier.padding(bottom = 12.dp)
+                    )
+                    Button(
+                        onClick = { },
+                        shape = RoundedCornerShape(12.dp),
+                        colors = ButtonDefaults.buttonColors(containerColor = OnSurface)
+                    ) {
                         Text("Unirse al reto", color = SurfaceContainerLowest)
                     }
                 }
             }
         }
-
-        item { Spacer(modifier = Modifier.height(16.dp)) }
     }
 }

@@ -217,6 +217,22 @@ class MainActivity : ComponentActivity() {
                         composable(Screens.AddWorkoutScreen.name) {
                             PantallaAddWorkout(navController = navController)
                         }
+
+                        composable(Screens.AccountScreen.name) {
+                            PantallaAccount(navController = navController)
+                        }
+
+                        composable(Screens.PrivacyScreen.name) {
+                            PantallaPrivacy(navController = navController)
+                        }
+
+                        composable(Screens.DataStorageScreen.name) {
+                            PantallaDataStorage(navController = navController)
+                        }
+
+                        composable(Screens.HelpSupportScreen.name) {
+                            PantallaHelpSupport(navController = navController)
+                        }
                     }
                 }
             }

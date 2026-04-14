@@ -43,20 +43,14 @@ fun PantallaLogin(
         }
     }
 
-    Box(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(Surface)
-    ) {
+    Box(modifier = Modifier.fillMaxSize().background(Surface)) {
         Column(
             modifier = Modifier
                 .fillMaxSize()
                 .verticalScroll(rememberScrollState())
-                .padding(horizontal = 24.dp),
+                .padding(horizontal = 24.dp, vertical = 32.dp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            Spacer(modifier = Modifier.height(32.dp))
-
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
@@ -71,61 +65,66 @@ fun PantallaLogin(
                 }
             }
 
-            Spacer(modifier = Modifier.height(32.dp))
-
             Box(
-                modifier = Modifier.size(120.dp).clip(CircleShape).background(SurfaceContainerHigh),
+                modifier = Modifier
+                    .padding(top = 32.dp)
+                    .size(120.dp)
+                    .clip(CircleShape)
+                    .background(SurfaceContainerHigh),
                 contentAlignment = Alignment.Center
             ) {
                 Icon(Icons.Default.Person, "Avatar", Modifier.size(60.dp), tint = OnSurfaceVariant)
             }
 
-            Spacer(modifier = Modifier.height(20.dp))
-            Text("Bienvenido de nuevo", fontSize = 28.sp, fontWeight = FontWeight.Bold, color = OnSurface)
-            Spacer(modifier = Modifier.height(6.dp))
-            Text("Seguimiento preciso para tu camino fitness.", fontSize = 15.sp, color = OnSurfaceVariant, textAlign = TextAlign.Center)
-
-            Spacer(modifier = Modifier.height(28.dp))
+            Text(
+                "Bienvenido de nuevo",
+                fontSize = 28.sp, fontWeight = FontWeight.Bold, color = OnSurface,
+                modifier = Modifier.padding(top = 20.dp)
+            )
+            Text(
+                "Seguimiento preciso para tu camino fitness.",
+                fontSize = 15.sp, color = OnSurfaceVariant, textAlign = TextAlign.Center,
+                modifier = Modifier.padding(top = 6.dp)
+            )
 
             Card(
                 shape = RoundedCornerShape(20.dp),
                 colors = CardDefaults.cardColors(containerColor = SurfaceContainerLow),
                 elevation = CardDefaults.cardElevation(0.dp),
-                modifier = Modifier.fillMaxWidth()
+                modifier = Modifier.fillMaxWidth().padding(top = 28.dp)
             ) {
                 Column(modifier = Modifier.padding(20.dp)) {
                     AuthField("Correo electrónico", state.email, authViewModel::onLoginEmailChange, "nombre@ejemplo.com", Icons.Default.Email)
-
-                    Spacer(modifier = Modifier.height(16.dp))
-
                     Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.End,
-                        verticalAlignment = Alignment.CenterVertically
+                        modifier = Modifier.fillMaxWidth().padding(top = 16.dp),
+                        horizontalArrangement = Arrangement.End
                     ) {
                         TextButton(onClick = { }) {
                             Text("¿Olvidaste tu contraseña?", fontSize = 13.sp, fontWeight = FontWeight.SemiBold, color = Primary)
                         }
                     }
                     AuthField("Contraseña", state.password, authViewModel::onLoginPasswordChange, "••••••••", Icons.Default.Lock, isPassword = true)
-
-                    Spacer(modifier = Modifier.height(24.dp))
-                    GreenGradientButton("Iniciar sesión") { authViewModel.attemptLogin(onLoginSuccess) }
-                    Spacer(modifier = Modifier.height(20.dp))
-                    DividerWithText("O continúa con")
-                    Spacer(modifier = Modifier.height(16.dp))
-                    SocialButtonsRow()
+                    Box(modifier = Modifier.padding(top = 24.dp)) {
+                        GreenGradientButton("Iniciar sesión") { authViewModel.attemptLogin(onLoginSuccess) }
+                    }
+                    Box(modifier = Modifier.padding(top = 20.dp)) {
+                        DividerWithText("O continúa con")
+                    }
+                    Box(modifier = Modifier.padding(top = 16.dp)) {
+                        SocialButtonsRow()
+                    }
                 }
             }
 
-            Spacer(modifier = Modifier.height(24.dp))
-            Row(verticalAlignment = Alignment.CenterVertically) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier.padding(top = 24.dp)
+            ) {
                 Text("¿No tienes cuenta?", fontSize = 14.sp, color = OnSurfaceVariant)
                 TextButton(onClick = onNavigateToSignUp) {
                     Text("Crear nueva cuenta", fontSize = 14.sp, fontWeight = FontWeight.Bold, color = Primary)
                 }
             }
-            Spacer(modifier = Modifier.height(24.dp))
         }
 
         SnackbarHost(snackbarHostState, Modifier.align(Alignment.BottomCenter).padding(16.dp))

@@ -36,21 +36,20 @@ fun PantallaHome(
     Box(modifier = Modifier.fillMaxSize().background(Surface)) {
         LazyColumn(
             modifier = Modifier.fillMaxSize(),
-            verticalArrangement = Arrangement.spacedBy(16.dp)
+            verticalArrangement = Arrangement.spacedBy(16.dp),
+            contentPadding = PaddingValues(bottom = 32.dp)
         ) {
-            // Top bar
             item {
                 Row(
                     modifier = Modifier.fillMaxWidth().padding(horizontal = 24.dp, vertical = 16.dp),
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
+                    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                         Box(
                             modifier = Modifier.size(36.dp).clip(CircleShape).background(SurfaceContainerHigh),
                             contentAlignment = Alignment.Center
                         ) { Icon(Icons.Default.Person, null, Modifier.size(20.dp), tint = OnSurfaceVariant) }
-                        Spacer(modifier = Modifier.width(12.dp))
                         Text("Kinetic", fontSize = 22.sp, fontWeight = FontWeight.Black, color = OnSurface)
                     }
                     IconButton(onClick = { }) {
@@ -59,7 +58,6 @@ fun PantallaHome(
                 }
             }
 
-            // Daily Momentum
             item {
                 Card(
                     shape = RoundedCornerShape(20.dp),
@@ -74,8 +72,10 @@ fun PantallaHome(
                     ) {
                         Column {
                             Text("IMPULSO DIARIO", fontSize = 11.sp, fontWeight = FontWeight.Bold, letterSpacing = 2.sp, color = OnSurfaceVariant)
-                            Spacer(modifier = Modifier.height(4.dp))
-                            Row(verticalAlignment = Alignment.Bottom) {
+                            Row(
+                                verticalAlignment = Alignment.Bottom,
+                                modifier = Modifier.padding(top = 4.dp)
+                            ) {
                                 Text("${state.momentumPercent}", fontSize = 48.sp, fontWeight = FontWeight.Bold, color = OnSurface)
                                 Text("%", fontSize = 20.sp, fontWeight = FontWeight.Medium, color = OnSurfaceVariant, modifier = Modifier.padding(bottom = 8.dp))
                             }
@@ -86,27 +86,18 @@ fun PantallaHome(
                 }
             }
 
-            // Feed posts
             items(state.posts) { post ->
                 FeedPost(
-                    author = post.author,
-                    time = post.time,
-                    tag = post.tag,
-                    likes = post.likes,
-                    comments = post.comments,
-                    description = post.description,
+                    author = post.author, time = post.time, tag = post.tag,
+                    likes = post.likes, comments = post.comments, description = post.description,
                     navController = navController
                 )
             }
-
-            item { Spacer(modifier = Modifier.height(32.dp)) }
         }
 
         FloatingActionButton(
             onClick = { },
-            containerColor = Primary,
-            contentColor = Color.White,
-            shape = CircleShape,
+            containerColor = Primary, contentColor = Color.White, shape = CircleShape,
             modifier = Modifier.align(Alignment.BottomEnd).padding(end = 32.dp, bottom = 16.dp)
         ) { Icon(Icons.Default.Add, "Nueva publicación") }
     }

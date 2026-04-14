@@ -47,18 +47,16 @@ fun PantallaProfile(
         modifier = Modifier.fillMaxSize().background(Surface),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        // Top bar
         item {
             Row(
                 modifier = Modifier.fillMaxWidth().padding(horizontal = 24.dp, vertical = 16.dp),
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
+                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     Box(modifier = Modifier.size(36.dp).clip(CircleShape).background(SurfaceContainerHigh), contentAlignment = Alignment.Center) {
                         Icon(Icons.Default.Person, null, Modifier.size(20.dp), tint = OnSurfaceVariant)
                     }
-                    Spacer(modifier = Modifier.width(8.dp))
                     Text("Kinetic", fontSize = 22.sp, fontWeight = FontWeight.Black, color = OnSurface)
                 }
                 Row {
@@ -70,7 +68,6 @@ fun PantallaProfile(
             }
         }
 
-        // Profile header
         item {
             Column(
                 modifier = Modifier.fillMaxWidth().background(SurfaceContainerLow).padding(24.dp),
@@ -84,24 +81,28 @@ fun PantallaProfile(
                         Icon(Icons.Default.Person, null, Modifier.size(50.dp), tint = OnSurfaceVariant)
                     }
                 }
-                Spacer(modifier = Modifier.height(16.dp))
-                Text(state.displayName, fontSize = 24.sp, fontWeight = FontWeight.Bold, color = OnSurface)
+                Text(
+                    state.displayName, fontSize = 24.sp, fontWeight = FontWeight.Bold, color = OnSurface,
+                    modifier = Modifier.padding(top = 16.dp)
+                )
                 Text(state.handle, fontSize = 14.sp, color = OnSurfaceVariant)
-                Spacer(modifier = Modifier.height(8.dp))
-                Text(state.bio, fontSize = 14.sp, color = OnSurfaceVariant, textAlign = TextAlign.Center, modifier = Modifier.padding(horizontal = 24.dp))
-                Spacer(modifier = Modifier.height(16.dp))
+                Text(
+                    state.bio, fontSize = 14.sp, color = OnSurfaceVariant, textAlign = TextAlign.Center,
+                    modifier = Modifier.padding(horizontal = 24.dp, vertical = 8.dp)
+                )
                 Button(
-                    onClick = { }, shape = RoundedCornerShape(14.dp),
+                    onClick = { navController.navigate(Screens.AccountScreen.name) },
+                    shape = RoundedCornerShape(14.dp),
                     colors = ButtonDefaults.buttonColors(containerColor = Color.Transparent),
-                    contentPadding = ButtonDefaults.ContentPadding, modifier = Modifier.height(44.dp)
+                    contentPadding = ButtonDefaults.ContentPadding,
+                    modifier = Modifier.height(44.dp)
                 ) {
                     Box(
                         modifier = Modifier.background(GreenGradientBrush, RoundedCornerShape(14.dp)).padding(horizontal = 24.dp, vertical = 8.dp),
                         contentAlignment = Alignment.Center
                     ) {
-                        Row(verticalAlignment = Alignment.CenterVertically) {
+                        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                             Icon(Icons.Default.Edit, null, Modifier.size(16.dp), tint = Color.White)
-                            Spacer(modifier = Modifier.width(8.dp))
                             Text("Editar perfil", fontWeight = FontWeight.Bold, color = Color.White)
                         }
                     }
@@ -109,16 +110,17 @@ fun PantallaProfile(
             }
         }
 
-        // Stats chips
         item {
-            Row(modifier = Modifier.fillMaxWidth().padding(horizontal = 24.dp, vertical = 16.dp), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+            Row(
+                modifier = Modifier.fillMaxWidth().padding(horizontal = 24.dp, vertical = 16.dp),
+                horizontalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
                 StatChip(state.postCount, Modifier.weight(1f))
                 StatChip(state.followers, Modifier.weight(1f))
                 StatChip(state.following, Modifier.weight(1f))
             }
         }
 
-        // Momentum Tracking
         item {
             Card(
                 shape = RoundedCornerShape(20.dp),
@@ -137,13 +139,11 @@ fun PantallaProfile(
                             Text("VS SEMANA ANTERIOR", fontSize = 10.sp, color = OnSurfaceVariant)
                         }
                     }
-                    Spacer(modifier = Modifier.height(16.dp))
                     WeeklyBarChart()
                 }
             }
         }
 
-        // Tabs
         item {
             TabRow(
                 selectedTabIndex = state.selectedTab,
@@ -171,7 +171,6 @@ fun PantallaProfile(
             }
         }
 
-        // Photo grid
         item {
             LazyVerticalGrid(
                 columns = GridCells.Fixed(2),
