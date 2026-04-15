@@ -226,7 +226,14 @@ fun PantallaAddWorkout(
 
             else -> {
                 items(state.filteredExercises, key = { it.documentId }) { exercise ->
-                    ExerciseCatalogRow(exercise = exercise)
+                    ExerciseCatalogRow(
+                        exercise = exercise,
+                        onClick = {
+                            navController.navigate(
+                                "${Screens.ExerciseDetailScreen.name}/${exercise.documentId}"
+                            )
+                        }
+                    )
                 }
                 item {
                     LoadMoreSection(
@@ -241,8 +248,9 @@ fun PantallaAddWorkout(
 }
 
 @Composable
-private fun ExerciseCatalogRow(exercise: ExerciseCatalogItem) {
+private fun ExerciseCatalogRow(exercise: ExerciseCatalogItem, onClick: () -> Unit = {}) {
     ElevatedCard(
+        onClick = onClick,
         modifier = Modifier
             .fillMaxWidth()
             .padding(horizontal = 16.dp, vertical = 6.dp),

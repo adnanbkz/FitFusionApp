@@ -95,10 +95,10 @@ fun PantallaProfile(
                     shape = RoundedCornerShape(14.dp),
                     colors = ButtonDefaults.buttonColors(containerColor = Color.Transparent),
                     contentPadding = ButtonDefaults.ContentPadding,
-                    modifier = Modifier.height(44.dp)
+                    modifier = Modifier.height(55.dp)
                 ) {
                     Box(
-                        modifier = Modifier.background(GreenGradientBrush, RoundedCornerShape(14.dp)).padding(horizontal = 24.dp, vertical = 8.dp),
+                        modifier = Modifier.background(GreenGradientBrush, RoundedCornerShape(20.dp)).padding(horizontal = 24.dp, vertical = 8.dp),
                         contentAlignment = Alignment.Center
                     ) {
                         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {

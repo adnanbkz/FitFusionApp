@@ -6,13 +6,30 @@ data class ExerciseCatalogItem(
     val slug: String,
     val name: String,
     val nameLower: String,
+    // Classification
     val difficultyLevel: String?,
+    val bodyRegion: String?,
     val muscleGroup: String?,
     val primeMoverMuscle: String?,
     val secondaryMuscle: String?,
+    val tertiaryMuscle: String?,
+    val mechanics: String?,
+    val forceType: String?,
+    val laterality: String?,
+    val primaryExerciseClassification: String?,
+    val isCombinationExercise: Boolean?,
+    // Equipment
     val primaryEquipment: String?,
     val secondaryEquipment: String?,
+    val loadPosition: String?,
+    // Technique
     val posture: String?,
+    val footElevation: String?,
+    val grip: String?,
+    val armMode: String?,
+    val armPattern: String?,
+    val legPattern: String?,
+    // Media
     val shortYoutubeDemoUrl: String?,
     val inDepthYoutubeTechniqueUrl: String?,
 ) {

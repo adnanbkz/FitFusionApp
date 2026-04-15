@@ -54,6 +54,7 @@ dependencies {
     implementation(libs.androidx.compose.ui.graphics)
     implementation(libs.androidx.compose.ui.tooling.preview)
     implementation(libs.androidx.compose.material3)
+    implementation("androidx.compose.material:material-icons-extended")
     implementation(libs.firebase.crashlytics)
     implementation(libs.androidx.navigation.compose)
     implementation(libs.androidx.ui)
@@ -68,6 +69,9 @@ dependencies {
 
     //HEALTH CONNECT
     implementation("androidx.health.connect:connect-client:1.2.0-alpha02")
+
+    //COROUTINES
+    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-play-services:1.8.1")
 
     //FIREBASE
     implementation(platform("com.google.firebase:firebase-bom:34.11.0"))

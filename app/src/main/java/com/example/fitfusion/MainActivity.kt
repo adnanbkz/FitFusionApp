@@ -32,10 +32,12 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
+import androidx.navigation.navArgument
 import com.example.fitfusion.ui.screens.PantallaLogin
 import com.example.fitfusion.ui.screens.PantallaProfile
 import com.example.fitfusion.ui.screens.Screens
@@ -203,35 +205,45 @@ class MainActivity : ComponentActivity() {
                         }
 
                         composable(Screens.PostDetailScreen.name) {
-                            PantallaPostDetail(navController = navController)
+                            PantallaPostDetail(navController)
                         }
 
                         composable(Screens.WorkoutSummaryScreen.name) {
-                            PantallaWorkoutSummary(navController = navController)
+                            PantallaWorkoutSummary(navController)
                         }
 
                         composable(Screens.AddFoodScreen.name) {
-                            PantallaAddFood(navController = navController)
+                            PantallaAddFood(navController)
                         }
 
                         composable(Screens.AddWorkoutScreen.name) {
-                            PantallaAddWorkout(navController = navController)
+                            PantallaAddWorkout(navController)
                         }
 
                         composable(Screens.AccountScreen.name) {
-                            PantallaAccount(navController = navController)
+                            PantallaAccount(navController)
                         }
 
                         composable(Screens.PrivacyScreen.name) {
-                            PantallaPrivacy(navController = navController)
+                            PantallaPrivacy(navController)
                         }
 
                         composable(Screens.DataStorageScreen.name) {
-                            PantallaDataStorage(navController = navController)
+                            PantallaDataStorage(navController)
                         }
 
                         composable(Screens.HelpSupportScreen.name) {
-                            PantallaHelpSupport(navController = navController)
+                            PantallaHelpSupport(navController)
+                        }
+
+                        composable(
+                            route = "${Screens.ExerciseDetailScreen.name}/{documentId}",
+                            arguments = listOf(navArgument("documentId") { type = NavType.StringType })
+                        ) { backStackEntry ->
+                            PantallaExerciseDetail(
+                                navController,
+                                backStackEntry.arguments?.getString("documentId") ?: ""
+                            )
                         }
                     }
                 }
