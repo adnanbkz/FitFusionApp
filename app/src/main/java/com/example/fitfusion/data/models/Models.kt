@@ -39,6 +39,14 @@ data class ExerciseCatalogItem(
             .firstOrNull()
             ?: "Other"
 
+    /** Clave usada para los filtros de categoría. Prioriza el grupo amplio (ej. "arms")
+     *  sobre el músculo específico (ej. "biceps brachii") para reducir el número de chips. */
+    val filterMuscleGroup: String
+        get() = sequenceOf(muscleGroup, primeMoverMuscle, secondaryMuscle)
+            .mapNotNull { it?.trim()?.takeIf(String::isNotBlank) }
+            .firstOrNull()
+            ?: "other"
+
     val displayEquipment: String
         get() = sequenceOf(primaryEquipment, secondaryEquipment)
             .mapNotNull { it?.takeIf(String::isNotBlank) }

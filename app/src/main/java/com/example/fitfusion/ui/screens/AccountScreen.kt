@@ -43,7 +43,7 @@ fun PantallaAccount(
         state.errorMessage?.let {
             snackbarHostState.showSnackbar(it)
             accountViewModel.clearError()
-        }
+}
     }
 
     Scaffold(

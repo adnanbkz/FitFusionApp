@@ -15,5 +15,8 @@ enum class Screens {
     PrivacyScreen,
     DataStorageScreen,
     HelpSupportScreen,
-    ExerciseDetailScreen
+    ExerciseDetailScreen,
+    CreateExerciseScreen,
+    WeeklyLogScreen,
+    CreateRecipeScreen,
 }

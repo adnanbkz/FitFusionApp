@@ -212,12 +212,28 @@ class MainActivity : ComponentActivity() {
                             PantallaWorkoutSummary(navController)
                         }
 
-                        composable(Screens.AddFoodScreen.name) {
-                            PantallaAddFood(navController)
+                        composable(
+                            route = "${Screens.AddFoodScreen.name}/{mealSlot}",
+                            arguments = listOf(navArgument("mealSlot") { type = NavType.StringType })
+                        ) { backStackEntry ->
+                            PantallaAddFood(
+                                navController = navController,
+                                initialMealSlot = backStackEntry.arguments?.getString("mealSlot")
+                            )
                         }
 
-                        composable(Screens.AddWorkoutScreen.name) {
-                            PantallaAddWorkout(navController)
+                        composable(Screens.WeeklyLogScreen.name) {
+                            PantallaWeeklyLog(navController)
+                        }
+
+                        composable(
+                            route = "${Screens.AddWorkoutScreen.name}?logMode={logMode}",
+                            arguments = listOf(navArgument("logMode") { type = NavType.BoolType; defaultValue = false })
+                        ) { backStackEntry ->
+                            PantallaAddWorkout(
+                                navController = navController,
+                                isLogMode = backStackEntry.arguments?.getBoolean("logMode") ?: false
+                            )
                         }
 
                         composable(Screens.AccountScreen.name) {
@@ -234,6 +250,14 @@ class MainActivity : ComponentActivity() {
 
                         composable(Screens.HelpSupportScreen.name) {
                             PantallaHelpSupport(navController)
+                        }
+
+                        composable(Screens.CreateExerciseScreen.name) {
+                            PantallaCreateExercise(navController)
+                        }
+
+                        composable(Screens.CreateRecipeScreen.name) {
+                            PantallaCreateRecipe(navController)
                         }
 
                         composable(

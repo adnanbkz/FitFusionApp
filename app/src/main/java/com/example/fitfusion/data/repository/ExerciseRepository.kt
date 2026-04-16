@@ -57,6 +57,65 @@ class ExerciseRepository(
             .addOnFailureListener(onError)
     }
 
+    /**
+     * Busca todos los ejercicios de una categoría lanzando dos queries en paralelo:
+     * una sobre "muscleGroup" y otra sobre "primeMoverMuscle", ya que filterMuscleGroup
+     * usa ambos campos como fallback. Los resultados se fusionan y deduplicam por documentId.
+     *
+     * Los callbacks de Firestore se ejecutan en el hilo principal, por lo que no hay
+     * riesgo de concurrencia al modificar collectedDocs.
+     */
+    fun fetchExercisesForCategory(
+        muscleGroupKey: String,
+        pageSize: Int,
+        onSuccess: (ExercisePage) -> Unit,
+        onError: (Exception) -> Unit,
+    ) {
+        val limit = pageSize.toLong()
+        val collectedDocs = mutableListOf<DocumentSnapshot>()
+        var completedCount = 0
+        var firstError: Exception? = null
+
+        fun finish() {
+            completedCount++
+            if (completedCount < 2) return
+
+            if (collectedDocs.isEmpty() && firstError != null) {
+                onError(firstError!!)
+                return
+            }
+
+            val merged = collectedDocs
+                .distinctBy { it.id }
+                .sortedBy { (it.get("nameLower") as? String).orEmpty() }
+            val page = merged.take(pageSize)
+            val exercises = page.mapNotNull { it.resolveExerciseItem() }
+
+            onSuccess(
+                ExercisePage(
+                    exercises = exercises,
+                    lastDocument = page.lastOrNull(),
+                    hasMore = merged.size > pageSize,
+                )
+            )
+        }
+
+        listOf("muscleGroup", "primeMoverMuscle").forEach { field ->
+            firestore.collection("exercises")
+                .whereEqualTo(field, muscleGroupKey)
+                .limit(limit)
+                .get()
+                .addOnSuccessListener { snapshot ->
+                    collectedDocs.addAll(snapshot.documents)
+                    finish()
+                }
+                .addOnFailureListener { e ->
+                    if (firstError == null) firstError = e
+                    finish()
+                }
+        }
+    }
+
     fun fetchExerciseById(
         documentId: String,
         onSuccess: (ExerciseCatalogItem?) -> Unit,

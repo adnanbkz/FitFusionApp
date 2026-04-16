@@ -1,73 +1,194 @@
 package com.example.fitfusion.viewmodel
 
 import androidx.lifecycle.ViewModel
-import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.flow.update
+import androidx.lifecycle.viewModelScope
+import com.example.fitfusion.data.models.*
+import com.example.fitfusion.data.repository.FoodRepository
+import com.example.fitfusion.data.repository.IngredientRepository
+import com.example.fitfusion.data.repository.RecipeRepository
+import kotlinx.coroutines.FlowPreview
+import kotlinx.coroutines.flow.*
+import kotlinx.coroutines.launch
+import java.time.LocalDate
 
-data class FoodItem(
-    val id: Int,
-    val name: String,
-    val calories: Int,
-    val protein: Int,
-    val carbs: Int,
-    val fats: Int,
-    val emoji: String = "🥗",
-    val tags: List<String> = emptyList()
-)
-
-data class SuggestedFoodItem(
-    val id: Int,
-    val name: String,
-    val calories: Int,
-    val tag: String,
-    val emoji: String,
-    val isFeatured: Boolean = false
-)
-
-enum class MealType { BREAKFAST, LUNCH, DINNER }
+enum class FoodTab { ALIMENTOS, RECETAS }
 
 data class AddFoodUiState(
+    val activeTab: FoodTab = FoodTab.ALIMENTOS,
+    val activeMealSlot: MealSlotType = MealSlotType.fromCurrentHour(),
+    val mealConfig: MealConfig = MealConfig(),
     val searchQuery: String = "",
-    val selectedMeal: MealType? = null,
-    val recentlyLogged: List<FoodItem> = emptyList(),
-    val suggested: List<SuggestedFoodItem> = emptyList(),
-    val addedItemIds: Set<Int> = emptySet()
+    val searchResults: List<Food> = emptyList(),
+    // BottomSheet alimento individual
+    val selectedFood: Food? = null,
+    val selectedServing: Serving? = null,
+    val quantity: Int = 1,
+    val sheetMealSlot: MealSlotType = MealSlotType.fromCurrentHour(),
+    // Listas rápidas (catálogo local de fallback)
+    val favorites: List<Food> = emptyList(),
+    val recents: List<Food> = emptyList(),
+    // Recetas
+    val recipes: List<Recipe> = emptyList(),
+    val isLoadingRecipes: Boolean = false,
+    val selectedRecipe: Recipe? = null,
+    val recipeSheetMealSlot: MealSlotType = MealSlotType.fromCurrentHour(),
 )
 
+@OptIn(FlowPreview::class)
 class AddFoodViewModel : ViewModel() {
+
+    private val ingredientRepository = IngredientRepository()
+    private val recipeRepository     = RecipeRepository()
 
     private val _uiState = MutableStateFlow(
         AddFoodUiState(
-            recentlyLogged = listOf(
-                FoodItem(1, "Ensalada de aguacate", 342, protein = 8, carbs = 20, fats = 26, emoji = "🥗"),
-                FoodItem(2, "Bol de pasta al pesto", 520, protein = 18, carbs = 72, fats = 18, emoji = "🍝")
-            ),
-            suggested = listOf(
-                SuggestedFoodItem(1, "Avena con frutos rojos", 390, "Alto en fibra", "🫐", isFeatured = true),
-                SuggestedFoodItem(2, "Batido de proteínas", 210, "Alto en proteínas", "🥤"),
-                SuggestedFoodItem(3, "Yogur griego", 150, "Probiótico", "🥛")
-            )
+            favorites  = FoodRepository.favorites,
+            recents    = FoodRepository.recents,
+            mealConfig = FoodRepository.mealConfig.value,
         )
     )
     val uiState: StateFlow<AddFoodUiState> = _uiState.asStateFlow()
+
+    init {
+        viewModelScope.launch {
+            FoodRepository.mealConfig.collect { config ->
+                _uiState.update { it.copy(mealConfig = config) }
+            }
+        }
+        // Búsqueda con debounce → Firestore
+        viewModelScope.launch {
+            _uiState
+                .map { it.searchQuery }
+                .distinctUntilChanged()
+                .debounce(300)
+                .collect { query ->
+                    if (query.isBlank()) {
+                        _uiState.update { it.copy(searchResults = emptyList()) }
+                        return@collect
+                    }
+                    ingredientRepository.fetchPage(
+                        searchQuery = query,
+                        pageSize    = 20,
+                        onSuccess   = { page ->
+                            _uiState.update { it.copy(searchResults = page.ingredients) }
+                        },
+                        onError     = {
+                            _uiState.update { it.copy(searchResults = emptyList()) }
+                        }
+                    )
+                }
+        }
+    }
+
+    // ── Tabs ──────────────────────────────────────────────────────────────────
+
+    fun setActiveTab(tab: FoodTab) {
+        _uiState.update { it.copy(activeTab = tab) }
+    }
+
+    // ── Alimentos ─────────────────────────────────────────────────────────────
+
+    fun setActiveMealSlot(slot: MealSlotType) {
+        _uiState.update { it.copy(activeMealSlot = slot, sheetMealSlot = slot, recipeSheetMealSlot = slot) }
+    }
 
     fun onSearchQueryChange(query: String) {
         _uiState.update { it.copy(searchQuery = query) }
     }
 
-    fun onMealSelected(meal: MealType) {
+    fun clearSearch() {
+        _uiState.update { it.copy(searchQuery = "", searchResults = emptyList()) }
+    }
+
+    fun openSheet(food: Food, preselectedSlot: MealSlotType) {
         _uiState.update {
-            it.copy(selectedMeal = if (it.selectedMeal == meal) null else meal)
+            it.copy(
+                selectedFood    = food,
+                selectedServing = food.servingOptions.first(),
+                quantity        = 1,
+                sheetMealSlot   = preselectedSlot,
+            )
         }
     }
 
-    fun addFood(foodId: Int) {
-        _uiState.update { it.copy(addedItemIds = it.addedItemIds + foodId) }
+    fun dismissSheet() {
+        _uiState.update { it.copy(selectedFood = null) }
     }
 
-    fun addSuggested(suggestedId: Int) {
-        _uiState.update { it.copy(addedItemIds = it.addedItemIds + (suggestedId + 1000)) }
+    fun selectServing(serving: Serving) {
+        _uiState.update { it.copy(selectedServing = serving) }
+    }
+
+    fun incrementQuantity() {
+        _uiState.update { it.copy(quantity = (it.quantity + 1).coerceAtMost(20)) }
+    }
+
+    fun decrementQuantity() {
+        _uiState.update { it.copy(quantity = (it.quantity - 1).coerceAtLeast(1)) }
+    }
+
+    fun selectSheetMealSlot(slot: MealSlotType) {
+        _uiState.update { it.copy(sheetMealSlot = slot) }
+    }
+
+    fun confirmAdd() {
+        val state   = _uiState.value
+        val food    = state.selectedFood    ?: return
+        val serving = state.selectedServing ?: return
+        FoodRepository.addFood(
+            LoggedFood(
+                food     = food,
+                serving  = serving,
+                quantity = state.quantity,
+                mealSlot = state.sheetMealSlot,
+                date     = LocalDate.now(),
+            )
+        )
+        dismissSheet()
+    }
+
+    // ── Recetas ───────────────────────────────────────────────────────────────
+
+    fun loadRecipes() {
+        if (_uiState.value.isLoadingRecipes) return
+        _uiState.update { it.copy(isLoadingRecipes = true) }
+        recipeRepository.fetchAll(
+            onSuccess = { recipes ->
+                _uiState.update { it.copy(recipes = recipes, isLoadingRecipes = false) }
+            },
+            onError = {
+                _uiState.update { it.copy(isLoadingRecipes = false) }
+            }
+        )
+    }
+
+    fun openRecipeSheet(recipe: Recipe, preselectedSlot: MealSlotType) {
+        _uiState.update { it.copy(selectedRecipe = recipe, recipeSheetMealSlot = preselectedSlot) }
+    }
+
+    fun dismissRecipeSheet() {
+        _uiState.update { it.copy(selectedRecipe = null) }
+    }
+
+    fun selectRecipeSheetMealSlot(slot: MealSlotType) {
+        _uiState.update { it.copy(recipeSheetMealSlot = slot) }
+    }
+
+    fun confirmAddRecipe() {
+        val state  = _uiState.value
+        val recipe = state.selectedRecipe ?: return
+        val date   = LocalDate.now()
+        recipe.ingredients.forEach { ingredient ->
+            FoodRepository.addFood(
+                LoggedFood(
+                    food     = ingredient.toFood(),
+                    serving  = ingredient.toServing(),
+                    quantity = ingredient.quantity,
+                    mealSlot = state.recipeSheetMealSlot,
+                    date     = date,
+                )
+            )
+        }
+        dismissRecipeSheet()
     }
 }

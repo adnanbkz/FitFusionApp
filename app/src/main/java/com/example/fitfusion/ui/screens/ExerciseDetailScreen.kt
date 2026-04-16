@@ -53,6 +53,7 @@ import androidx.compose.ui.unit.sp
 import androidx.navigation.NavHostController
 import com.example.fitfusion.data.models.ExerciseCatalogItem
 import com.example.fitfusion.data.repository.ExerciseRepository
+import com.example.fitfusion.util.EquipmentTranslations
 import com.example.fitfusion.ui.theme.OnSurface
 import com.example.fitfusion.ui.theme.OnSurfaceVariant
 import com.example.fitfusion.ui.theme.Primary
@@ -222,8 +223,8 @@ private fun ExerciseDetailContent(exercise: ExerciseCatalogItem) {
 
         // ── Equipment ────────────────────────────────────────────────
         DetailSection(title = "Equipamiento") {
-            exercise.primaryEquipment?.let { InfoRow(label = "Principal", value = it) }
-            exercise.secondaryEquipment?.let { InfoRow(label = "Secundario", value = it) }
+            exercise.primaryEquipment?.let { InfoRow(label = "Principal", value = EquipmentTranslations.translate(it)) }
+            exercise.secondaryEquipment?.let { InfoRow(label = "Secundario", value = EquipmentTranslations.translate(it)) }
             exercise.loadPosition?.let { InfoRow(label = "Posición de carga", value = it) }
         }
 
