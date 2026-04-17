@@ -27,6 +27,7 @@ class ExerciseRepository(
 
         var query: Query = if (normalizedQuery.isBlank()) {
             firestore.collection("exercises")
+                .orderBy("priority")
                 .orderBy("nameLower")
                 .limit(pageSize.toLong())
         } else {
