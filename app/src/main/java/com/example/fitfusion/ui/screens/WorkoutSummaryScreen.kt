@@ -129,7 +129,6 @@ fun PantallaWorkoutSummary(
                             horizontalArrangement = Arrangement.spacedBy(4.dp),
                             modifier = Modifier.padding(top = 2.dp)
                         ) {
-                            Text("\uD83D\uDCCD", fontSize = 12.sp)
                             Text(state.mapCity, fontSize = 13.sp, color = OnSurfaceVariant)
                         }
                     }
@@ -179,7 +178,7 @@ fun PantallaWorkoutSummary(
                                 Box(
                                     modifier = Modifier.size(48.dp).clip(CircleShape).background(Primary),
                                     contentAlignment = Alignment.Center
-                                ) { Text("\uD83C\uDFAF", fontSize = 24.sp) }
+                                ) { }
                             }
                         }
                     }

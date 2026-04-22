@@ -1,11 +1,16 @@
 package com.example.fitfusion.viewmodel
 
-import androidx.lifecycle.ViewModel
+import android.app.Application
+import android.net.Uri
+import androidx.core.content.edit
+import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.fitfusion.data.models.LoggedWorkout
 import com.example.fitfusion.data.models.UserPost
 import com.example.fitfusion.data.models.UserPostType
+import com.example.fitfusion.data.repository.FeedRepository
 import com.example.fitfusion.data.repository.PostRepository
+import com.example.fitfusion.data.repository.UserProfileStore
 import com.example.fitfusion.data.repository.WorkoutRepository
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -17,33 +22,51 @@ import java.time.LocalDate
 import java.time.temporal.TemporalAdjusters
 
 data class ProfileUiState(
-    // Perfil
+    val profilePhotoUri: Uri? = null,
     val displayName: String = "Alex Rivera",
-    val handle: String = "@alex_kinetic",
-    val bio: String = "Elite marathon runner & plant-based nutrition coach. Helping athletes unlock 110% through data-driven performance. 🌿⚡",
-    val followers: String = "2.8k FOLLOWERS",
-    val following: String = "492 FOLLOWING",
-    // Tab
+    val selectedWorkoutDay: LocalDate = LocalDate.now(),
+    val selectedDayWorkouts: List<LoggedWorkout> = emptyList(),
+    val handle: String = "@alex_fitfusion",
+    val bio: String = "Elite marathon runner & plant-based nutrition coach. Helping athletes unlock 110% through data-driven performance.",
+    val followers: String = "2.8k",
+    val following: String = "492",
+    val currentStreak: Int = 0,
     val selectedTab: Int = 0,
-    // Posts
     val userPosts: List<UserPost> = emptyList(),
-    // Form crear post
     val showCreatePostSheet: Boolean = false,
     val createPostType: UserPostType = UserPostType.WORKOUT,
     val selectedWorkout: LoggedWorkout? = null,
     val postCaption: String = "",
+    val nutritionPhotoUri: Uri? = null,
     val nutritionTitle: String = "",
-    val nutritionDesc: String = "",
+    val nutritionIngredients: String = "",
+    val nutritionInstructions: String = "",
+    val nutritionCookTime: String = "",
     val nutritionKcal: String = "",
-    // Entrenamientos
+    val nutritionBestMoment: String = "",
     val currentWeekMinutes: List<Int>  = List(7) { 0 },
     val previousWeekMinutes: List<Int> = List(7) { 0 },
     val totalSessionsThisWeek: Int = 0,
     val totalMinutesThisWeek: Int = 0,
     val totalKcalThisWeek: Int = 0,
     val recentWorkouts: List<LoggedWorkout> = emptyList(),
+    val showSearchBar: Boolean = false,
+    val searchQuery: String = "",
 ) {
-    val postCount: String get() = "${userPosts.size} POSTS"
+    val postCount: String get() = userPosts.size.toString()
+
+    val filteredPosts: List<UserPost> get() =
+        if (searchQuery.isBlank()) userPosts
+        else userPosts.filter { p ->
+            val q = searchQuery.trim().lowercase()
+            p.caption.lowercase().contains(q) ||
+            p.workoutName?.lowercase()?.contains(q) == true ||
+            p.workoutEmoji?.contains(q) == true
+        }
+
+    val filteredDayWorkouts: List<LoggedWorkout> get() =
+        if (searchQuery.isBlank()) selectedDayWorkouts
+        else selectedDayWorkouts.filter { it.name.lowercase().contains(searchQuery.trim().lowercase()) }
 
     val weeklyChange: String get() {
         val cur  = currentWeekMinutes.sum()
@@ -64,10 +87,46 @@ data class ProfileUiState(
     }
 }
 
-class ProfileViewModel : ViewModel() {
+private const val PREFS_NAME = "profile_prefs"
+private const val KEY_PHOTO_URI = "profile_photo_uri"
 
-    private val _uiState = MutableStateFlow(ProfileUiState())
+class ProfileViewModel(application: Application) : AndroidViewModel(application) {
+
+    private val prefs = application.getSharedPreferences(PREFS_NAME, android.content.Context.MODE_PRIVATE)
+
+    private var workoutsByDay: Map<LocalDate, List<LoggedWorkout>> = emptyMap()
+
+    init {
+        UserProfileStore.ensureInitialized(application)
+    }
+
+    private val _uiState = MutableStateFlow(ProfileUiState(
+        profilePhotoUri = prefs.getString(KEY_PHOTO_URI, null)?.let { Uri.parse(it) },
+        selectedDayWorkouts = WorkoutRepository.getWorkoutsForDate(LocalDate.now())
+    ))
     val uiState: StateFlow<ProfileUiState> = _uiState.asStateFlow()
+
+    fun selectWorkoutDay(date: LocalDate) {
+        _uiState.update { it.copy(
+            selectedWorkoutDay   = date,
+            selectedDayWorkouts  = workoutsByDay[date] ?: emptyList()
+        ) }
+    }
+
+    fun removeWorkoutFromDay(id: String, date: LocalDate) {
+        WorkoutRepository.removeWorkout(id, date)
+    }
+
+    fun updateProfilePhoto(uri: Uri) {
+        try {
+            getApplication<Application>().contentResolver.takePersistableUriPermission(
+                uri, android.content.Intent.FLAG_GRANT_READ_URI_PERMISSION
+            )
+        } catch (_: Exception) { }
+        prefs.edit { putString(KEY_PHOTO_URI, uri.toString()) }
+        UserProfileStore.updatePhotoUri(getApplication(), uri)
+        _uiState.update { it.copy(profilePhotoUri = uri) }
+    }
 
     init {
         viewModelScope.launch {
@@ -88,14 +147,25 @@ class ProfileViewModel : ViewModel() {
                     .flatMap { it.value }
                     .take(6)
 
+                var streak = 0
+                var cursor  = today
+                while ((workoutMap[cursor] ?: emptyList()).isNotEmpty()) {
+                    streak++
+                    cursor = cursor.minusDays(1)
+                }
+
+                workoutsByDay = workoutMap
+
                 _uiState.update { s ->
                     s.copy(
-                        currentWeekMinutes   = curMins,
-                        previousWeekMinutes  = prevMins,
+                        currentWeekMinutes    = curMins,
+                        previousWeekMinutes   = prevMins,
                         totalSessionsThisWeek = thisWeek.size,
                         totalMinutesThisWeek  = thisWeek.sumOf { it.durationMinutes },
                         totalKcalThisWeek     = thisWeek.sumOf { it.kcalBurned },
                         recentWorkouts        = recent,
+                        currentStreak         = streak,
+                        selectedDayWorkouts   = workoutMap[s.selectedWorkoutDay] ?: emptyList(),
                     )
                 }
             }
@@ -107,13 +177,11 @@ class ProfileViewModel : ViewModel() {
         }
     }
 
-    // ── Perfil ────────────────────────────────────────────────────────────────
-
     fun updateFromUser(userName: String?) {
         if (userName != null) {
             _uiState.update { it.copy(
                 displayName = userName,
-                handle      = "@${userName.lowercase()}_kinetic"
+                handle      = "@${userName.lowercase()}_fitfusion"
             ) }
         }
     }
@@ -122,7 +190,16 @@ class ProfileViewModel : ViewModel() {
         _uiState.update { it.copy(selectedTab = index) }
     }
 
-    // ── Crear post ────────────────────────────────────────────────────────────
+    fun toggleSearchBar() {
+        _uiState.update { it.copy(
+            showSearchBar = !it.showSearchBar,
+            searchQuery   = if (it.showSearchBar) "" else it.searchQuery
+        ) }
+    }
+
+    fun onSearchQueryChange(value: String) {
+        _uiState.update { it.copy(searchQuery = value) }
+    }
 
     fun showCreatePost() {
         _uiState.update { it.copy(showCreatePostSheet = true) }
@@ -130,12 +207,16 @@ class ProfileViewModel : ViewModel() {
 
     fun dismissCreatePost() {
         _uiState.update { it.copy(
-            showCreatePostSheet = false,
-            selectedWorkout = null,
-            postCaption     = "",
-            nutritionTitle  = "",
-            nutritionDesc   = "",
-            nutritionKcal   = "",
+            showCreatePostSheet  = false,
+            selectedWorkout      = null,
+            postCaption          = "",
+            nutritionPhotoUri    = null,
+            nutritionTitle       = "",
+            nutritionIngredients = "",
+            nutritionInstructions = "",
+            nutritionCookTime    = "",
+            nutritionKcal        = "",
+            nutritionBestMoment  = "",
         ) }
     }
 
@@ -151,18 +232,41 @@ class ProfileViewModel : ViewModel() {
         _uiState.update { it.copy(postCaption = value) }
     }
 
+    fun onNutritionPhotoChange(uri: Uri) {
+        try {
+            getApplication<Application>().contentResolver.takePersistableUriPermission(
+                uri, android.content.Intent.FLAG_GRANT_READ_URI_PERMISSION
+            )
+        } catch (_: Exception) { }
+        _uiState.update { it.copy(nutritionPhotoUri = uri) }
+    }
+
     fun onNutritionTitleChange(value: String) {
         _uiState.update { it.copy(nutritionTitle = value) }
     }
 
-    fun onNutritionDescChange(value: String) {
-        _uiState.update { it.copy(nutritionDesc = value) }
+    fun onNutritionIngredientsChange(value: String) {
+        _uiState.update { it.copy(nutritionIngredients = value) }
+    }
+
+    fun onNutritionInstructionsChange(value: String) {
+        _uiState.update { it.copy(nutritionInstructions = value) }
+    }
+
+    fun onNutritionCookTimeChange(value: String) {
+        if (value.all { it.isDigit() } && value.length <= 3) {
+            _uiState.update { it.copy(nutritionCookTime = value) }
+        }
     }
 
     fun onNutritionKcalChange(value: String) {
         if (value.all { it.isDigit() } && value.length <= 5) {
             _uiState.update { it.copy(nutritionKcal = value) }
         }
+    }
+
+    fun onNutritionBestMomentChange(value: String) {
+        _uiState.update { it.copy(nutritionBestMoment = value) }
     }
 
     fun publishPost() {
@@ -182,17 +286,21 @@ class ProfileViewModel : ViewModel() {
                 )
             }
             UserPostType.NUTRITION -> UserPost(
-                type          = UserPostType.NUTRITION,
-                caption       = state.nutritionTitle,
-                nutritionKcal = state.nutritionKcal.toIntOrNull(),
+                type                    = UserPostType.NUTRITION,
+                caption                 = state.nutritionTitle,
+                nutritionPhotoUri       = state.nutritionPhotoUri?.toString(),
+                nutritionKcal           = state.nutritionKcal.toIntOrNull(),
+                nutritionIngredients    = state.nutritionIngredients.ifBlank { null },
+                nutritionInstructions   = state.nutritionInstructions.ifBlank { null },
+                nutritionCookTimeMinutes = state.nutritionCookTime.toIntOrNull(),
+                nutritionBestMoment     = state.nutritionBestMoment.ifBlank { null },
             )
         }
 
         PostRepository.addPost(post)
+        FeedRepository.addItem(post.toFeedItem(authorName = state.displayName))
         dismissCreatePost()
     }
-
-    // ── Helpers ───────────────────────────────────────────────────────────────
 
     private fun minutesPerDay(
         map: Map<LocalDate, List<LoggedWorkout>>,

@@ -240,7 +240,6 @@ fun PantallaAddWorkout(
         }
     }
 
-    // ── BottomSheet de sesión ─────────────────────────────────────────────────
     if (state.showSessionSheet) {
         LogWorkoutSheet(
             state      = state,
@@ -258,7 +257,6 @@ fun PantallaAddWorkout(
     }
 }
 
-// ── BottomSheet de configuración de sesión ────────────────────────────────────
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -289,7 +287,6 @@ private fun LogWorkoutSheet(
         ) {
             Text("Tu sesión", fontSize = 20.sp, fontWeight = FontWeight.Bold, color = OnSurface)
 
-            // Nombre del entrenamiento
             OutlinedTextField(
                 value         = state.sessionName,
                 onValueChange = onNameChange,
@@ -305,7 +302,6 @@ private fun LogWorkoutSheet(
                 )
             )
 
-            // Duración + estimación kcal
             Card(
                 shape  = RoundedCornerShape(14.dp),
                 colors = CardDefaults.cardColors(containerColor = SurfaceContainerLow),
@@ -334,7 +330,6 @@ private fun LogWorkoutSheet(
                 }
             }
 
-            // Ejercicios
             if (state.selectedExercises.isNotEmpty()) {
                 Text(
                     "EJERCICIOS (${state.selectedExercises.size})",
@@ -356,7 +351,6 @@ private fun LogWorkoutSheet(
                 }
             }
 
-            // Botón guardar
             Button(
                 onClick  = onSave,
                 modifier = Modifier.fillMaxWidth().height(52.dp),
@@ -461,7 +455,6 @@ private fun StepperButton(label: String, onClick: () -> Unit) {
     }
 }
 
-// ── Fila de ejercicio del catálogo ────────────────────────────────────────────
 
 @Composable
 private fun ExerciseCatalogRow(
@@ -521,7 +514,6 @@ private fun ExerciseCatalogRow(
                 }
             }
 
-            // Indicador de selección (solo en log mode)
             if (isLogMode) {
                 Box(
                     modifier = Modifier

@@ -171,7 +171,6 @@ private fun ExerciseDetailContent(exercise: ExerciseCatalogItem) {
 
     Column(modifier = Modifier.padding(horizontal = 16.dp)) {
 
-        // ── Hero card ────────────────────────────────────────────────
         ElevatedCard(
             modifier = Modifier.fillMaxWidth(),
             colors = CardDefaults.elevatedCardColors(containerColor = SurfaceContainerLowest),
@@ -203,7 +202,6 @@ private fun ExerciseDetailContent(exercise: ExerciseCatalogItem) {
 
         Spacer(modifier = Modifier.height(16.dp))
 
-        // ── Muscles ──────────────────────────────────────────────────
         DetailSection(title = "Músculos") {
             if (exercise.primeMoverMuscle != null) {
                 MuscleRow(label = "Motor principal", value = exercise.primeMoverMuscle, dotColor = Primary)
@@ -221,7 +219,6 @@ private fun ExerciseDetailContent(exercise: ExerciseCatalogItem) {
 
         Spacer(modifier = Modifier.height(12.dp))
 
-        // ── Equipment ────────────────────────────────────────────────
         DetailSection(title = "Equipamiento") {
             exercise.primaryEquipment?.let { InfoRow(label = "Principal", value = EquipmentTranslations.translate(it)) }
             exercise.secondaryEquipment?.let { InfoRow(label = "Secundario", value = EquipmentTranslations.translate(it)) }
@@ -230,7 +227,6 @@ private fun ExerciseDetailContent(exercise: ExerciseCatalogItem) {
 
         Spacer(modifier = Modifier.height(12.dp))
 
-        // ── Technique ────────────────────────────────────────────────
         DetailSection(title = "Técnica") {
             exercise.posture?.let { InfoRow(label = "Postura", value = it) }
             exercise.footElevation?.let { InfoRow(label = "Elevación de pie", value = it) }
@@ -243,14 +239,12 @@ private fun ExerciseDetailContent(exercise: ExerciseCatalogItem) {
 
         Spacer(modifier = Modifier.height(12.dp))
 
-        // ── Classification ───────────────────────────────────────────
         DetailSection(title = "Clasificación") {
             exercise.primaryExerciseClassification?.let { InfoRow(label = "Clasificación", value = it) }
             exercise.difficultyLevel?.let { InfoRow(label = "Dificultad", value = it) }
             InfoRow(label = "ID de ejercicio", value = exercise.exerciseId)
         }
 
-        // ── YouTube links ────────────────────────────────────────────
         val hasVideo = exercise.shortYoutubeDemoUrl != null || exercise.inDepthYoutubeTechniqueUrl != null
         if (hasVideo) {
             Spacer(modifier = Modifier.height(12.dp))

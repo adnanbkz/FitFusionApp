@@ -12,6 +12,8 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.KeyboardArrowUp
 import androidx.compose.material3.*
@@ -30,10 +32,7 @@ import androidx.navigation.NavHostController
 import com.example.fitfusion.R
 import com.example.fitfusion.data.models.DayLog
 import com.example.fitfusion.data.models.LoggedFood
-import com.example.fitfusion.data.models.LoggedWorkout
-import com.example.fitfusion.data.models.MealConfig
-import com.example.fitfusion.data.models.MealSlotType
-import com.example.fitfusion.data.models.WorkoutExercise
+import com.example.fitfusion.data.models.MealSlot
 import androidx.compose.material3.BottomSheetDefaults
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.rememberModalBottomSheetState
@@ -64,7 +63,6 @@ fun PantallaTracking(
         verticalArrangement = Arrangement.spacedBy(16.dp),
         contentPadding = PaddingValues(top = 16.dp, bottom = 24.dp)
     ) {
-        // ── Cabecera ──────────────────────────────────────────────────────────
         item {
             Row(
                 modifier = Modifier.fillMaxWidth(),
@@ -81,7 +79,7 @@ fun PantallaTracking(
                     ) {
                         Icon(painterResource(R.drawable.ic_dumbbell), null, Modifier.size(18.dp), tint = Color.White)
                     }
-                    Text("Kinetic", fontSize = 22.sp, fontWeight = FontWeight.Black, color = OnSurface)
+                    Text("FitFusion", fontSize = 22.sp, fontWeight = FontWeight.Black, color = OnSurface)
                 }
                 Text(
                     state.selectedDate.format(DateTimeFormatter.ofPattern("EEE d MMM", Locale("es"))),
@@ -92,7 +90,6 @@ fun PantallaTracking(
             }
         }
 
-        // ── Strip semanal ─────────────────────────────────────────────────────
         item {
             WeekStrip(
                 selectedDate = state.selectedDate,
@@ -101,7 +98,6 @@ fun PantallaTracking(
             )
         }
 
-        // ── Ring objetivo diario (kcal netas) ─────────────────────────────────
         item {
             Card(
                 shape  = RoundedCornerShape(20.dp),
@@ -145,16 +141,6 @@ fun PantallaTracking(
             }
         }
 
-        // ── Entrenamiento de hoy ──────────────────────────────────────────────
-        item {
-            WorkoutSection(
-                workouts = state.workouts,
-                onAdd    = { navController.navigate("${Screens.AddWorkoutScreen.name}?logMode=true") },
-                onRemove = trackingViewModel::removeWorkout,
-            )
-        }
-
-        // ── Balance de macros ─────────────────────────────────────────────────
         item {
             Card(
                 shape  = RoundedCornerShape(20.dp),
@@ -188,7 +174,6 @@ fun PantallaTracking(
                             verticalAlignment = Alignment.CenterVertically,
                             horizontalArrangement = Arrangement.spacedBy(8.dp)
                         ) {
-                            Text("🤖", fontSize = 18.sp)
                             Text(state.aiTip, fontSize = 13.sp, color = OnSurfaceVariant, lineHeight = 18.sp)
                         }
                     }
@@ -196,7 +181,6 @@ fun PantallaTracking(
             }
         }
 
-        // ── Secciones de comidas ──────────────────────────────────────────────
         item {
             Row(
                 modifier = Modifier.fillMaxWidth(),
@@ -204,37 +188,45 @@ fun PantallaTracking(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Text("MIS COMIDAS HOY", fontSize = 11.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.5.sp, color = Primary)
-                TextButton(onClick = trackingViewModel::showMealConfigDialog) {
-                    Text("Configurar", fontSize = 13.sp, color = OnSurfaceVariant)
+                TextButton(onClick = trackingViewModel::showAddMealDialog) {
+                    Text("+ Comida", fontSize = 13.sp, color = Primary, fontWeight = FontWeight.SemiBold)
                 }
             }
         }
 
-        items(state.mealConfig.activeSlots) { slot ->
+        items(state.dayLog.meals, key = { it.id }) { slot ->
             MealSection(
-                slot        = slot,
-                entries     = state.dayLog.byMeal[slot] ?: emptyList(),
-                isExpanded  = slot in state.expandedMeals,
-                onToggle    = { trackingViewModel.toggleMeal(slot) },
-                onAdd       = {
-                    navController.navigate("${Screens.AddFoodScreen.name}/${slot.name}")
-                },
-                onRemove    = trackingViewModel::removeFood,
-                onEdit      = trackingViewModel::openEditSheet,
+                slot       = slot,
+                entries    = state.dayLog.byMeal[slot] ?: emptyList(),
+                isExpanded = slot.id in state.expandedMeals,
+                onToggle   = { trackingViewModel.toggleMeal(slot.id) },
+                onAdd      = { navController.navigate("${Screens.AddFoodScreen.name}/${slot.id}") },
+                onRemove   = trackingViewModel::removeFood,
+                onEdit     = trackingViewModel::openEditSheet,
+                onRename   = { trackingViewModel.showRenameMealDialog(slot.id, slot.name) },
+                onDelete   = { trackingViewModel.removeMeal(slot.id) },
             )
         }
     }
 
-    // ── Diálogo configuración nº comidas ──────────────────────────────────────
-    if (state.showMealConfigDialog) {
-        MealConfigDialog(
-            currentConfig = state.mealConfig,
-            onSelect      = trackingViewModel::setMealCount,
-            onDismiss     = trackingViewModel::dismissMealConfigDialog
+    if (state.showAddMealDialog) {
+        AddMealDialog(
+            name         = state.addMealName,
+            onNameChange = trackingViewModel::onAddMealNameChange,
+            onConfirm    = trackingViewModel::confirmAddMeal,
+            onDismiss    = trackingViewModel::dismissAddMealDialog
         )
     }
 
-    // ── Sheet de edición de alimento ──────────────────────────────────────────
+    if (state.showRenameMealDialog) {
+        RenameMealDialog(
+            name         = state.renameMealName,
+            onNameChange = trackingViewModel::onRenameMealNameChange,
+            onConfirm    = trackingViewModel::confirmRenameMeal,
+            onDismiss    = trackingViewModel::dismissRenameMealDialog
+        )
+    }
+
     val ef = state.editFoodState
     if (ef != null) {
         val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
@@ -249,7 +241,7 @@ fun PantallaTracking(
                 selectedServing = ef.selectedServing,
                 quantity        = ef.quantity,
                 sheetMealSlot   = ef.mealSlot,
-                activeMealSlots = state.mealConfig.activeSlots,
+                activeMealSlots = state.dayLog.meals,
                 onSelectServing = trackingViewModel::editSelectServing,
                 onIncrement     = trackingViewModel::editIncrementQuantity,
                 onDecrement     = trackingViewModel::editDecrementQuantity,
@@ -261,205 +253,6 @@ fun PantallaTracking(
     }
 }
 
-// ── Sección de entrenamiento ──────────────────────────────────────────────────
-
-@Composable
-private fun WorkoutSection(
-    workouts: List<LoggedWorkout>,
-    onAdd: () -> Unit,
-    onRemove: (String) -> Unit,
-) {
-    var expanded by remember { mutableStateOf(true) }
-
-    Card(
-        shape  = RoundedCornerShape(20.dp),
-        colors = CardDefaults.cardColors(containerColor = SurfaceContainerLowest),
-        elevation = CardDefaults.cardElevation(0.dp),
-        modifier = Modifier.fillMaxWidth()
-    ) {
-        Column {
-            // Cabecera
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 20.dp, vertical = 16.dp),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    modifier = Modifier
-                        .weight(1f)
-                        .clickable(enabled = workouts.isNotEmpty()) { expanded = !expanded }
-                ) {
-                    Text("MI ENTRENAMIENTO HOY", fontSize = 11.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.5.sp, color = Primary)
-                    if (workouts.isNotEmpty()) {
-                        Icon(
-                            if (expanded) Icons.Default.KeyboardArrowUp else Icons.Default.KeyboardArrowDown,
-                            contentDescription = null,
-                            tint = OnSurfaceVariant,
-                            modifier = Modifier.size(16.dp)
-                        )
-                    }
-                }
-                IconButton(
-                    onClick = onAdd,
-                    modifier = Modifier.size(32.dp)
-                ) {
-                    Icon(Icons.Default.Add, contentDescription = "Añadir entrenamiento", tint = Primary, modifier = Modifier.size(20.dp))
-                }
-            }
-
-            // Contenido
-            AnimatedVisibility(
-                visible = workouts.isEmpty() || expanded,
-                enter   = expandVertically(),
-                exit    = shrinkVertically()
-            ) {
-                if (workouts.isEmpty()) {
-                    // Estado vacío
-                    Column(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(horizontal = 20.dp)
-                            .padding(bottom = 20.dp),
-                        horizontalAlignment = Alignment.CenterHorizontally,
-                        verticalArrangement = Arrangement.spacedBy(8.dp)
-                    ) {
-                        Text("🏃", fontSize = 32.sp)
-                        Text(
-                            "Sin entrenamientos hoy",
-                            fontSize = 14.sp, fontWeight = FontWeight.SemiBold, color = OnSurface
-                        )
-                        Text(
-                            "Pulsa + para registrar tu sesión",
-                            fontSize = 13.sp, color = OnSurfaceVariant
-                        )
-                    }
-                } else {
-                    Column(
-                        modifier = Modifier.padding(bottom = 8.dp),
-                        verticalArrangement = Arrangement.spacedBy(0.dp)
-                    ) {
-                        workouts.forEach { workout ->
-                            WorkoutCard(workout = workout, onRemove = { onRemove(workout.id) })
-                        }
-                    }
-                }
-            }
-        }
-    }
-}
-
-@Composable
-private fun WorkoutCard(
-    workout: LoggedWorkout,
-    onRemove: () -> Unit,
-) {
-    var showExercises by remember { mutableStateOf(false) }
-
-    Column(
-        modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp)
-    ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .clip(RoundedCornerShape(14.dp))
-                .background(SurfaceContainerLow)
-                .clickable { showExercises = !showExercises }
-                .padding(horizontal = 14.dp, vertical = 12.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(12.dp)
-        ) {
-            // Icono
-            Box(
-                modifier = Modifier
-                    .size(44.dp)
-                    .clip(RoundedCornerShape(12.dp))
-                    .background(Primary.copy(alpha = 0.1f)),
-                contentAlignment = Alignment.Center
-            ) {
-                Text(workout.emoji, fontSize = 20.sp)
-            }
-
-            // Info principal
-            Column(modifier = Modifier.weight(1f)) {
-                Text(
-                    workout.name,
-                    fontWeight = FontWeight.SemiBold,
-                    fontSize = 15.sp,
-                    color = OnSurface,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
-                )
-                Text(
-                    "${workout.durationMinutes} min · ${workout.kcalBurned} kcal · ${workout.exercises.size} ejercicios",
-                    fontSize = 12.sp,
-                    color = OnSurfaceVariant
-                )
-            }
-
-            // Eliminar
-            Box(
-                modifier = Modifier
-                    .size(28.dp)
-                    .clip(CircleShape)
-                    .background(SurfaceContainerHigh)
-                    .clickable(onClick = onRemove),
-                contentAlignment = Alignment.Center
-            ) {
-                Text("×", fontSize = 16.sp, color = OnSurfaceVariant, fontWeight = FontWeight.Bold)
-            }
-        }
-
-        // Desglose de ejercicios (expandible)
-        AnimatedVisibility(
-            visible = showExercises && workout.exercises.isNotEmpty(),
-            enter   = expandVertically(),
-            exit    = shrinkVertically()
-        ) {
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(start = 12.dp, end = 4.dp, top = 4.dp, bottom = 4.dp),
-                verticalArrangement = Arrangement.spacedBy(4.dp)
-            ) {
-                workout.exercises.forEach { exercise ->
-                    WorkoutExerciseRow(exercise)
-                }
-            }
-        }
-    }
-}
-
-@Composable
-private fun WorkoutExerciseRow(exercise: WorkoutExercise) {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 4.dp, vertical = 3.dp),
-        horizontalArrangement = Arrangement.SpaceBetween,
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        Text(
-            exercise.name,
-            fontSize = 13.sp,
-            color = OnSurface,
-            modifier = Modifier.weight(1f),
-            maxLines = 1,
-            overflow = TextOverflow.Ellipsis
-        )
-        Text(
-            exercise.summary,
-            fontSize = 12.sp,
-            color = OnSurfaceVariant,
-            fontWeight = FontWeight.Medium
-        )
-    }
-}
-
-// ── Componentes ───────────────────────────────────────────────────────────────
 
 @Composable
 private fun WeekStrip(
@@ -527,7 +320,7 @@ private fun WeekStrip(
                     )
                     if (hasData && !isFuture) {
                         Text(
-                            "${dayLog!!.totalKcal}",
+                            "${dayLog.totalKcal}",
                             fontSize = 9.sp,
                             color    = if (isSelected) Primary else OnSurfaceVariant,
                             fontWeight = FontWeight.Medium
@@ -543,13 +336,15 @@ private fun WeekStrip(
 
 @Composable
 private fun MealSection(
-    slot: MealSlotType,
+    slot: MealSlot,
     entries: List<LoggedFood>,
     isExpanded: Boolean,
     onToggle: () -> Unit,
     onAdd: () -> Unit,
     onRemove: (String) -> Unit,
     onEdit: (LoggedFood) -> Unit,
+    onRename: () -> Unit,
+    onDelete: () -> Unit,
 ) {
     val totalKcal = entries.sumOf { it.kcal }
 
@@ -568,28 +363,27 @@ private fun MealSection(
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.SpaceBetween
             ) {
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(10.dp),
-                    modifier = Modifier.weight(1f)
-                ) {
-                    Text(slot.emoji, fontSize = 20.sp)
-                    Column {
-                        Text(slot.label, fontWeight = FontWeight.SemiBold, fontSize = 15.sp, color = OnSurface)
-                        if (entries.isNotEmpty()) {
-                            Text(
-                                "$totalKcal kcal · ${entries.size} alimento${if (entries.size > 1) "s" else ""}",
-                                fontSize = 12.sp, color = OnSurfaceVariant
-                            )
-                        } else {
-                            Text("Sin registros", fontSize = 12.sp, color = OnSurfaceVariant)
-                        }
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(slot.name, fontWeight = FontWeight.SemiBold, fontSize = 15.sp, color = OnSurface)
+                    if (entries.isNotEmpty()) {
+                        Text(
+                            "$totalKcal kcal · ${entries.size} alimento${if (entries.size > 1) "s" else ""}",
+                            fontSize = 12.sp, color = OnSurfaceVariant
+                        )
+                    } else {
+                        Text("Sin registros", fontSize = 12.sp, color = OnSurfaceVariant)
                     }
                 }
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(4.dp)
                 ) {
+                    IconButton(onClick = onRename, modifier = Modifier.size(32.dp)) {
+                        Icon(Icons.Default.Edit, contentDescription = "Renombrar", tint = OnSurfaceVariant, modifier = Modifier.size(15.dp))
+                    }
+                    IconButton(onClick = onDelete, modifier = Modifier.size(32.dp)) {
+                        Icon(Icons.Default.Close, contentDescription = "Eliminar comida", tint = OnSurfaceVariant, modifier = Modifier.size(16.dp))
+                    }
                     IconButton(onClick = onAdd, modifier = Modifier.size(32.dp)) {
                         Icon(Icons.Default.Add, contentDescription = "Añadir", tint = Primary, modifier = Modifier.size(20.dp))
                     }
@@ -684,52 +478,86 @@ private fun LoggedFoodRow(
 }
 
 @Composable
-private fun MealConfigDialog(
-    currentConfig: MealConfig,
-    onSelect: (Int) -> Unit,
+private fun AddMealDialog(
+    name: String,
+    onNameChange: (String) -> Unit,
+    onConfirm: () -> Unit,
     onDismiss: () -> Unit,
 ) {
-    val options = listOf(3 to "3 comidas", 4 to "4 comidas", 5 to "5 comidas", 6 to "6 comidas")
-    val currentCount = currentConfig.activeSlots.size
-
     AlertDialog(
         onDismissRequest = onDismiss,
         containerColor   = SurfaceContainerLowest,
-        title = {
-            Text("Comidas al día", fontWeight = FontWeight.Bold, fontSize = 18.sp)
-        },
+        title = { Text("Nueva comida", fontWeight = FontWeight.Bold, fontSize = 18.sp) },
         text = {
-            Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 Text(
-                    "Elige cuántas comidas quieres registrar cada día.",
-                    fontSize = 14.sp, color = OnSurfaceVariant,
-                    modifier = Modifier.padding(bottom = 8.dp)
+                    "Ponle un nombre a esta comida.",
+                    fontSize = 14.sp, color = OnSurfaceVariant
                 )
-                options.forEach { (count, label) ->
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .clip(RoundedCornerShape(10.dp))
-                            .clickable { onSelect(count) }
-                            .background(if (count == currentCount) Primary.copy(alpha = 0.08f) else Color.Transparent)
-                            .padding(horizontal = 12.dp, vertical = 12.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.SpaceBetween
-                    ) {
-                        Text(
-                            label,
-                            fontSize   = 15.sp,
-                            fontWeight = if (count == currentCount) FontWeight.SemiBold else FontWeight.Normal,
-                            color      = if (count == currentCount) Primary else OnSurface
-                        )
-                        if (count == currentCount) {
-                            Text("✓", fontSize = 16.sp, color = Primary, fontWeight = FontWeight.Bold)
-                        }
-                    }
-                }
+                OutlinedTextField(
+                    value         = name,
+                    onValueChange = onNameChange,
+                    placeholder   = { Text("Ej: Post-entreno, Snack...", color = OnSurfaceVariant, fontSize = 14.sp) },
+                    singleLine    = true,
+                    shape         = RoundedCornerShape(12.dp),
+                    colors        = OutlinedTextFieldDefaults.colors(
+                        unfocusedContainerColor = SurfaceContainerLow,
+                        focusedContainerColor   = SurfaceContainerLow,
+                        unfocusedBorderColor    = Color.Transparent,
+                        focusedBorderColor      = Primary,
+                    ),
+                    modifier = Modifier.fillMaxWidth()
+                )
             }
         },
-        confirmButton = {},
+        confirmButton = {
+            TextButton(
+                onClick  = onConfirm,
+                enabled  = name.isNotBlank()
+            ) {
+                Text("Añadir", color = Primary, fontWeight = FontWeight.Bold)
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) {
+                Text("Cancelar", color = OnSurfaceVariant)
+            }
+        }
+    )
+}
+
+@Composable
+private fun RenameMealDialog(
+    name: String,
+    onNameChange: (String) -> Unit,
+    onConfirm: () -> Unit,
+    onDismiss: () -> Unit,
+) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        containerColor   = SurfaceContainerLowest,
+        title = { Text("Renombrar comida", fontWeight = FontWeight.Bold, fontSize = 18.sp) },
+        text = {
+            OutlinedTextField(
+                value         = name,
+                onValueChange = onNameChange,
+                placeholder   = { Text("Nombre de la comida", color = OnSurfaceVariant, fontSize = 14.sp) },
+                singleLine    = true,
+                shape         = RoundedCornerShape(12.dp),
+                colors        = OutlinedTextFieldDefaults.colors(
+                    unfocusedContainerColor = SurfaceContainerLow,
+                    focusedContainerColor   = SurfaceContainerLow,
+                    unfocusedBorderColor    = Color.Transparent,
+                    focusedBorderColor      = Primary,
+                ),
+                modifier = Modifier.fillMaxWidth()
+            )
+        },
+        confirmButton = {
+            TextButton(onClick = onConfirm, enabled = name.isNotBlank()) {
+                Text("Guardar", color = Primary, fontWeight = FontWeight.Bold)
+            }
+        },
         dismissButton = {
             TextButton(onClick = onDismiss) {
                 Text("Cancelar", color = OnSurfaceVariant)

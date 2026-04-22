@@ -76,7 +76,6 @@ fun PantallaDataStorage(
     val snackbarHostState = remember { SnackbarHostState() }
     val context = LocalContext.current
 
-    // One-shot share intent from the ViewModel
     LaunchedEffect(Unit) {
         dataStorageViewModel.shareEvent.collect { intent ->
             context.startActivity(intent)
@@ -97,7 +96,6 @@ fun PantallaDataStorage(
         }
     }
 
-    // Delete confirmation dialog
     if (state.showDeleteConfirm) {
         AlertDialog(
             onDismissRequest = dataStorageViewModel::dismissDeleteConfirm,
@@ -175,7 +173,6 @@ fun PantallaDataStorage(
                 }
             } else {
 
-                // ── Device storage ────────────────────────────────────
                 StorageSectionHeader("ALMACENAMIENTO DEL DISPOSITIVO")
                 Card(
                     shape = RoundedCornerShape(20.dp),
@@ -211,7 +208,6 @@ fun PantallaDataStorage(
 
                         Spacer(modifier = Modifier.height(12.dp))
 
-                        // Stacked bar: used (primary) vs free (surface)
                         val usedFraction = if (state.deviceTotalBytes > 0) {
                             (state.deviceUsedBytes.toFloat() / state.deviceTotalBytes).coerceIn(0f, 1f)
                         } else 0f
@@ -246,7 +242,7 @@ fun PantallaDataStorage(
                         if (usedFraction > 0.85f) {
                             Spacer(modifier = Modifier.height(10.dp))
                             Text(
-                                "⚠ Almacenamiento casi lleno",
+                                "Almacenamiento casi lleno",
                                 fontSize = 12.sp,
                                 color = Tertiary,
                                 fontWeight = FontWeight.SemiBold,
@@ -257,7 +253,6 @@ fun PantallaDataStorage(
 
                 Spacer(modifier = Modifier.height(24.dp))
 
-                // ── App storage ───────────────────────────────────────
                 StorageSectionHeader("USO DE LA APLICACIÓN")
                 Card(
                     shape = RoundedCornerShape(20.dp),
@@ -304,7 +299,6 @@ fun PantallaDataStorage(
 
                 Spacer(modifier = Modifier.height(24.dp))
 
-                // ── Cache ─────────────────────────────────────────────
                 StorageSectionHeader("CACHÉ")
                 Card(
                     shape = RoundedCornerShape(20.dp),
@@ -369,7 +363,6 @@ fun PantallaDataStorage(
 
                 Spacer(modifier = Modifier.height(24.dp))
 
-                // ── Data management ───────────────────────────────────
                 StorageSectionHeader("GESTIÓN DE DATOS")
                 Card(
                     shape = RoundedCornerShape(20.dp),
@@ -416,7 +409,6 @@ fun PantallaDataStorage(
     }
 }
 
-// ── Sub-components ────────────────────────────────────────────────────────────
 
 @Composable
 private fun StorageSectionHeader(text: String) {

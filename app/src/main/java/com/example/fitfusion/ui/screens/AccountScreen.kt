@@ -67,7 +67,6 @@ fun PantallaAccount(
                 .padding(innerPadding)
                 .verticalScroll(rememberScrollState())
         ) {
-            // Avatar
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -112,7 +111,6 @@ fun PantallaAccount(
 
             Spacer(modifier = Modifier.height(24.dp))
 
-            // Información personal
             SettingsSectionHeader("INFORMACIÓN PERSONAL")
             Card(
                 shape = RoundedCornerShape(20.dp),
@@ -188,7 +186,6 @@ fun PantallaAccount(
 
             Spacer(modifier = Modifier.height(32.dp))
 
-            // Cambiar contraseña
             SettingsSectionHeader("CAMBIAR CONTRASEÑA")
             Card(
                 shape = RoundedCornerShape(20.dp),
@@ -243,7 +240,6 @@ fun PantallaAccount(
 
             Spacer(modifier = Modifier.height(32.dp))
 
-            // Zona peligrosa
             SettingsSectionHeader("ZONA PELIGROSA")
             Card(
                 shape = RoundedCornerShape(20.dp),

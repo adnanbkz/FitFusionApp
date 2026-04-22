@@ -83,7 +83,6 @@ fun PantallaCreateRecipe(
             contentPadding = PaddingValues(16.dp, bottom = 40.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
-            // ── Nombre + Emoji ────────────────────────────────────────────────
             item {
                 Card(
                     shape     = RoundedCornerShape(20.dp),
@@ -141,7 +140,6 @@ fun PantallaCreateRecipe(
                 }
             }
 
-            // ── Totales nutricionales (solo si hay ingredientes) ──────────────
             if (state.ingredients.isNotEmpty()) {
                 item {
                     Card(
@@ -165,7 +163,6 @@ fun PantallaCreateRecipe(
                 }
             }
 
-            // ── Búsqueda de ingredientes ──────────────────────────────────────
             item {
                 Text(
                     "INGREDIENTES",
@@ -200,7 +197,6 @@ fun PantallaCreateRecipe(
                 )
             }
 
-            // Resultados de búsqueda
             if (state.searchQuery.isNotBlank()) {
                 when {
                     state.isLoadingResults -> {
@@ -234,7 +230,6 @@ fun PantallaCreateRecipe(
                 }
             }
 
-            // ── Ingredientes añadidos ─────────────────────────────────────────
             if (state.ingredients.isNotEmpty()) {
                 item {
                     Text(
@@ -252,7 +247,6 @@ fun PantallaCreateRecipe(
                 }
             }
 
-            // Error
             if (state.saveError != null) {
                 item {
                     Text(
@@ -266,7 +260,6 @@ fun PantallaCreateRecipe(
         }
     }
 
-    // ── Sheet de añadir ingrediente ───────────────────────────────────────────
     if (state.selectedFood != null) {
         val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
         ModalBottomSheet(
@@ -288,7 +281,6 @@ fun PantallaCreateRecipe(
     }
 }
 
-// ── Componentes privados ──────────────────────────────────────────────────────
 
 @Composable
 private fun IngredientSearchRow(food: Food, onTap: () -> Unit) {
@@ -393,7 +385,6 @@ private fun IngredientAddSheet(
             .padding(bottom = 32.dp),
         verticalArrangement = Arrangement.spacedBy(20.dp)
     ) {
-        // Cabecera
         Row(
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(12.dp)
@@ -413,7 +404,6 @@ private fun IngredientAddSheet(
 
         HorizontalDivider(color = OutlineVariant.copy(alpha = 0.3f))
 
-        // Porción
         Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
             Text("PORCIÓN", fontSize = 11.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.5.sp, color = Primary)
             LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -432,7 +422,6 @@ private fun IngredientAddSheet(
             }
         }
 
-        // Cantidad
         Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
             Text("CANTIDAD", fontSize = 11.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.5.sp, color = Primary)
             Row(
@@ -465,7 +454,6 @@ private fun IngredientAddSheet(
             }
         }
 
-        // Preview nutricional
         Card(
             shape  = RoundedCornerShape(16.dp),
             colors = CardDefaults.cardColors(containerColor = SurfaceContainerLow),
@@ -485,7 +473,6 @@ private fun IngredientAddSheet(
             }
         }
 
-        // Botón confirmar
         Button(
             onClick  = onConfirm,
             modifier = Modifier.fillMaxWidth().height(52.dp),

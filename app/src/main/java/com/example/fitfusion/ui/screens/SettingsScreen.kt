@@ -88,7 +88,6 @@ import com.example.fitfusion.ui.theme.Tertiary
 import com.example.fitfusion.viewmodel.HealthConnectStatus
 import com.example.fitfusion.viewmodel.SettingsViewModel
 
-// HC provider package — used for the "Install" deep-link
 private const val HC_PROVIDER_PACKAGE = "com.google.android.apps.healthdata"
 private const val HC_PLAY_STORE_URL =
     "https://play.google.com/store/apps/details?id=$HC_PROVIDER_PACKAGE"
@@ -104,16 +103,12 @@ fun PantallaSettings(
     val state by settingsViewModel.uiState.collectAsState()
     val context = LocalContext.current
 
-    // ── Health Connect permission launcher ───────────────────────────
-    // Uses StartActivityForResult so no HC-SDK contract type is needed.
-    // On return we simply re-check whether permissions were granted.
     val permLauncher = rememberLauncherForActivityResult(
         androidx.activity.result.contract.ActivityResultContracts.StartActivityForResult()
     ) {
         settingsViewModel.refreshHealthStatus()
     }
 
-    // ── Re-check HC status when returning from permission/install screen
     val lifecycle = LocalLifecycleOwner.current.lifecycle
     DisposableEffect(lifecycle) {
         val observer = LifecycleEventObserver { _, event ->
@@ -141,7 +136,6 @@ fun PantallaSettings(
             colors = TopAppBarDefaults.topAppBarColors(containerColor = Surface),
         )
 
-        // ── Profile card ─────────────────────────────────────────────
         Card(
             shape = RoundedCornerShape(20.dp),
             colors = CardDefaults.cardColors(containerColor = SurfaceContainerLowest),
@@ -186,7 +180,6 @@ fun PantallaSettings(
             }
         }
 
-        // ── Account section ───────────────────────────────────────────
         SectionTitle("CONFIGURACIÓN DE CUENTA")
         SettingsRow(Icons.Default.Person, "Cuenta", "Gestiona tu perfil, correo y contraseña") {
             navController.navigate(Screens.AccountScreen.name)
@@ -195,10 +188,8 @@ fun PantallaSettings(
             navController.navigate(Screens.PrivacyScreen.name)
         }
 
-        // ── Preferences section ───────────────────────────────────────
         SectionTitle("PREFERENCIAS")
 
-        // Push notifications toggle
         Card(
             shape = RoundedCornerShape(20.dp),
             colors = CardDefaults.cardColors(containerColor = SurfaceContainerLowest),
@@ -218,7 +209,6 @@ fun PantallaSettings(
 
         Spacer(modifier = Modifier.height(12.dp))
 
-        // ── Health Connect section ────────────────────────────────────
         SectionTitle("DATOS DE SALUD")
 
         Card(
@@ -274,7 +264,6 @@ fun PantallaSettings(
 
         Spacer(modifier = Modifier.height(12.dp))
 
-        // ── Other rows ────────────────────────────────────────────────
         SettingsRow(Icons.Default.Settings, "Datos y almacenamiento", "Gestión de caché y exportación de datos") {
             navController.navigate(Screens.DataStorageScreen.name)
         }
@@ -282,7 +271,6 @@ fun PantallaSettings(
             navController.navigate(Screens.HelpSupportScreen.name)
         }
 
-        // ── Logout ────────────────────────────────────────────────────
         OutlinedButton(
             onClick = onLogout,
             modifier = Modifier
@@ -314,7 +302,6 @@ fun PantallaSettings(
     }
 }
 
-// ── Health Connect status panel ──────────────────────────────────────────────
 
 @Composable
 private fun HealthConnectStatusPanel(
@@ -331,7 +318,6 @@ private fun HealthConnectStatusPanel(
         verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
         when (state.hcStatus) {
-            // ── HC not installed ─────────────────────────────────────
             HealthConnectStatus.UNAVAILABLE -> {
                 HcInfoCard(
                     icon = { Icon(Icons.Default.Warning, null, Modifier.size(20.dp), tint = Tertiary) },
@@ -350,7 +336,6 @@ private fun HealthConnectStatusPanel(
                 }
             }
 
-            // ── HC needs update ──────────────────────────────────────
             HealthConnectStatus.NEEDS_UPDATE -> {
                 HcInfoCard(
                     icon = { Icon(Icons.Default.Warning, null, Modifier.size(20.dp), tint = Secondary) },
@@ -369,10 +354,8 @@ private fun HealthConnectStatusPanel(
                 }
             }
 
-            // ── HC available ─────────────────────────────────────────
             HealthConnectStatus.AVAILABLE -> {
                 if (!state.hasPermissions) {
-                    // No permissions yet
                     HcInfoCard(
                         icon = { Icon(Icons.Default.Lock, null, Modifier.size(20.dp), tint = Secondary) },
                         title = "Permisos pendientes",
@@ -391,10 +374,8 @@ private fun HealthConnectStatusPanel(
                         }
                     }
                 } else {
-                    // Connected — show sync data
                     Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
 
-                        // Status row
                         Row(verticalAlignment = Alignment.CenterVertically) {
                             Icon(
                                 Icons.Default.CheckCircle,
@@ -419,26 +400,22 @@ private fun HealthConnectStatusPanel(
                             }
                         }
 
-                        // Sync data stats
                         if (state.syncData != null || state.isSyncing) {
                             Row(
                                 modifier = Modifier.fillMaxWidth(),
                                 horizontalArrangement = Arrangement.spacedBy(8.dp),
                             ) {
                                 HcStatPill(
-                                    emoji = "👣",
                                     value = if (state.isSyncing) "—" else "${state.syncData?.steps ?: 0}",
                                     label = "pasos",
                                     modifier = Modifier.weight(1f),
                                 )
                                 HcStatPill(
-                                    emoji = "🔥",
                                     value = if (state.isSyncing) "—" else "${state.syncData?.stepCaloriesEstimated ?: 0}",
                                     label = "kcal",
                                     modifier = Modifier.weight(1f),
                                 )
                                 HcStatPill(
-                                    emoji = "❤️",
                                     value = if (state.isSyncing) "—"
                                     else state.syncData?.averageHeartRate?.let { "$it bpm" } ?: "—",
                                     label = "FC media",
@@ -447,7 +424,6 @@ private fun HealthConnectStatusPanel(
                             }
                         }
 
-                        // Error banner
                         if (state.syncError != null) {
                             Card(
                                 shape = RoundedCornerShape(12.dp),
@@ -487,7 +463,6 @@ private fun HealthConnectStatusPanel(
                             }
                         }
 
-                        // Sync now button
                         OutlinedButton(
                             onClick = onSyncNow,
                             modifier = Modifier.fillMaxWidth(),
@@ -550,7 +525,7 @@ private fun HcInfoCard(
 }
 
 @Composable
-private fun HcStatPill(emoji: String, value: String, label: String, modifier: Modifier = Modifier) {
+private fun HcStatPill(value: String, label: String, modifier: Modifier = Modifier) {
     Column(
         modifier = modifier
             .clip(RoundedCornerShape(12.dp))
@@ -559,7 +534,6 @@ private fun HcStatPill(emoji: String, value: String, label: String, modifier: Mo
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.spacedBy(2.dp),
     ) {
-        Text(emoji, fontSize = 16.sp)
         Text(value, fontSize = 14.sp, fontWeight = FontWeight.Bold, color = OnSurface)
         Text(label, fontSize = 9.sp, color = OnSurfaceVariant, letterSpacing = 0.5.sp)
     }

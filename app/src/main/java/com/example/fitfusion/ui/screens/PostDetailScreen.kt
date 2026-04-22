@@ -37,7 +37,7 @@ fun PantallaPostDetail(
     Box(modifier = Modifier.fillMaxSize().background(Surface)) {
         Column(modifier = Modifier.fillMaxSize().verticalScroll(rememberScrollState())) {
             TopAppBar(
-                title = { Text("FitSocial", fontWeight = FontWeight.Black, fontSize = 20.sp, color = Primary) },
+                title = { Text("FitFusion", fontWeight = FontWeight.Black, fontSize = 20.sp, color = Primary) },
                 navigationIcon = { IconButton(onClick = { navController.popBackStack() }) { Icon(Icons.AutoMirrored.Filled.ArrowBack, "Atrás") } },
                 actions = {
                     IconButton(onClick = { }) { Icon(Icons.Default.Share, "Compartir") }
@@ -106,7 +106,6 @@ fun PantallaPostDetail(
                     Text(state.commentCount, fontWeight = FontWeight.SemiBold, fontSize = 14.sp)
                 }
                 Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-                    Text("⚡", fontSize = 16.sp)
                     Text(state.energyCount, fontWeight = FontWeight.SemiBold, fontSize = 14.sp)
                 }
             }
@@ -121,8 +120,8 @@ fun PantallaPostDetail(
                 modifier = Modifier.fillMaxWidth().padding(horizontal = 24.dp),
                 horizontalArrangement = Arrangement.spacedBy(12.dp)
             ) {
-                StatCard("FRECUENCIA CARDÍACA MEDIA", state.avgHeartRate, "PPM", "❤️", Modifier.weight(1f))
-                StatCard("CALORÍAS QUEMADAS", state.caloriesBurned, "KCAL", "\uD83D\uDD25", Modifier.weight(1f))
+                StatCard("FRECUENCIA CARDÍACA MEDIA", state.avgHeartRate, "PPM", "", Modifier.weight(1f))
+                StatCard("CALORÍAS QUEMADAS", state.caloriesBurned, "KCAL", "", Modifier.weight(1f))
             }
 
             Column(modifier = Modifier.padding(horizontal = 24.dp, vertical = 24.dp)) {

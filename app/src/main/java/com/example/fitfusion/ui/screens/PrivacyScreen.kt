@@ -58,7 +58,6 @@ fun PantallaPrivacy(
         ) {
             Spacer(modifier = Modifier.height(8.dp))
 
-            // Visibilidad
             PrivacySectionHeader("VISIBILIDAD")
             Card(
                 shape = RoundedCornerShape(20.dp),
@@ -101,7 +100,6 @@ fun PantallaPrivacy(
 
             Spacer(modifier = Modifier.height(24.dp))
 
-            // Interacciones
             PrivacySectionHeader("INTERACCIONES")
             Card(
                 shape = RoundedCornerShape(20.dp),
@@ -144,7 +142,6 @@ fun PantallaPrivacy(
 
             Spacer(modifier = Modifier.height(24.dp))
 
-            // Usuarios bloqueados
             PrivacySectionHeader("USUARIOS BLOQUEADOS")
             Card(
                 shape = RoundedCornerShape(20.dp),

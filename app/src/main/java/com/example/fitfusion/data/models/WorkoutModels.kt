@@ -38,6 +38,11 @@ data class UserPost(
     val workoutEmoji: String? = null,
     val workoutDurationMinutes: Int? = null,
     val workoutKcal: Int?     = null,
-    val nutritionKcal: Int?   = null,
+    val nutritionPhotoUri: String?       = null,
+    val nutritionKcal: Int?              = null,
+    val nutritionIngredients: String?    = null,
+    val nutritionInstructions: String?   = null,
+    val nutritionCookTimeMinutes: Int?   = null,
+    val nutritionBestMoment: String?     = null,
     val timestamp: Long       = System.currentTimeMillis(),
 )

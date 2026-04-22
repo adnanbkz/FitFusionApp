@@ -20,16 +20,25 @@ data class Serving(
     val grams: Float
 )
 
-enum class MealSlotType(val emoji: String, val label: String) {
-    BREAKFAST("☀️", "Desayuno"),
-    MORNING_SNACK("🍎", "Media mañana"),
-    LUNCH("🍴", "Almuerzo"),
-    AFTERNOON_SNACK("🍫", "Merienda"),
-    DINNER("🌙", "Cena"),
-    EVENING_SNACK("🌛", "Snack noche");
-
+data class MealSlot(
+    val id: String,
+    val name: String,
+    val isCustom: Boolean = false
+) {
     companion object {
-        fun fromCurrentHour(): MealSlotType {
+        val BREAKFAST       = MealSlot("breakfast",       "Desayuno")
+        val MORNING_SNACK   = MealSlot("morning_snack",   "Media mañana")
+        val LUNCH           = MealSlot("lunch",           "Almuerzo")
+        val AFTERNOON_SNACK = MealSlot("afternoon_snack", "Merienda")
+        val DINNER          = MealSlot("dinner",          "Cena")
+        val EVENING_SNACK   = MealSlot("evening_snack",   "Snack noche")
+
+        val PREDEFINED = listOf(BREAKFAST, MORNING_SNACK, LUNCH, AFTERNOON_SNACK, DINNER, EVENING_SNACK)
+        val DEFAULT    = listOf(BREAKFAST, LUNCH, DINNER)
+
+        fun predefinedById(id: String): MealSlot? = PREDEFINED.find { it.id == id }
+
+        fun fromCurrentHour(): MealSlot {
             val hour = java.time.LocalTime.now().hour
             return when (hour) {
                 in 6..9   -> BREAKFAST
@@ -43,37 +52,12 @@ enum class MealSlotType(val emoji: String, val label: String) {
     }
 }
 
-data class MealConfig(
-    val activeSlots: List<MealSlotType> = listOf(
-        MealSlotType.BREAKFAST,
-        MealSlotType.LUNCH,
-        MealSlotType.DINNER
-    )
-) {
-    companion object {
-        fun forCount(count: Int): MealConfig = when (count) {
-            3 -> MealConfig(listOf(
-                MealSlotType.BREAKFAST, MealSlotType.LUNCH, MealSlotType.DINNER
-            ))
-            4 -> MealConfig(listOf(
-                MealSlotType.BREAKFAST, MealSlotType.MORNING_SNACK,
-                MealSlotType.LUNCH, MealSlotType.DINNER
-            ))
-            5 -> MealConfig(listOf(
-                MealSlotType.BREAKFAST, MealSlotType.MORNING_SNACK,
-                MealSlotType.LUNCH, MealSlotType.AFTERNOON_SNACK, MealSlotType.DINNER
-            ))
-            else -> MealConfig(MealSlotType.entries)
-        }
-    }
-}
-
 data class LoggedFood(
     val id: String = java.util.UUID.randomUUID().toString(),
     val food: Food,
     val serving: Serving,
     val quantity: Int,
-    val mealSlot: MealSlotType,
+    val mealSlot: MealSlot,
     val date: LocalDate = LocalDate.now()
 ) {
     val kcal:    Int get() = (food.kcalPer100g    * serving.grams * quantity / 100f).toInt()
@@ -84,6 +68,7 @@ data class LoggedFood(
 
 data class DayLog(
     val date: LocalDate,
+    val meals: List<MealSlot> = MealSlot.DEFAULT,
     val entries: List<LoggedFood> = emptyList(),
     val kcalGoal: Int = 2000
 ) {
@@ -91,7 +76,7 @@ data class DayLog(
     val totalProtein: Int get() = entries.sumOf { it.protein }
     val totalCarbs:   Int get() = entries.sumOf { it.carbs }
     val totalFat:     Int get() = entries.sumOf { it.fat }
-    val byMeal: Map<MealSlotType, List<LoggedFood>> get() = entries.groupBy { it.mealSlot }
+    val byMeal: Map<MealSlot, List<LoggedFood>> get() = entries.groupBy { it.mealSlot }
     val progress: Float get() = (totalKcal.toFloat() / kcalGoal).coerceIn(0f, 1f)
     val isOnTrack: Boolean
         get() = entries.isNotEmpty() && totalKcal in (kcalGoal * 0.85).toInt()..(kcalGoal * 1.1).toInt()

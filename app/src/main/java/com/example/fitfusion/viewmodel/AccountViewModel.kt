@@ -9,7 +9,7 @@ import kotlinx.coroutines.flow.update
 data class AccountUiState(
     val displayName: String = "Alex Rivera",
     val username: String = "@alex.fit",
-    val email: String = "alex.fit@kinetic.app",
+    val email: String = "alex.fit@fitfusion.app",
     val bio: String = "Entusiasta del fitness. 🏃 Correr • Fuerza • Nutrición",
     val currentPassword: String = "",
     val newPassword: String = "",

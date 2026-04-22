@@ -28,7 +28,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavHostController
 import com.example.fitfusion.data.models.DayLog
-import com.example.fitfusion.data.models.MealSlotType
+import com.example.fitfusion.data.models.MealSlot
 import com.example.fitfusion.data.models.WeekSummary
 import com.example.fitfusion.data.repository.FoodRepository
 import com.example.fitfusion.ui.theme.*
@@ -42,7 +42,6 @@ import java.time.format.DateTimeFormatter
 import java.time.temporal.TemporalAdjusters
 import java.util.Locale
 
-// ── ViewModel ─────────────────────────────────────────────────────────────────
 
 data class WeeklyLogUiState(
     val weekStart: LocalDate = LocalDate.now().with(TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY)),
@@ -93,7 +92,6 @@ class WeeklyLogViewModel : ViewModel() {
     }
 }
 
-// ── Pantalla ──────────────────────────────────────────────────────────────────
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -126,7 +124,6 @@ fun PantallaWeeklyLog(
             verticalArrangement = Arrangement.spacedBy(16.dp),
             contentPadding = PaddingValues(bottom = 32.dp, top = 4.dp)
         ) {
-            // ── Navegador de semana ───────────────────────────────────────────
             item {
                 Row(
                     modifier = Modifier.fillMaxWidth(),
@@ -154,7 +151,6 @@ fun PantallaWeeklyLog(
                 }
             }
 
-            // ── Gráfico de barras ─────────────────────────────────────────────
             item {
                 Card(
                     shape  = RoundedCornerShape(20.dp),
@@ -177,7 +173,6 @@ fun PantallaWeeklyLog(
                 }
             }
 
-            // ── Tarjeta resumen ───────────────────────────────────────────────
             item {
                 Card(
                     shape  = RoundedCornerShape(20.dp),
@@ -207,7 +202,6 @@ fun PantallaWeeklyLog(
                 }
             }
 
-            // ── Desglose por día ──────────────────────────────────────────────
             item {
                 Text(
                     "DESGLOSE POR DÍA",
@@ -232,7 +226,6 @@ fun PantallaWeeklyLog(
     }
 }
 
-// ── Componentes ───────────────────────────────────────────────────────────────
 
 @Composable
 private fun WeekBarChart(
@@ -263,7 +256,6 @@ private fun WeekBarChart(
                 horizontalAlignment = Alignment.CenterHorizontally,
                 modifier = Modifier.clickable(enabled = !isFuture) { onDayTap(date) }
             ) {
-                // Kcal label
                 if (dayLog.entries.isNotEmpty()) {
                     Text(
                         "${dayLog.totalKcal}",
@@ -275,7 +267,6 @@ private fun WeekBarChart(
                 } else {
                     Spacer(Modifier.height(18.dp))
                 }
-                // Barra
                 Box(
                     modifier = Modifier
                         .width(24.dp)
@@ -292,7 +283,6 @@ private fun WeekBarChart(
                             }
                         )
                 )
-                // Día
                 Text(
                     dayLabels[idx],
                     fontSize   = 11.sp,
@@ -305,7 +295,6 @@ private fun WeekBarChart(
                     },
                     modifier = Modifier.padding(top = 6.dp)
                 )
-                // Indicador objetivo
                 if (dayLog.isOnTrack) {
                     Box(
                         modifier = Modifier
@@ -321,7 +310,6 @@ private fun WeekBarChart(
         }
     }
 
-    // Línea de objetivo
     Spacer(Modifier.height(8.dp))
     Row(
         modifier = Modifier.fillMaxWidth(),
@@ -426,7 +414,6 @@ private fun DayLogRow(
                 }
             }
 
-            // Detalle expandible
             AnimatedVisibility(
                 visible = isExpanded && dayLog.entries.isNotEmpty(),
                 enter   = expandVertically(),
@@ -437,11 +424,11 @@ private fun DayLogRow(
                         color    = OutlineVariant.copy(alpha = 0.3f),
                         modifier = Modifier.padding(bottom = 10.dp)
                     )
-                    MealSlotType.entries.forEach { slot ->
+                    dayLog.meals.forEach { slot ->
                         val slotEntries = dayLog.byMeal[slot]
                         if (!slotEntries.isNullOrEmpty()) {
                             Text(
-                                "${slot.emoji} ${slot.label}",
+                                slot.name,
                                 fontSize   = 12.sp,
                                 fontWeight = FontWeight.SemiBold,
                                 color      = OnSurfaceVariant,
@@ -454,7 +441,7 @@ private fun DayLogRow(
                                     verticalAlignment = Alignment.CenterVertically
                                 ) {
                                     Text(
-                                        "${logged.food.emoji} ${logged.food.name}",
+                                        logged.food.name,
                                         fontSize = 13.sp, color = OnSurface,
                                         modifier = Modifier.weight(1f)
                                     )

@@ -82,7 +82,6 @@ fun PantallaHelpSupport(
         ) {
             Spacer(modifier = Modifier.height(8.dp))
 
-            // Banner de contacto rápido
             Card(
                 shape = RoundedCornerShape(20.dp),
                 colors = CardDefaults.cardColors(
@@ -97,7 +96,6 @@ fun PantallaHelpSupport(
                     modifier = Modifier.padding(20.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Text("🎧", fontSize = 36.sp)
                     Spacer(modifier = Modifier.width(16.dp))
                     Column(modifier = Modifier.weight(1f)) {
                         Text(
@@ -125,7 +123,6 @@ fun PantallaHelpSupport(
 
             Spacer(modifier = Modifier.height(24.dp))
 
-            // FAQ
             HelpSectionHeader("PREGUNTAS FRECUENTES")
             Card(
                 shape = RoundedCornerShape(20.dp),
@@ -148,7 +145,6 @@ fun PantallaHelpSupport(
 
             Spacer(modifier = Modifier.height(24.dp))
 
-            // Soporte
             HelpSectionHeader("SOPORTE")
             Card(
                 shape = RoundedCornerShape(20.dp),
@@ -160,7 +156,7 @@ fun PantallaHelpSupport(
                     HelpLinkRow(
                         icon = Icons.Default.Email,
                         title = "Enviar un correo de soporte",
-                        subtitle = "support@kinetic.app"
+                        subtitle = "support@fitfusion.app"
                     )
                     HorizontalDivider(
                         modifier = Modifier.padding(horizontal = 20.dp),
@@ -178,14 +174,13 @@ fun PantallaHelpSupport(
                     HelpLinkRow(
                         icon = Icons.Default.Notifications,
                         title = "Novedades y actualizaciones",
-                        subtitle = "Consulta las últimas mejoras de Kinetic"
+                        subtitle = "Consulta las últimas mejoras de FitFusion"
                     )
                 }
             }
 
             Spacer(modifier = Modifier.height(24.dp))
 
-            // Legal
             HelpSectionHeader("LEGAL")
             Card(
                 shape = RoundedCornerShape(20.dp),
@@ -223,7 +218,7 @@ fun PantallaHelpSupport(
             Spacer(modifier = Modifier.height(16.dp))
 
             Text(
-                "VERSION 4.2.0-ALPHA • KINETIC LABS",
+                "VERSION 4.2.0-ALPHA • FITFUSION",
                 fontSize = 11.sp,
                 letterSpacing = 1.sp,
                 color = OnSurfaceVariant,

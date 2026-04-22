@@ -10,7 +10,6 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Clear
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.*
@@ -29,9 +28,11 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavHostController
 import com.example.fitfusion.R
 import com.example.fitfusion.data.models.Food
-import com.example.fitfusion.data.models.MealSlotType
+import com.example.fitfusion.data.models.MealSlot
 import com.example.fitfusion.data.models.Recipe
 import com.example.fitfusion.data.models.Serving
+import com.example.fitfusion.data.repository.FoodRepository
+import java.time.LocalDate
 import com.example.fitfusion.ui.theme.*
 import com.example.fitfusion.viewmodel.AddFoodViewModel
 import com.example.fitfusion.viewmodel.FoodTab
@@ -45,8 +46,10 @@ fun PantallaAddFood(
 ) {
     val state by addFoodViewModel.uiState.collectAsState()
     val resolvedSlot = remember(initialMealSlot) {
-        initialMealSlot?.let { runCatching { MealSlotType.valueOf(it) }.getOrNull() }
-            ?: MealSlotType.fromCurrentHour()
+        initialMealSlot?.let { id ->
+            MealSlot.predefinedById(id)
+                ?: FoodRepository.getDayLog(LocalDate.now()).meals.find { it.id == id }
+        } ?: MealSlot.fromCurrentHour()
     }
 
     LaunchedEffect(resolvedSlot) {
@@ -63,7 +66,7 @@ fun PantallaAddFood(
             TopAppBar(
                 title = {
                     Text(
-                        "Añadir a ${state.activeMealSlot.label}",
+                        "Añadir a ${state.activeMealSlot.name}",
                         fontWeight = FontWeight.Bold,
                         fontSize = 17.sp
                     )
@@ -94,7 +97,6 @@ fun PantallaAddFood(
                 .fillMaxSize()
                 .padding(innerPadding)
         ) {
-            // ── Tab bar ───────────────────────────────────────────────────────
             TabRow(
                 selectedTabIndex = state.activeTab.ordinal,
                 containerColor   = Surface,
@@ -140,15 +142,13 @@ fun PantallaAddFood(
                     viewModel  = addFoodViewModel,
                 )
                 FoodTab.RECETAS -> RecetasContent(
-                    state      = state,
-                    viewModel  = addFoodViewModel,
-                    navController = navController,
+                    state     = state,
+                    viewModel = addFoodViewModel,
                 )
             }
         }
     }
 
-    // ── BottomSheet: alimento individual ─────────────────────────────────────
     if (state.selectedFood != null) {
         val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
         ModalBottomSheet(
@@ -162,7 +162,7 @@ fun PantallaAddFood(
                 selectedServing = state.selectedServing ?: state.selectedFood!!.servingOptions.first(),
                 quantity        = state.quantity,
                 sheetMealSlot   = state.sheetMealSlot,
-                activeMealSlots = state.mealConfig.activeSlots,
+                activeMealSlots = state.availableSlots,
                 onSelectServing = addFoodViewModel::selectServing,
                 onIncrement     = addFoodViewModel::incrementQuantity,
                 onDecrement     = addFoodViewModel::decrementQuantity,
@@ -175,7 +175,6 @@ fun PantallaAddFood(
         }
     }
 
-    // ── BottomSheet: receta ───────────────────────────────────────────────────
     if (state.selectedRecipe != null) {
         val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
         ModalBottomSheet(
@@ -187,7 +186,7 @@ fun PantallaAddFood(
             RecipeDetailSheet(
                 recipe          = state.selectedRecipe!!,
                 sheetMealSlot   = state.recipeSheetMealSlot,
-                activeMealSlots = state.mealConfig.activeSlots,
+                activeMealSlots = state.availableSlots,
                 onSelectSlot    = addFoodViewModel::selectRecipeSheetMealSlot,
                 onConfirm       = {
                     addFoodViewModel.confirmAddRecipe()
@@ -198,7 +197,6 @@ fun PantallaAddFood(
     }
 }
 
-// ── Pestaña ALIMENTOS ─────────────────────────────────────────────────────────
 
 @Composable
 private fun AlimentosContent(
@@ -209,7 +207,6 @@ private fun AlimentosContent(
         modifier = Modifier.fillMaxSize(),
         contentPadding = PaddingValues(bottom = 32.dp)
     ) {
-        // Buscador
         item {
             OutlinedTextField(
                 value         = state.searchQuery,
@@ -238,7 +235,6 @@ private fun AlimentosContent(
         }
 
         if (state.searchQuery.isBlank()) {
-            // Favoritos
             item {
                 SectionLabel("FAVORITOS", modifier = Modifier.padding(start = 16.dp, top = 8.dp, bottom = 8.dp))
             }
@@ -258,10 +254,9 @@ private fun AlimentosContent(
                 Spacer(Modifier.height(16.dp))
             }
 
-            // Frecuentes en esta comida
             item {
                 SectionLabel(
-                    "FRECUENTES EN ${state.activeMealSlot.label.uppercase()}",
+                    "FRECUENTES EN ${state.activeMealSlot.name.uppercase()}",
                     modifier = Modifier.padding(start = 16.dp, bottom = 8.dp)
                 )
             }
@@ -273,7 +268,6 @@ private fun AlimentosContent(
                 )
             }
 
-            // Recientes
             item {
                 Spacer(Modifier.height(8.dp))
                 SectionLabel("RECIENTES", modifier = Modifier.padding(start = 16.dp, bottom = 8.dp))
@@ -286,7 +280,6 @@ private fun AlimentosContent(
                 )
             }
         } else {
-            // Resultados de búsqueda
             if (state.searchResults.isEmpty()) {
                 item {
                     Box(
@@ -322,34 +315,17 @@ private fun AlimentosContent(
     }
 }
 
-// ── Pestaña RECETAS ───────────────────────────────────────────────────────────
 
 @Composable
 private fun RecetasContent(
     state: com.example.fitfusion.viewmodel.AddFoodUiState,
     viewModel: AddFoodViewModel,
-    navController: NavHostController,
 ) {
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
         contentPadding = PaddingValues(horizontal = 16.dp, vertical = 12.dp),
         verticalArrangement = Arrangement.spacedBy(10.dp)
     ) {
-        // Botón "Nueva receta"
-        item {
-            OutlinedButton(
-                onClick = { navController.navigate(Screens.CreateRecipeScreen.name) },
-                modifier = Modifier.fillMaxWidth().height(48.dp),
-                shape  = RoundedCornerShape(14.dp),
-                border = androidx.compose.foundation.BorderStroke(1.5.dp, Primary),
-                colors = ButtonDefaults.outlinedButtonColors(contentColor = Primary)
-            ) {
-                Icon(Icons.Default.Add, contentDescription = null, modifier = Modifier.size(18.dp))
-                Spacer(Modifier.width(8.dp))
-                Text("Nueva receta", fontWeight = FontWeight.SemiBold, fontSize = 15.sp)
-            }
-        }
-
         when {
             state.isLoadingRecipes -> {
                 item {
@@ -368,7 +344,6 @@ private fun RecetasContent(
                         horizontalAlignment = Alignment.CenterHorizontally,
                         verticalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
-                        Text("🍽️", fontSize = 36.sp)
                         Text("Sin recetas", fontWeight = FontWeight.SemiBold, fontSize = 16.sp, color = OnSurface)
                         Text(
                             "Crea tu primera receta con ingredientes\nde la base de datos",
@@ -397,7 +372,6 @@ private fun RecetasContent(
     }
 }
 
-// ── Componentes ───────────────────────────────────────────────────────────────
 
 @Composable
 private fun SectionLabel(text: String, modifier: Modifier = Modifier) {
@@ -539,19 +513,18 @@ private fun RecipeCard(recipe: Recipe, onTap: () -> Unit) {
     }
 }
 
-// ── FoodDetailSheet (internal para reutilizar en TrackingScreen) ──────────────
 
 @Composable
 internal fun FoodDetailSheet(
     food: Food,
     selectedServing: Serving,
     quantity: Int,
-    sheetMealSlot: MealSlotType,
-    activeMealSlots: List<MealSlotType>,
+    sheetMealSlot: MealSlot,
+    activeMealSlots: List<MealSlot>,
     onSelectServing: (Serving) -> Unit,
     onIncrement: () -> Unit,
     onDecrement: () -> Unit,
-    onSelectSlot: (MealSlotType) -> Unit,
+    onSelectSlot: (MealSlot) -> Unit,
     onConfirm: () -> Unit,
     confirmLabel: String = "Añadir al registro",
 ) {
@@ -567,7 +540,6 @@ internal fun FoodDetailSheet(
             .padding(bottom = 32.dp),
         verticalArrangement = Arrangement.spacedBy(20.dp)
     ) {
-        // Cabecera
         Row(
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(12.dp)
@@ -587,7 +559,6 @@ internal fun FoodDetailSheet(
 
         HorizontalDivider(color = OutlineVariant.copy(alpha = 0.3f))
 
-        // Selector de porción
         Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
             Text("PORCIÓN", fontSize = 11.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.5.sp, color = Primary)
             LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -607,7 +578,6 @@ internal fun FoodDetailSheet(
             }
         }
 
-        // Selector de cantidad
         Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
             Text("CANTIDAD", fontSize = 11.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.5.sp, color = Primary)
             Row(
@@ -642,7 +612,6 @@ internal fun FoodDetailSheet(
             }
         }
 
-        // Resumen nutricional
         Card(
             shape  = RoundedCornerShape(16.dp),
             colors = CardDefaults.cardColors(containerColor = SurfaceContainerLow),
@@ -662,7 +631,6 @@ internal fun FoodDetailSheet(
             }
         }
 
-        // Selector de comida
         Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
             Text("AÑADIR A", fontSize = 11.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.5.sp, color = Primary)
             LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -671,7 +639,7 @@ internal fun FoodDetailSheet(
                     FilterChip(
                         selected = selected,
                         onClick  = { onSelectSlot(slot) },
-                        label    = { Text("${slot.emoji} ${slot.label}", fontSize = 13.sp) },
+                        label    = { Text(slot.name, fontSize = 13.sp) },
                         colors   = FilterChipDefaults.filterChipColors(
                             selectedContainerColor = PrimaryContainer.copy(alpha = 0.15f),
                             selectedLabelColor     = Primary,
@@ -682,7 +650,6 @@ internal fun FoodDetailSheet(
             }
         }
 
-        // Botón confirmar
         Button(
             onClick  = onConfirm,
             modifier = Modifier.fillMaxWidth().height(52.dp),
@@ -712,14 +679,13 @@ internal fun NutritionStatDivider() {
     )
 }
 
-// ── RecipeDetailSheet ─────────────────────────────────────────────────────────
 
 @Composable
 private fun RecipeDetailSheet(
     recipe: Recipe,
-    sheetMealSlot: MealSlotType,
-    activeMealSlots: List<MealSlotType>,
-    onSelectSlot: (MealSlotType) -> Unit,
+    sheetMealSlot: MealSlot,
+    activeMealSlots: List<MealSlot>,
+    onSelectSlot: (MealSlot) -> Unit,
     onConfirm: () -> Unit,
 ) {
     Column(
@@ -729,7 +695,6 @@ private fun RecipeDetailSheet(
             .padding(bottom = 32.dp),
         verticalArrangement = Arrangement.spacedBy(20.dp)
     ) {
-        // Cabecera
         Row(
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(12.dp)
@@ -756,7 +721,6 @@ private fun RecipeDetailSheet(
 
         HorizontalDivider(color = OutlineVariant.copy(alpha = 0.3f))
 
-        // Lista de ingredientes
         Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
             Text("INGREDIENTES", fontSize = 11.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.5.sp, color = Primary)
             recipe.ingredients.forEach { ingredient ->
@@ -788,7 +752,6 @@ private fun RecipeDetailSheet(
             }
         }
 
-        // Totales nutricionales
         Card(
             shape  = RoundedCornerShape(16.dp),
             colors = CardDefaults.cardColors(containerColor = SurfaceContainerLow),
@@ -808,7 +771,6 @@ private fun RecipeDetailSheet(
             }
         }
 
-        // Selector de comida
         Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
             Text("AÑADIR A", fontSize = 11.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.5.sp, color = Primary)
             LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -817,7 +779,7 @@ private fun RecipeDetailSheet(
                     FilterChip(
                         selected = selected,
                         onClick  = { onSelectSlot(slot) },
-                        label    = { Text("${slot.emoji} ${slot.label}", fontSize = 13.sp) },
+                        label    = { Text(slot.name, fontSize = 13.sp) },
                         colors   = FilterChipDefaults.filterChipColors(
                             selectedContainerColor = PrimaryContainer.copy(alpha = 0.15f),
                             selectedLabelColor     = Primary,
@@ -828,7 +790,6 @@ private fun RecipeDetailSheet(
             }
         }
 
-        // Botón confirmar
         Button(
             onClick  = onConfirm,
             modifier = Modifier.fillMaxWidth().height(52.dp),

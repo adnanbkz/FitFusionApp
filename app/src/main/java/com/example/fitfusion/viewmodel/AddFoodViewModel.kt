@@ -15,23 +15,20 @@ enum class FoodTab { ALIMENTOS, RECETAS }
 
 data class AddFoodUiState(
     val activeTab: FoodTab = FoodTab.ALIMENTOS,
-    val activeMealSlot: MealSlotType = MealSlotType.fromCurrentHour(),
-    val mealConfig: MealConfig = MealConfig(),
+    val activeMealSlot: MealSlot = MealSlot.fromCurrentHour(),
+    val availableSlots: List<MealSlot> = MealSlot.DEFAULT,
     val searchQuery: String = "",
     val searchResults: List<Food> = emptyList(),
-    // BottomSheet alimento individual
     val selectedFood: Food? = null,
     val selectedServing: Serving? = null,
     val quantity: Int = 1,
-    val sheetMealSlot: MealSlotType = MealSlotType.fromCurrentHour(),
-    // Listas rápidas (catálogo local de fallback)
+    val sheetMealSlot: MealSlot = MealSlot.fromCurrentHour(),
     val favorites: List<Food> = emptyList(),
     val recents: List<Food> = emptyList(),
-    // Recetas
     val recipes: List<Recipe> = emptyList(),
     val isLoadingRecipes: Boolean = false,
     val selectedRecipe: Recipe? = null,
-    val recipeSheetMealSlot: MealSlotType = MealSlotType.fromCurrentHour(),
+    val recipeSheetMealSlot: MealSlot = MealSlot.fromCurrentHour(),
 )
 
 @OptIn(FlowPreview::class)
@@ -42,20 +39,20 @@ class AddFoodViewModel : ViewModel() {
 
     private val _uiState = MutableStateFlow(
         AddFoodUiState(
-            favorites  = FoodRepository.favorites,
-            recents    = FoodRepository.recents,
-            mealConfig = FoodRepository.mealConfig.value,
+            favorites      = FoodRepository.favorites,
+            recents        = FoodRepository.recents,
+            availableSlots = FoodRepository.getDayLog(LocalDate.now()).meals,
         )
     )
     val uiState: StateFlow<AddFoodUiState> = _uiState.asStateFlow()
 
     init {
         viewModelScope.launch {
-            FoodRepository.mealConfig.collect { config ->
-                _uiState.update { it.copy(mealConfig = config) }
+            FoodRepository.dayLogs.collect { logs ->
+                val slots = logs[LocalDate.now()]?.meals ?: MealSlot.DEFAULT
+                _uiState.update { it.copy(availableSlots = slots) }
             }
         }
-        // Búsqueda con debounce → Firestore
         viewModelScope.launch {
             _uiState
                 .map { it.searchQuery }
@@ -80,15 +77,11 @@ class AddFoodViewModel : ViewModel() {
         }
     }
 
-    // ── Tabs ──────────────────────────────────────────────────────────────────
-
     fun setActiveTab(tab: FoodTab) {
         _uiState.update { it.copy(activeTab = tab) }
     }
 
-    // ── Alimentos ─────────────────────────────────────────────────────────────
-
-    fun setActiveMealSlot(slot: MealSlotType) {
+    fun setActiveMealSlot(slot: MealSlot) {
         _uiState.update { it.copy(activeMealSlot = slot, sheetMealSlot = slot, recipeSheetMealSlot = slot) }
     }
 
@@ -100,7 +93,7 @@ class AddFoodViewModel : ViewModel() {
         _uiState.update { it.copy(searchQuery = "", searchResults = emptyList()) }
     }
 
-    fun openSheet(food: Food, preselectedSlot: MealSlotType) {
+    fun openSheet(food: Food, preselectedSlot: MealSlot) {
         _uiState.update {
             it.copy(
                 selectedFood    = food,
@@ -127,7 +120,7 @@ class AddFoodViewModel : ViewModel() {
         _uiState.update { it.copy(quantity = (it.quantity - 1).coerceAtLeast(1)) }
     }
 
-    fun selectSheetMealSlot(slot: MealSlotType) {
+    fun selectSheetMealSlot(slot: MealSlot) {
         _uiState.update { it.copy(sheetMealSlot = slot) }
     }
 
@@ -147,8 +140,6 @@ class AddFoodViewModel : ViewModel() {
         dismissSheet()
     }
 
-    // ── Recetas ───────────────────────────────────────────────────────────────
-
     fun loadRecipes() {
         if (_uiState.value.isLoadingRecipes) return
         _uiState.update { it.copy(isLoadingRecipes = true) }
@@ -162,7 +153,7 @@ class AddFoodViewModel : ViewModel() {
         )
     }
 
-    fun openRecipeSheet(recipe: Recipe, preselectedSlot: MealSlotType) {
+    fun openRecipeSheet(recipe: Recipe, preselectedSlot: MealSlot) {
         _uiState.update { it.copy(selectedRecipe = recipe, recipeSheetMealSlot = preselectedSlot) }
     }
 
@@ -170,7 +161,7 @@ class AddFoodViewModel : ViewModel() {
         _uiState.update { it.copy(selectedRecipe = null) }
     }
 
-    fun selectRecipeSheetMealSlot(slot: MealSlotType) {
+    fun selectRecipeSheetMealSlot(slot: MealSlot) {
         _uiState.update { it.copy(recipeSheetMealSlot = slot) }
     }
 

@@ -117,7 +117,6 @@ fun PantallaCreateExercise(
             )
         }
 
-        // ── Foto ──────────────────────────────────────────────────────────
         item {
             PhotoPickerSection(
                 uri = state.photoUri,
@@ -128,7 +127,6 @@ fun PantallaCreateExercise(
             Spacer(modifier = Modifier.height(12.dp))
         }
 
-        // ── Nombre ────────────────────────────────────────────────────────
         item {
             CreateSection(title = "Información básica") {
                 OutlinedTextField(
@@ -149,7 +147,6 @@ fun PantallaCreateExercise(
             Spacer(modifier = Modifier.height(12.dp))
         }
 
-        // ── Músculos ──────────────────────────────────────────────────────
         item {
             CreateSection(title = "Músculos") {
                 MuscleDropdownRow(
@@ -208,7 +205,6 @@ fun PantallaCreateExercise(
             Spacer(modifier = Modifier.height(12.dp))
         }
 
-        // ── Equipamiento ──────────────────────────────────────────────────
         item {
             EquipmentSection(
                 selected = state.selectedEquipment,
@@ -217,7 +213,6 @@ fun PantallaCreateExercise(
             Spacer(modifier = Modifier.height(24.dp))
         }
 
-        // ── Botón guardar ─────────────────────────────────────────────────
         item {
             SaveButton(
                 isValid = state.isValid,
@@ -229,7 +224,6 @@ fun PantallaCreateExercise(
     }
 }
 
-// ── Secciones ──────────────────────────────────────────────────────────────────
 
 @Composable
 private fun PhotoPickerSection(

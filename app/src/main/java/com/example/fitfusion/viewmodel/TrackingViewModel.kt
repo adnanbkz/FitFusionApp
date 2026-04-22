@@ -15,7 +15,7 @@ data class EditFoodState(
     val loggedFood: LoggedFood,
     val selectedServing: Serving,
     val quantity: Int,
-    val mealSlot: MealSlotType,
+    val mealSlot: MealSlot,
 )
 
 data class TrackingUiState(
@@ -25,22 +25,24 @@ data class TrackingUiState(
         LocalDate.now().with(TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY)),
         emptyList()
     ),
-    val mealConfig: MealConfig = MealConfig(),
-    val expandedMeals: Set<MealSlotType> = setOf(MealSlotType.fromCurrentHour()),
-    val showMealConfigDialog: Boolean = false,
+    val expandedMeals: Set<String> = setOf(MealSlot.fromCurrentHour().id),
+    val showAddMealDialog: Boolean = false,
+    val addMealName: String = "",
+    val showRenameMealDialog: Boolean = false,
+    val renameMealId: String = "",
+    val renameMealName: String = "",
     val workouts: List<LoggedWorkout> = emptyList(),
     val editFoodState: EditFoodState? = null,
-    // Objetivos nutricionales (estáticos por ahora)
     val proteinGoal: Int = 160,
     val carbsGoal:   Int = 210,
     val fatsGoal:    Int = 65,
-    val aiTip: String = "Llevas el 60% del objetivo proteico. Un batido post-entreno te ayudaría a cerrarlo.",
+    val aiTip: String = "Llevas el 60% del objetivo proteico. Un batido post-entreno te ayudaria a cerrarlo.",
 ) {
-    val kcalGoal:   Int   get() = dayLog.kcalGoal
-    val kcalEaten:  Int   get() = dayLog.totalKcal
-    val kcalBurned: Int   get() = workouts.sumOf { it.kcalBurned }
-    val kcalNet:    Int   get() = (kcalEaten - kcalBurned).coerceAtLeast(0)
-    val kcalLeft:   Int   get() = (kcalGoal - kcalNet).coerceAtLeast(0)
+    val kcalGoal:    Int   get() = dayLog.kcalGoal
+    val kcalEaten:   Int   get() = dayLog.totalKcal
+    val kcalBurned:  Int   get() = workouts.sumOf { it.kcalBurned }
+    val kcalNet:     Int   get() = (kcalEaten - kcalBurned).coerceAtLeast(0)
+    val kcalLeft:    Int   get() = (kcalGoal - kcalNet).coerceAtLeast(0)
     val netProgress: Float get() = (kcalNet.toFloat() / kcalGoal.toFloat()).coerceIn(0f, 1f)
 }
 
@@ -53,17 +55,15 @@ class TrackingViewModel : ViewModel() {
         viewModelScope.launch {
             combine(
                 FoodRepository.dayLogs,
-                FoodRepository.mealConfig,
                 WorkoutRepository.workouts,
-            ) { logs, config, workoutMap -> Triple(logs, config, workoutMap) }
-                .collect { (logs, config, workoutMap) ->
+            ) { logs, workoutMap -> Pair(logs, workoutMap) }
+                .collect { (logs, workoutMap) ->
                     val date      = _uiState.value.selectedDate
                     val weekStart = date.with(TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY))
                     _uiState.update { current ->
                         current.copy(
                             dayLog      = logs[date] ?: DayLog(date),
                             weekSummary = FoodRepository.getWeekSummary(weekStart),
-                            mealConfig  = config,
                             workouts    = workoutMap[date] ?: emptyList(),
                         )
                     }
@@ -83,10 +83,10 @@ class TrackingViewModel : ViewModel() {
         }
     }
 
-    fun toggleMeal(slot: MealSlotType) {
+    fun toggleMeal(mealId: String) {
         _uiState.update {
             val expanded = it.expandedMeals.toMutableSet()
-            if (slot in expanded) expanded.remove(slot) else expanded.add(slot)
+            if (mealId in expanded) expanded.remove(mealId) else expanded.add(mealId)
             it.copy(expandedMeals = expanded)
         }
     }
@@ -95,24 +95,52 @@ class TrackingViewModel : ViewModel() {
         FoodRepository.removeFood(id, _uiState.value.selectedDate)
     }
 
-    fun removeWorkout(id: String) {
-        WorkoutRepository.removeWorkout(id, _uiState.value.selectedDate)
+    fun showAddMealDialog() {
+        _uiState.update { it.copy(showAddMealDialog = true, addMealName = "") }
     }
 
-    fun showMealConfigDialog() {
-        _uiState.update { it.copy(showMealConfigDialog = true) }
+    fun dismissAddMealDialog() {
+        _uiState.update { it.copy(showAddMealDialog = false, addMealName = "") }
     }
 
-    fun dismissMealConfigDialog() {
-        _uiState.update { it.copy(showMealConfigDialog = false) }
+    fun onAddMealNameChange(name: String) {
+        _uiState.update { it.copy(addMealName = name) }
     }
 
-    fun setMealCount(count: Int) {
-        FoodRepository.updateMealConfig(MealConfig.forCount(count))
-        _uiState.update { it.copy(showMealConfigDialog = false) }
+    fun confirmAddMeal() {
+        val name = _uiState.value.addMealName.trim()
+        if (name.isBlank()) return
+        val meal = MealSlot(
+            id       = java.util.UUID.randomUUID().toString(),
+            name     = name,
+            isCustom = true
+        )
+        FoodRepository.addMealToDay(_uiState.value.selectedDate, meal)
+        _uiState.update { it.copy(showAddMealDialog = false, addMealName = "") }
     }
 
-    // ── Edit sheet ────────────────────────────────────────────────────────────
+    fun removeMeal(mealId: String) {
+        FoodRepository.removeMealFromDay(_uiState.value.selectedDate, mealId)
+    }
+
+    fun showRenameMealDialog(mealId: String, currentName: String) {
+        _uiState.update { it.copy(showRenameMealDialog = true, renameMealId = mealId, renameMealName = currentName) }
+    }
+
+    fun dismissRenameMealDialog() {
+        _uiState.update { it.copy(showRenameMealDialog = false, renameMealId = "", renameMealName = "") }
+    }
+
+    fun onRenameMealNameChange(name: String) {
+        _uiState.update { it.copy(renameMealName = name) }
+    }
+
+    fun confirmRenameMeal() {
+        val name = _uiState.value.renameMealName.trim()
+        if (name.isBlank()) return
+        FoodRepository.renameMealInDay(_uiState.value.selectedDate, _uiState.value.renameMealId, name)
+        dismissRenameMealDialog()
+    }
 
     fun openEditSheet(logged: LoggedFood) {
         _uiState.update {
@@ -152,7 +180,7 @@ class TrackingViewModel : ViewModel() {
         }
     }
 
-    fun editSelectSlot(slot: MealSlotType) {
+    fun editSelectSlot(slot: MealSlot) {
         _uiState.update { cur ->
             val ef = cur.editFoodState ?: return@update cur
             cur.copy(editFoodState = ef.copy(mealSlot = slot))
@@ -162,8 +190,8 @@ class TrackingViewModel : ViewModel() {
     fun confirmEdit() {
         val ef = _uiState.value.editFoodState ?: return
         FoodRepository.updateFood(
-            id         = ef.loggedFood.id,
-            date       = _uiState.value.selectedDate,
+            id          = ef.loggedFood.id,
+            date        = _uiState.value.selectedDate,
             newServing  = ef.selectedServing,
             newQuantity = ef.quantity,
             newSlot     = ef.mealSlot,
