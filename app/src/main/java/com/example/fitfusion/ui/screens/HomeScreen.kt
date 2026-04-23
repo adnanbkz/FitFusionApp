@@ -71,6 +71,7 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavHostController
 import coil3.compose.AsyncImage
 import com.example.fitfusion.data.repository.UserProfileStore
+import com.example.fitfusion.ui.components.CreatePostSheetHost
 import com.example.fitfusion.ui.theme.OnSurface
 import com.example.fitfusion.ui.theme.OnSurfaceVariant
 import com.example.fitfusion.ui.theme.Primary
@@ -106,16 +107,16 @@ fun PantallaHome(
         skipHiddenState = true,
     )
     val scaffoldState = rememberBottomSheetScaffoldState(bottomSheetState = sheetState)
-    val pagerState = rememberPagerState(initialPage = 0, pageCount = { 2 })
+    val pagerState = rememberPagerState(initialPage = 1, pageCount = { 3 })
     val scope = rememberCoroutineScope()
 
     BackHandler(
-        enabled = sheetState.currentValue == SheetValue.Expanded || pagerState.currentPage != 0
+        enabled = sheetState.currentValue == SheetValue.Expanded || pagerState.currentPage != 1
     ) {
         scope.launch {
             when {
                 sheetState.currentValue == SheetValue.Expanded -> sheetState.partialExpand()
-                pagerState.currentPage != 0                    -> pagerState.animateScrollToPage(0)
+                pagerState.currentPage != 1                    -> pagerState.animateScrollToPage(1)
             }
         }
     }
@@ -139,22 +140,28 @@ fun PantallaHome(
                 .padding(innerPadding),
         ) { page ->
             when (page) {
-                0 -> HomeFeedPage(
+                0 -> PantallaCamera(
+                    onClose = {
+                        scope.launch { pagerState.animateScrollToPage(1) }
+                    },
+                    onMediaCaptured = { uri, isVideo ->
+                        profileViewModel.showCreatePostWithMedia(uri, isVideo)
+                        scope.launch { pagerState.animateScrollToPage(1) }
+                    },
+                )
+                1 -> HomeFeedPage(
                     state = state,
                     userName = userName,
                     photoUri = photoUri?.toString(),
                     onAvatarClick = {
-                        scope.launch { pagerState.animateScrollToPage(1) }
+                        scope.launch { pagerState.animateScrollToPage(2) }
                     },
-                    onFabClick = {
-                        profileViewModel.showCreatePost()
-                        scope.launch { pagerState.animateScrollToPage(1) }
-                    },
+                    onFabClick = profileViewModel::showCreatePost,
                     onPostClick = { navController.navigate(Screens.PostDetailScreen.name) },
                     onLikeClick = homeViewModel::toggleLike,
                     onFilterSelect = homeViewModel::setFilter,
                 )
-                1 -> PantallaProfile(
+                2 -> PantallaProfile(
                     navController = navController,
                     userName = userName,
                     profileViewModel = profileViewModel,
@@ -162,6 +169,13 @@ fun PantallaHome(
             }
         }
     }
+
+    CreatePostSheetHost(
+        profileViewModel = profileViewModel,
+        onNavigateToAddWorkout = {
+            navController.navigate("${Screens.AddWorkoutScreen.name}?logMode=true")
+        },
+    )
 }
 
 @Composable

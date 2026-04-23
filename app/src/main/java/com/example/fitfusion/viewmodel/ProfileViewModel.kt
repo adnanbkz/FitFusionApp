@@ -44,6 +44,7 @@ data class ProfileUiState(
     val nutritionCookTime: String = "",
     val nutritionKcal: String = "",
     val nutritionBestMoment: String = "",
+    val capturedVideoUri: Uri? = null,
     val currentWeekMinutes: List<Int>  = List(7) { 0 },
     val previousWeekMinutes: List<Int> = List(7) { 0 },
     val totalSessionsThisWeek: Int = 0,
@@ -205,6 +206,28 @@ class ProfileViewModel(application: Application) : AndroidViewModel(application)
         _uiState.update { it.copy(showCreatePostSheet = true) }
     }
 
+    fun showCreatePostWithMedia(uri: Uri, isVideo: Boolean) {
+        _uiState.update {
+            if (isVideo) {
+                it.copy(
+                    showCreatePostSheet = true,
+                    createPostType      = UserPostType.WORKOUT,
+                    capturedVideoUri    = uri,
+                )
+            } else {
+                it.copy(
+                    showCreatePostSheet = true,
+                    createPostType      = UserPostType.NUTRITION,
+                    nutritionPhotoUri   = uri,
+                )
+            }
+        }
+    }
+
+    fun clearCapturedVideo() {
+        _uiState.update { it.copy(capturedVideoUri = null) }
+    }
+
     fun dismissCreatePost() {
         _uiState.update { it.copy(
             showCreatePostSheet  = false,
@@ -217,6 +240,7 @@ class ProfileViewModel(application: Application) : AndroidViewModel(application)
             nutritionCookTime    = "",
             nutritionKcal        = "",
             nutritionBestMoment  = "",
+            capturedVideoUri     = null,
         ) }
     }
 
@@ -283,6 +307,7 @@ class ProfileViewModel(application: Application) : AndroidViewModel(application)
                     workoutEmoji           = w.emoji,
                     workoutDurationMinutes = w.durationMinutes,
                     workoutKcal            = w.kcalBurned,
+                    workoutVideoUri        = state.capturedVideoUri?.toString(),
                 )
             }
             UserPostType.NUTRITION -> UserPost(
