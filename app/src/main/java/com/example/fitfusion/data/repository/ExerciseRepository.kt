@@ -1,9 +1,12 @@
 package com.example.fitfusion.data.repository
 
 import com.example.fitfusion.data.models.ExerciseCatalogItem
+import com.google.android.gms.tasks.Tasks
 import com.google.firebase.firestore.DocumentSnapshot
+import com.google.firebase.firestore.FieldPath
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.Query
+import com.google.firebase.firestore.QuerySnapshot
 import java.lang.Exception
 import java.util.Locale
 
@@ -131,6 +134,40 @@ class ExerciseRepository(
                 onSuccess(document.resolveExerciseItem())
             }
             .addOnFailureListener(onError)
+    }
+
+    fun fetchExercisesByDocumentIds(
+        documentIds: List<String>,
+        onSuccess: (List<ExerciseCatalogItem>) -> Unit,
+        onError: (Exception) -> Unit,
+    ) {
+        if (documentIds.isEmpty()) {
+            onSuccess(emptyList())
+            return
+        }
+
+        val tasks = documentIds.distinct().chunked(10).map { chunk ->
+            firestore.collection("exercises")
+                .whereIn(FieldPath.documentId(), chunk)
+                .get()
+        }
+
+        Tasks.whenAllSuccess<QuerySnapshot>(tasks)
+            .addOnSuccessListener { snapshots ->
+                val documentsById = snapshots
+                    .filterIsInstance<QuerySnapshot>()
+                    .flatMap { it.documents }
+                    .associateBy { it.id }
+
+                val orderedExercises = documentIds.mapNotNull { id ->
+                    documentsById[id]?.resolveExerciseItem()
+                }
+
+                onSuccess(orderedExercises)
+            }
+            .addOnFailureListener { throwable ->
+                onError(throwable as? Exception ?: Exception(throwable))
+            }
     }
 }
 

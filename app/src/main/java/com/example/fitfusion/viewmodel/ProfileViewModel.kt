@@ -17,6 +17,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import java.lang.Exception
 import java.time.DayOfWeek
 import java.time.LocalDate
 import java.time.temporal.TemporalAdjusters
@@ -116,6 +117,21 @@ class ProfileViewModel(application: Application) : AndroidViewModel(application)
 
     fun removeWorkoutFromDay(id: String, date: LocalDate) {
         WorkoutRepository.removeWorkout(id, date)
+    }
+
+    fun updateWorkout(
+        workout: LoggedWorkout,
+        onSuccess: () -> Unit,
+        onError: (String) -> Unit,
+    ) {
+        viewModelScope.launch {
+            try {
+                WorkoutRepository.updateWorkout(workout)
+                onSuccess()
+            } catch (exception: Exception) {
+                onError(exception.localizedMessage ?: "No se pudo actualizar el entrenamiento")
+            }
+        }
     }
 
     fun updateProfilePhoto(uri: Uri) {

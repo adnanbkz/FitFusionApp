@@ -1,3 +1,5 @@
+import java.util.Properties
+
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.android)
@@ -8,6 +10,30 @@ plugins {
     kotlin("android")
     id("com.google.gms.google-services")*/
 }
+
+val localProperties = Properties().apply {
+    val localPropertiesFile = rootProject.file("local.properties")
+    if (localPropertiesFile.exists()) {
+        localPropertiesFile.inputStream().use(::load)
+    }
+}
+
+fun configValue(name: String): String =
+    providers.gradleProperty(name).orNull
+        ?: localProperties.getProperty(name)
+        ?: System.getenv(name)
+        ?: ""
+
+fun escapedBuildConfigValue(value: String): String =
+    value
+        .replace("\\", "\\\\")
+        .replace("\"", "\\\"")
+
+val algoliaAppId = configValue("ALGOLIA_APP_ID").ifBlank { "6LHV24KBWJ" }
+val algoliaSearchApiKey = configValue("ALGOLIA_SEARCH_API_KEY")
+    .ifBlank { "34f1596d1dabef7bf8ec268a6219e5d6" }
+val algoliaExercisesIndexName = configValue("ALGOLIA_EXERCISES_INDEX_NAME")
+    .ifBlank { "fitfusion_exercises_algolia" }
 
 android {
     namespace = "com.example.fitfusion"
@@ -21,6 +47,22 @@ android {
         versionName = "1.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+
+        buildConfigField(
+            "String",
+            "ALGOLIA_APP_ID",
+            "\"${escapedBuildConfigValue(algoliaAppId)}\""
+        )
+        buildConfigField(
+            "String",
+            "ALGOLIA_SEARCH_API_KEY",
+            "\"${escapedBuildConfigValue(algoliaSearchApiKey)}\""
+        )
+        buildConfigField(
+            "String",
+            "ALGOLIA_EXERCISES_INDEX_NAME",
+            "\"${escapedBuildConfigValue(algoliaExercisesIndexName)}\""
+        )
     }
 
     buildTypes {
@@ -41,6 +83,7 @@ android {
     }
     buildFeatures {
         compose = true
+        buildConfig = true
     }
 }
 
@@ -58,8 +101,6 @@ dependencies {
     implementation("androidx.compose.material:material-icons-extended")
     implementation(libs.firebase.crashlytics)
     implementation(libs.androidx.navigation.compose)
-    implementation(libs.androidx.ui)
-    implementation(libs.androidx.ui.graphics)
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)

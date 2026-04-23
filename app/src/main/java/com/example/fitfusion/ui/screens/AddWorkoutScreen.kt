@@ -33,6 +33,7 @@ import com.example.fitfusion.ui.theme.*
 import com.example.fitfusion.util.EquipmentTranslations
 import com.example.fitfusion.util.MuscleTranslations
 import com.example.fitfusion.viewmodel.AddWorkoutViewModel
+import com.example.fitfusion.viewmodel.EditableSetConfig
 import com.example.fitfusion.viewmodel.ExerciseConfig
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -169,9 +170,17 @@ fun PantallaAddWorkout(
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Column {
-                            Text("Catálogo de Firestore", fontWeight = FontWeight.Bold, color = OnSurface)
                             Text(
-                                "${state.filteredExercises.size} ejercicios cargados",
+                                if (state.isRemoteSearchMode) "Resultados de Algolia" else "Catálogo de Firestore",
+                                fontWeight = FontWeight.Bold,
+                                color = OnSurface
+                            )
+                            Text(
+                                if (state.isRemoteSearchMode) {
+                                    "${state.filteredExercises.size} ejercicios en esta búsqueda"
+                                } else {
+                                    "${state.filteredExercises.size} ejercicios cargados"
+                                },
                                 fontSize = 13.sp, color = OnSurfaceVariant
                             )
                         }
@@ -247,7 +256,13 @@ fun PantallaAddWorkout(
             onNameChange    = addWorkoutViewModel::updateSessionName,
             onIncrDuration  = addWorkoutViewModel::incrementDuration,
             onDecrDuration  = addWorkoutViewModel::decrementDuration,
-            onConfigChange  = addWorkoutViewModel::updateExerciseConfig,
+            onStartStopwatch = addWorkoutViewModel::startStopwatch,
+            onPauseStopwatch = addWorkoutViewModel::pauseStopwatch,
+            onResetStopwatch = addWorkoutViewModel::resetStopwatch,
+            onAddSet = addWorkoutViewModel::addSet,
+            onRemoveSet = addWorkoutViewModel::removeSet,
+            onSetRepsChange = addWorkoutViewModel::updateSetReps,
+            onSetWeightChange = addWorkoutViewModel::updateSetWeight,
             onSave     = {
                 addWorkoutViewModel.saveSession {
                     navController.popBackStack()
@@ -266,7 +281,13 @@ private fun LogWorkoutSheet(
     onNameChange: (String) -> Unit,
     onIncrDuration: () -> Unit,
     onDecrDuration: () -> Unit,
-    onConfigChange: (String, ExerciseConfig) -> Unit,
+    onStartStopwatch: () -> Unit,
+    onPauseStopwatch: () -> Unit,
+    onResetStopwatch: () -> Unit,
+    onAddSet: (String) -> Unit,
+    onRemoveSet: (String, Int) -> Unit,
+    onSetRepsChange: (String, Int, Int) -> Unit,
+    onSetWeightChange: (String, Int, Int) -> Unit,
     onSave: () -> Unit,
 ) {
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
@@ -313,8 +334,75 @@ private fun LogWorkoutSheet(
                     horizontalArrangement = Arrangement.SpaceBetween
                 ) {
                     Column {
-                        Text("Duración", fontSize = 14.sp, fontWeight = FontWeight.SemiBold, color = OnSurface)
+                        Text("Cronómetro", fontSize = 14.sp, fontWeight = FontWeight.SemiBold, color = OnSurface)
+                        Text(
+                            if (state.isStopwatchUsed) "Tiempo real de la sesión"
+                            else "Si no lo usas, se guardará la duración manual",
+                            fontSize = 12.sp,
+                            color = OnSurfaceVariant
+                        )
+                    }
+                    Column(horizontalAlignment = Alignment.End) {
+                        Text(
+                            state.formattedStopwatch,
+                            fontSize = 22.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = OnSurface
+                        )
                         Text("~${state.kcalEstimate} kcal estimadas", fontSize = 12.sp, color = OnSurfaceVariant)
+                    }
+                }
+                HorizontalDivider(color = OutlineVariant.copy(alpha = 0.4f))
+                Row(
+                    modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 14.dp),
+                    horizontalArrangement = Arrangement.spacedBy(10.dp)
+                ) {
+                    if (state.isStopwatchRunning) {
+                        Button(
+                            onClick = onPauseStopwatch,
+                            modifier = Modifier.weight(1f),
+                            shape = RoundedCornerShape(12.dp),
+                        ) {
+                            Text("Pausar")
+                        }
+                    } else {
+                        Button(
+                            onClick = onStartStopwatch,
+                            modifier = Modifier.weight(1f),
+                            shape = RoundedCornerShape(12.dp),
+                        ) {
+                            Text(if (state.isStopwatchUsed) "Reanudar" else "Iniciar")
+                        }
+                    }
+                    OutlinedButton(
+                        onClick = onResetStopwatch,
+                        modifier = Modifier.weight(1f),
+                        shape = RoundedCornerShape(12.dp),
+                        enabled = state.isStopwatchUsed
+                    ) {
+                        Text("Reiniciar")
+                    }
+                }
+            }
+
+            Card(
+                shape  = RoundedCornerShape(14.dp),
+                colors = CardDefaults.cardColors(containerColor = SurfaceContainerLow),
+                elevation = CardDefaults.cardElevation(0.dp)
+            ) {
+                Row(
+                    modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 14.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    Column {
+                        Text("Duración manual", fontSize = 14.sp, fontWeight = FontWeight.SemiBold, color = OnSurface)
+                        Text(
+                            if (state.isStopwatchUsed) "El cronómetro la sustituirá al guardar"
+                            else "Se usa si registras el entreno manualmente",
+                            fontSize = 12.sp,
+                            color = OnSurfaceVariant
+                        )
                     }
                     Row(
                         verticalAlignment = Alignment.CenterVertically,
@@ -323,7 +411,9 @@ private fun LogWorkoutSheet(
                         StepperButton(label = "−", onClick = onDecrDuration)
                         Text(
                             "${state.sessionDurationMinutes} min",
-                            fontSize = 16.sp, fontWeight = FontWeight.Bold, color = OnSurface
+                            fontSize = 16.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = OnSurface
                         )
                         StepperButton(label = "+", onClick = onIncrDuration)
                     }
@@ -340,27 +430,46 @@ private fun LogWorkoutSheet(
                     state.selectedExercises.forEach { exercise ->
                         val config = state.exerciseConfigs[exercise.documentId] ?: ExerciseConfig()
                         ExerciseConfigCard(
+                            exerciseDocumentId = exercise.documentId,
                             exerciseName = exercise.name,
                             muscleLabel  = MuscleTranslations.translate(exercise.displayMuscleGroup),
                             config       = config,
-                            onConfigChange = { newConfig ->
-                                onConfigChange(exercise.documentId, newConfig)
-                            }
+                            onAddSet = onAddSet,
+                            onRemoveSet = onRemoveSet,
+                            onSetRepsChange = onSetRepsChange,
+                            onSetWeightChange = onSetWeightChange,
                         )
                     }
                 }
             }
 
+            state.sessionErrorMessage?.let { message ->
+                Text(
+                    message,
+                    color = MaterialTheme.colorScheme.error,
+                    fontSize = 13.sp
+                )
+            }
+
             Button(
                 onClick  = onSave,
+                enabled = !state.isSavingSession,
                 modifier = Modifier.fillMaxWidth().height(52.dp),
                 shape    = RoundedCornerShape(14.dp),
                 colors   = ButtonDefaults.buttonColors(containerColor = Primary)
             ) {
-                Text(
-                    "Guardar entrenamiento",
-                    fontSize = 16.sp, fontWeight = FontWeight.SemiBold
-                )
+                if (state.isSavingSession) {
+                    CircularProgressIndicator(
+                        modifier = Modifier.size(20.dp),
+                        color = Color.White,
+                        strokeWidth = 2.dp
+                    )
+                } else {
+                    Text(
+                        "Guardar entrenamiento",
+                        fontSize = 16.sp, fontWeight = FontWeight.SemiBold
+                    )
+                }
             }
         }
     }
@@ -368,10 +477,14 @@ private fun LogWorkoutSheet(
 
 @Composable
 private fun ExerciseConfigCard(
+    exerciseDocumentId: String,
     exerciseName: String,
     muscleLabel: String,
     config: ExerciseConfig,
-    onConfigChange: (ExerciseConfig) -> Unit,
+    onAddSet: (String) -> Unit,
+    onRemoveSet: (String, Int) -> Unit,
+    onSetRepsChange: (String, Int, Int) -> Unit,
+    onSetWeightChange: (String, Int, Int) -> Unit,
 ) {
     Card(
         shape  = RoundedCornerShape(14.dp),
@@ -389,29 +502,79 @@ private fun ExerciseConfigCard(
                     Text(exerciseName, fontWeight = FontWeight.SemiBold, fontSize = 14.sp, color = OnSurface, maxLines = 1, overflow = TextOverflow.Ellipsis)
                     Text(muscleLabel, fontSize = 12.sp, color = OnSurfaceVariant)
                 }
+                AssistChip(
+                    onClick = { onAddSet(exerciseDocumentId) },
+                    label = { Text("Añadir serie") },
+                    colors = AssistChipDefaults.assistChipColors(containerColor = SurfaceContainerHigh)
+                )
             }
             HorizontalDivider(color = OutlineVariant.copy(alpha = 0.4f))
+            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                config.sets.forEachIndexed { setIndex, setConfig ->
+                    SetConfigRow(
+                        setIndex = setIndex,
+                        setConfig = setConfig,
+                        canRemove = config.sets.size > 1,
+                        onRemove = { onRemoveSet(exerciseDocumentId, setIndex) },
+                        onRepsChange = { reps -> onSetRepsChange(exerciseDocumentId, setIndex, reps) },
+                        onWeightChange = { weight -> onSetWeightChange(exerciseDocumentId, setIndex, weight) },
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun SetConfigRow(
+    setIndex: Int,
+    setConfig: EditableSetConfig,
+    canRemove: Boolean,
+    onRemove: () -> Unit,
+    onRepsChange: (Int) -> Unit,
+    onWeightChange: (Int) -> Unit,
+) {
+    Card(
+        shape = RoundedCornerShape(12.dp),
+        colors = CardDefaults.cardColors(containerColor = SurfaceContainerLowest),
+        elevation = CardDefaults.cardElevation(0.dp),
+    ) {
+        Column(
+            modifier = Modifier.fillMaxWidth().padding(12.dp),
+            verticalArrangement = Arrangement.spacedBy(10.dp)
+        ) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    "Serie ${setIndex + 1}",
+                    fontSize = 13.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    color = OnSurface
+                )
+                if (canRemove) {
+                    TextButton(onClick = onRemove) {
+                        Text("Eliminar", color = Primary)
+                    }
+                }
+            }
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceAround
             ) {
                 ConfigStepper(
-                    label = "Series",
-                    value = config.sets,
-                    onDecrement = { onConfigChange(config.copy(sets = (config.sets - 1).coerceAtLeast(1))) },
-                    onIncrement = { onConfigChange(config.copy(sets = (config.sets + 1).coerceAtMost(10))) }
-                )
-                ConfigStepper(
                     label = "Reps",
-                    value = config.reps,
-                    onDecrement = { onConfigChange(config.copy(reps = (config.reps - 1).coerceAtLeast(1))) },
-                    onIncrement = { onConfigChange(config.copy(reps = (config.reps + 1).coerceAtMost(50))) }
+                    value = setConfig.reps,
+                    onDecrement = { onRepsChange((setConfig.reps - 1).coerceAtLeast(1)) },
+                    onIncrement = { onRepsChange((setConfig.reps + 1).coerceAtMost(50)) }
                 )
                 ConfigStepper(
                     label = "Peso (kg)",
-                    value = config.weightKg,
-                    onDecrement = { onConfigChange(config.copy(weightKg = (config.weightKg - 5).coerceAtLeast(0))) },
-                    onIncrement = { onConfigChange(config.copy(weightKg = (config.weightKg + 5).coerceAtMost(300))) }
+                    value = setConfig.weightKg,
+                    onDecrement = { onWeightChange((setConfig.weightKg - 5).coerceAtLeast(0)) },
+                    onIncrement = { onWeightChange((setConfig.weightKg + 5).coerceAtMost(300)) }
                 )
             }
         }

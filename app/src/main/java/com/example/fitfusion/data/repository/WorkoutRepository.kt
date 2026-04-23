@@ -3,83 +3,181 @@ package com.example.fitfusion.data.repository
 import com.example.fitfusion.data.models.LoggedWorkout
 import com.example.fitfusion.data.models.WorkoutExercise
 import com.example.fitfusion.data.models.WorkoutSet
+import com.google.firebase.auth.FirebaseAuth
+import com.google.firebase.firestore.FirebaseFirestore
+import com.google.firebase.firestore.ListenerRegistration
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.tasks.await
 import java.time.LocalDate
+import java.time.format.DateTimeFormatter
+
+private const val USERS_COLLECTION = "users"
+private const val WORKOUTS_COLLECTION = "workouts"
 
 object WorkoutRepository {
 
+    private val auth: FirebaseAuth = FirebaseAuth.getInstance()
+    private val firestore: FirebaseFirestore = FirebaseFirestore.getInstance()
     private val _workouts = MutableStateFlow<Map<LocalDate, List<LoggedWorkout>>>(emptyMap())
     val workouts: StateFlow<Map<LocalDate, List<LoggedWorkout>>> = _workouts.asStateFlow()
 
+    private val authListener = FirebaseAuth.AuthStateListener { firebaseAuth ->
+        attachWorkoutListener(firebaseAuth.currentUser?.uid)
+    }
+    private var workoutListenerRegistration: ListenerRegistration? = null
+    private var currentUid: String? = null
+    private var authListenerRegistered = false
+
+    private val dateFormatter: DateTimeFormatter = DateTimeFormatter.ISO_LOCAL_DATE
+
     init {
-        seedMockData()
+        ensureInitialized()
+    }
+
+    fun ensureInitialized() {
+        if (authListenerRegistered) return
+        auth.addAuthStateListener(authListener)
+        authListenerRegistered = true
+        attachWorkoutListener(auth.currentUser?.uid)
     }
 
     fun getWorkoutsForDate(date: LocalDate): List<LoggedWorkout> =
         _workouts.value[date] ?: emptyList()
 
-    fun addWorkout(workout: LoggedWorkout) {
-        _workouts.update { map ->
-            val existing = map[workout.date] ?: emptyList()
-            map + (workout.date to existing + workout)
-        }
+    suspend fun addWorkout(workout: LoggedWorkout) {
+        saveWorkout(workout)
+    }
+
+    suspend fun updateWorkout(workout: LoggedWorkout) {
+        saveWorkout(workout)
+    }
+
+    private suspend fun saveWorkout(workout: LoggedWorkout) {
+        ensureInitialized()
+        val uid = auth.currentUser?.uid
+            ?: throw IllegalStateException("Inicia sesion para guardar entrenamientos.")
+
+        firestore.collection(USERS_COLLECTION)
+            .document(uid)
+            .collection(WORKOUTS_COLLECTION)
+            .document(workout.id)
+            .set(workout.toFirestoreMap())
+            .await()
     }
 
     fun removeWorkout(id: String, date: LocalDate) {
-        _workouts.update { map ->
-            val updated = (map[date] ?: emptyList()).filter { it.id != id }
-            if (updated.isEmpty()) map - date else map + (date to updated)
-        }
+        ensureInitialized()
+        val uid = auth.currentUser?.uid ?: return
+        firestore.collection(USERS_COLLECTION)
+            .document(uid)
+            .collection(WORKOUTS_COLLECTION)
+            .document(id)
+            .delete()
     }
 
-    private fun seedMockData() {
-        val today = LocalDate.now()
+    private fun attachWorkoutListener(uid: String?) {
+        if (uid == currentUid && workoutListenerRegistration != null) return
 
-        val todayWorkout = LoggedWorkout(
-            id = "mock_today_1",
-            date = today,
-            name = "Fuerza — Empuje",
-            emoji = "🏋️",
-            durationMinutes = 52,
-            kcalBurned = 390,
-            exercises = listOf(
-                WorkoutExercise(
-                    name = "Sentadilla",
-                    muscleGroup = "Piernas",
-                    sets = List(4) { WorkoutSet(reps = 8, weightKg = 80f) }
-                ),
-                WorkoutExercise(
-                    name = "Press de Banca",
-                    muscleGroup = "Pecho",
-                    sets = List(3) { WorkoutSet(reps = 10, weightKg = 60f) }
-                ),
-                WorkoutExercise(
-                    name = "Peso Muerto",
-                    muscleGroup = "Espalda",
-                    sets = List(3) { WorkoutSet(reps = 6, weightKg = 100f) }
-                ),
+        workoutListenerRegistration?.remove()
+        workoutListenerRegistration = null
+        currentUid = uid
+
+        if (uid.isNullOrBlank()) {
+            _workouts.value = emptyMap()
+            return
+        }
+
+        workoutListenerRegistration = firestore.collection(USERS_COLLECTION)
+            .document(uid)
+            .collection(WORKOUTS_COLLECTION)
+            .addSnapshotListener { snapshot, error ->
+                if (error != null || snapshot == null) {
+                    return@addSnapshotListener
+                }
+
+                val parsedWorkouts = snapshot.documents
+                    .mapNotNull { document -> document.toLoggedWorkoutOrNull() }
+                    .sortedWith(
+                        compareByDescending<LoggedWorkout> { it.date }
+                            .thenByDescending { it.createdAtMs ?: 0L }
+                    )
+
+                _workouts.value = parsedWorkouts.groupBy { it.date }
+            }
+    }
+
+    private fun LoggedWorkout.toFirestoreMap(): Map<String, Any?> = mapOf(
+        "id" to id,
+        "dateKey" to date.format(dateFormatter),
+        "name" to name,
+        "emoji" to emoji,
+        "durationMinutes" to durationMinutes,
+        "kcalBurned" to kcalBurned,
+        "exerciseCount" to exerciseCount,
+        "totalSets" to totalSets,
+        "startedAtMs" to startedAtMs,
+        "endedAtMs" to endedAtMs,
+        "createdAtMs" to (createdAtMs ?: System.currentTimeMillis()),
+        "exercises" to exercises.map { exercise ->
+            mapOf(
+                "exerciseDocumentId" to exercise.exerciseDocumentId,
+                "exerciseSlug" to exercise.exerciseSlug,
+                "name" to exercise.name,
+                "muscleGroup" to exercise.muscleGroup,
+                "sets" to exercise.sets.map { set ->
+                    mapOf(
+                        "reps" to set.reps,
+                        "weightKg" to set.weightKg,
+                    )
+                }
             )
-        )
+        }
+    )
 
-        val tuesdayWorkout = LoggedWorkout(
-            id = "mock_tue_1",
-            date = today.minusDays(2),
-            name = "Cardio — HIIT",
-            emoji = "🏃",
-            durationMinutes = 30,
-            kcalBurned = 280,
-            exercises = listOf(
-                WorkoutExercise("Burpees", "Full body", List(4) { WorkoutSet(reps = 15) }),
-                WorkoutExercise("Mountain climbers", "Core", List(3) { WorkoutSet(reps = 20) }),
-            )
-        )
+    private fun com.google.firebase.firestore.DocumentSnapshot.toLoggedWorkoutOrNull(): LoggedWorkout? {
+        val dateKey = getString("dateKey") ?: return null
+        val date = runCatching { LocalDate.parse(dateKey, dateFormatter) }.getOrNull() ?: return null
 
-        _workouts.value = mapOf(
-            today to listOf(todayWorkout),
-            today.minusDays(2) to listOf(tuesdayWorkout),
+        val exercises = (get("exercises") as? List<*>)
+            .orEmpty()
+            .mapNotNull { rawExercise -> (rawExercise as? Map<*, *>)?.toWorkoutExerciseOrNull() }
+
+        return LoggedWorkout(
+            id = id,
+            date = date,
+            name = getString("name").orEmpty().ifBlank { "Entrenamiento" },
+            emoji = getString("emoji").orEmpty().ifBlank { "🏋️" },
+            durationMinutes = getLong("durationMinutes")?.toInt() ?: 0,
+            kcalBurned = getLong("kcalBurned")?.toInt() ?: 0,
+            startedAtMs = getLong("startedAtMs"),
+            endedAtMs = getLong("endedAtMs"),
+            createdAtMs = getLong("createdAtMs"),
+            exercises = exercises,
         )
+    }
+
+    private fun Map<*, *>.toWorkoutExerciseOrNull(): WorkoutExercise? {
+        val name = (this["name"] as? String).orEmpty().trim()
+        if (name.isBlank()) return null
+
+        val sets = (this["sets"] as? List<*>)
+            .orEmpty()
+            .mapNotNull { rawSet -> (rawSet as? Map<*, *>)?.toWorkoutSetOrNull() }
+
+        return WorkoutExercise(
+            exerciseDocumentId = (this["exerciseDocumentId"] as? String)?.trim()?.ifBlank { null },
+            exerciseSlug = (this["exerciseSlug"] as? String)?.trim()?.ifBlank { null },
+            name = name,
+            muscleGroup = (this["muscleGroup"] as? String).orEmpty().ifBlank { "Other" },
+            sets = sets,
+        )
+    }
+
+    private fun Map<*, *>.toWorkoutSetOrNull(): WorkoutSet? {
+        val reps = (this["reps"] as? Number)?.toInt() ?: return null
+        val weightKg = (this["weightKg"] as? Number)?.toFloat() ?: 0f
+        return WorkoutSet(reps = reps, weightKg = weightKg)
     }
 }
