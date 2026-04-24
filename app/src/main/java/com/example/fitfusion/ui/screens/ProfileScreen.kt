@@ -10,9 +10,11 @@ import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.HelpOutline
 import androidx.compose.material.icons.filled.Add
@@ -54,9 +56,30 @@ import java.util.Locale
 import com.example.fitfusion.data.models.LoggedWorkout
 import com.example.fitfusion.data.models.UserPost
 import com.example.fitfusion.data.models.UserPostType
+import com.example.fitfusion.data.models.WorkoutExercise
+import com.example.fitfusion.data.models.WorkoutSet
 import com.example.fitfusion.ui.components.*
 import com.example.fitfusion.ui.theme.*
 import com.example.fitfusion.viewmodel.ProfileViewModel
+
+private data class EditableWorkoutState(
+    val source: LoggedWorkout,
+    val name: String = source.name,
+    val durationMinutes: Int = source.durationMinutes.coerceAtLeast(1),
+    val exercises: List<WorkoutExercise> = source.exercises,
+) {
+    fun toLoggedWorkout(): LoggedWorkout {
+        val startedAt = source.startedAtMs
+        val endedAt = startedAt?.let { it + durationMinutes * 60_000L } ?: source.endedAtMs
+        return source.copy(
+            name = name.ifBlank { "Entrenamiento" },
+            durationMinutes = durationMinutes,
+            kcalBurned = (durationMinutes * 6.5f).toInt(),
+            endedAtMs = endedAt,
+            exercises = exercises,
+        )
+    }
+}
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -66,6 +89,9 @@ fun PantallaProfile(
     profileViewModel: ProfileViewModel = viewModel()
 ) {
     val state by profileViewModel.uiState.collectAsState()
+    var workoutEditState by remember { mutableStateOf<EditableWorkoutState?>(null) }
+    var workoutEditError by remember { mutableStateOf<String?>(null) }
+    var isSavingWorkoutEdit by remember { mutableStateOf(false) }
     val tabs = listOf(
         Triple("Posts", Icons.Default.GridView, 0),
         Triple("Entrenos", Icons.Default.FitnessCenter, 1),
@@ -209,6 +235,12 @@ fun PantallaProfile(
                         fontSize = 14.sp, color = OnSurfaceVariant, textAlign = TextAlign.Center,
                         modifier = Modifier.padding(horizontal = 24.dp, vertical = 8.dp)
                     )
+                    ProfileFitnessSummary(
+                        heightCm = state.heightCm,
+                        weightKg = state.weightKg,
+                        goalType = state.goalType,
+                        activityLevel = state.activityLevel,
+                    )
                     Box(
                         modifier = Modifier
                             .padding(top = 4.dp)
@@ -299,6 +331,10 @@ fun PantallaProfile(
                         onDaySelected       = profileViewModel::selectWorkoutDay,
                         onAddWorkout        = { navController.navigate("${Screens.AddWorkoutScreen.name}?logMode=true") },
                         onRemoveWorkout     = profileViewModel::removeWorkoutFromDay,
+                        onEditWorkout       = { workout ->
+                            workoutEditState = EditableWorkoutState(workout)
+                            workoutEditError = null
+                        },
                     )
                     2 -> LikesTab(onExplore = {
                         navController.navigate(Screens.HomeScreen.name) {
@@ -309,6 +345,70 @@ fun PantallaProfile(
             }
         }
 
+        workoutEditState?.let { editState ->
+            EditWorkoutSheet(
+                state = editState,
+                isSaving = isSavingWorkoutEdit,
+                errorMessage = workoutEditError,
+                onStateChange = {
+                    workoutEditState = it
+                    workoutEditError = null
+                },
+                onDismiss = {
+                    if (!isSavingWorkoutEdit) {
+                        workoutEditState = null
+                        workoutEditError = null
+                    }
+                },
+                onSave = {
+                    isSavingWorkoutEdit = true
+                    profileViewModel.updateWorkout(
+                        workout = editState.toLoggedWorkout(),
+                        onSuccess = {
+                            isSavingWorkoutEdit = false
+                            workoutEditState = null
+                            workoutEditError = null
+                        },
+                        onError = { message ->
+                            isSavingWorkoutEdit = false
+                            workoutEditError = message
+                        },
+                    )
+                }
+            )
+        }
+
+    }
+}
+
+@Composable
+private fun ProfileFitnessSummary(
+    heightCm: Int?,
+    weightKg: Float?,
+    goalType: String?,
+    activityLevel: String?,
+) {
+    val items = buildList {
+        heightCm?.let { add("${it} cm" to "ALTURA") }
+        weightKg?.let { weight ->
+            val formatted = if (weight % 1f == 0f) weight.toInt().toString() else "%.1f".format(java.util.Locale.US, weight)
+            add("$formatted kg" to "PESO")
+        }
+        goalType?.takeIf { it.isNotBlank() }?.let { add(it to "OBJETIVO") }
+        activityLevel?.takeIf { it.isNotBlank() }?.let { add(it to "ACTIVIDAD") }
+    }.take(3)
+    if (items.isEmpty()) return
+
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 24.dp, vertical = 8.dp),
+        horizontalArrangement = Arrangement.spacedBy(8.dp)
+    ) {
+        items.forEach { (value, label) ->
+            val compactValue = if (value.length > 14) value.take(12) + "..." else value
+            StatChip(value = compactValue, label = label, modifier = Modifier.weight(1f))
+        }
     }
 }
 
@@ -462,6 +562,7 @@ private fun WorkoutsTab(
     onDaySelected: (LocalDate) -> Unit,
     onAddWorkout: () -> Unit,
     onRemoveWorkout: (String, LocalDate) -> Unit,
+    onEditWorkout: (LoggedWorkout) -> Unit,
 ) {
     val weekStart = remember { LocalDate.now().with(TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY)) }
     val selectedDayIdx = (selectedWorkoutDay.dayOfWeek.value - 1).coerceIn(0, 6)
@@ -569,7 +670,8 @@ private fun WorkoutsTab(
             workouts    = selectedDayWorkouts,
             isSearching = isSearching,
             onAdd       = onAddWorkout,
-            onRemove    = { id -> onRemoveWorkout(id, selectedWorkoutDay) }
+            onRemove    = { id -> onRemoveWorkout(id, selectedWorkoutDay) },
+            onEdit      = onEditWorkout,
         )
     }
 }
@@ -756,7 +858,7 @@ private fun WorkoutProfileCard(workout: LoggedWorkout) {
                     color = OnSurface, maxLines = 1, overflow = TextOverflow.Ellipsis
                 )
                 Text(
-                    "${workout.durationMinutes} min · ${workout.kcalBurned} kcal · ${workout.exercises.size} ejercicios",
+                    workoutSummaryLine(workout),
                     fontSize = 12.sp, color = OnSurfaceVariant
                 )
             }
@@ -767,7 +869,7 @@ private fun WorkoutProfileCard(workout: LoggedWorkout) {
                     fontSize = 18.sp, fontWeight = FontWeight.Bold, color = OnSurface
                 )
                 Text(
-                    workout.date.month.getDisplayName(java.time.format.TextStyle.SHORT, java.util.Locale("es")).uppercase(),
+                    workout.date.month.getDisplayName(TextStyle.SHORT, Locale.forLanguageTag("es")).uppercase(),
                     fontSize = 10.sp, color = OnSurfaceVariant, letterSpacing = 0.5.sp
                 )
             }
@@ -783,15 +885,16 @@ private fun SelectedDayWorkoutsSection(
     isSearching: Boolean,
     onAdd: () -> Unit,
     onRemove: (String) -> Unit,
+    onEdit: (LoggedWorkout) -> Unit,
 ) {
     val today = remember { LocalDate.now() }
     val dayName = when (date) {
         today            -> "Hoy"
         today.minusDays(1) -> "Ayer"
-        else -> date.dayOfWeek.getDisplayName(TextStyle.FULL, Locale("es"))
+        else -> date.dayOfWeek.getDisplayName(TextStyle.FULL, Locale.forLanguageTag("es"))
             .replaceFirstChar { it.uppercase() }
     }
-    val dateLabel = "${date.dayOfMonth} ${date.month.getDisplayName(TextStyle.SHORT, Locale("es")).replaceFirstChar { it.uppercase() }}"
+    val dateLabel = "${date.dayOfMonth} ${date.month.getDisplayName(TextStyle.SHORT, Locale.forLanguageTag("es")).replaceFirstChar { it.uppercase() }}"
 
     Card(
         shape     = RoundedCornerShape(20.dp),
@@ -892,7 +995,11 @@ private fun SelectedDayWorkoutsSection(
                     verticalArrangement = Arrangement.spacedBy(0.dp)
                 ) {
                     workouts.forEach { workout ->
-                        WorkoutDayCard(workout = workout, onRemove = { onRemove(workout.id) })
+                        WorkoutDayCard(
+                            workout = workout,
+                            onEdit = { onEdit(workout) },
+                            onRemove = { onRemove(workout.id) },
+                        )
                     }
                 }
             }
@@ -901,7 +1008,11 @@ private fun SelectedDayWorkoutsSection(
 }
 
 @Composable
-private fun WorkoutDayCard(workout: LoggedWorkout, onRemove: () -> Unit) {
+private fun WorkoutDayCard(
+    workout: LoggedWorkout,
+    onEdit: () -> Unit,
+    onRemove: () -> Unit,
+) {
     var showExercises by remember { mutableStateOf(false) }
 
     Column(modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp)) {
@@ -931,8 +1042,23 @@ private fun WorkoutDayCard(workout: LoggedWorkout, onRemove: () -> Unit) {
                     color = OnSurface, maxLines = 1, overflow = TextOverflow.Ellipsis
                 )
                 Text(
-                    "${workout.durationMinutes} min · ${workout.kcalBurned} kcal · ${workout.exercises.size} ejercicios",
+                    workoutSummaryLine(workout),
                     fontSize = 12.sp, color = OnSurfaceVariant
+                )
+            }
+            Box(
+                modifier = Modifier
+                    .size(28.dp)
+                    .clip(CircleShape)
+                    .background(SurfaceContainerHigh)
+                    .clickable(onClick = onEdit),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    Icons.Default.Edit,
+                    contentDescription = "Editar entrenamiento",
+                    tint = OnSurfaceVariant,
+                    modifier = Modifier.size(15.dp)
                 )
             }
             Box(
@@ -970,25 +1096,401 @@ private fun WorkoutDayCard(workout: LoggedWorkout, onRemove: () -> Unit) {
 }
 
 @Composable
-private fun WorkoutExerciseItem(exercise: com.example.fitfusion.data.models.WorkoutExercise) {
-    Row(
+private fun WorkoutExerciseItem(exercise: WorkoutExercise) {
+    Column(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = 4.dp, vertical = 3.dp),
-        horizontalArrangement = Arrangement.SpaceBetween,
-        verticalAlignment     = Alignment.CenterVertically
+            .padding(horizontal = 4.dp, vertical = 5.dp),
+        verticalArrangement = Arrangement.spacedBy(2.dp)
     ) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment     = Alignment.CenterVertically
+        ) {
+            Text(
+                exercise.name,
+                fontSize = 13.sp, color = OnSurface,
+                modifier = Modifier.weight(1f),
+                maxLines = 1, overflow = TextOverflow.Ellipsis
+            )
+            Text(
+                exercise.summary,
+                fontSize = 12.sp, color = OnSurfaceVariant,
+                fontWeight = FontWeight.Medium
+            )
+        }
         Text(
-            exercise.name,
-            fontSize = 13.sp, color = OnSurface,
-            modifier = Modifier.weight(1f),
-            maxLines = 1, overflow = TextOverflow.Ellipsis
+            exercise.setBreakdown,
+            fontSize = 11.sp,
+            color = OnSurfaceVariant,
+            maxLines = 2,
+            overflow = TextOverflow.Ellipsis
         )
-        Text(
-            exercise.summary,
-            fontSize = 12.sp, color = OnSurfaceVariant,
-            fontWeight = FontWeight.Medium
-        )
+    }
+}
+
+private fun workoutSummaryLine(workout: LoggedWorkout): String {
+    val volume = workout.totalVolumeKg.toInt()
+    val base = "${workout.durationMinutes} min · ${workout.kcalBurned} kcal · ${workout.totalSets} series"
+    return if (volume > 0) "$base · $volume kg" else base
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun EditWorkoutSheet(
+    state: EditableWorkoutState,
+    isSaving: Boolean,
+    errorMessage: String?,
+    onStateChange: (EditableWorkoutState) -> Unit,
+    onDismiss: () -> Unit,
+    onSave: () -> Unit,
+) {
+    val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+
+    ModalBottomSheet(
+        onDismissRequest = onDismiss,
+        sheetState = sheetState,
+        containerColor = SurfaceContainerLowest,
+        dragHandle = { BottomSheetDefaults.DragHandle() }
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .verticalScroll(rememberScrollState())
+                .padding(horizontal = 20.dp)
+                .padding(bottom = 32.dp),
+            verticalArrangement = Arrangement.spacedBy(18.dp)
+        ) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Column {
+                    Text("Editar entrenamiento", fontSize = 20.sp, fontWeight = FontWeight.Bold, color = OnSurface)
+                    Text(
+                        state.source.date.dayOfMonth.toString() + " " +
+                            state.source.date.month.getDisplayName(TextStyle.SHORT, Locale.forLanguageTag("es")),
+                        fontSize = 12.sp,
+                        color = OnSurfaceVariant
+                    )
+                }
+                Text(
+                    "${state.exercises.sumOf { it.sets.size }} series",
+                    fontSize = 12.sp,
+                    color = OnSurfaceVariant,
+                    fontWeight = FontWeight.SemiBold
+                )
+            }
+
+            OutlinedTextField(
+                value = state.name,
+                onValueChange = { onStateChange(state.copy(name = it)) },
+                label = { Text("Nombre") },
+                modifier = Modifier.fillMaxWidth(),
+                singleLine = true,
+                shape = RoundedCornerShape(12.dp),
+                colors = OutlinedTextFieldDefaults.colors(
+                    unfocusedContainerColor = SurfaceContainerLow,
+                    focusedContainerColor = SurfaceContainerLow,
+                    unfocusedBorderColor = Color.Transparent,
+                    focusedBorderColor = Primary,
+                )
+            )
+
+            Card(
+                shape = RoundedCornerShape(14.dp),
+                colors = CardDefaults.cardColors(containerColor = SurfaceContainerLow),
+                elevation = CardDefaults.cardElevation(0.dp)
+            ) {
+                Row(
+                    modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 14.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    Column {
+                        Text("Duración", fontSize = 14.sp, fontWeight = FontWeight.SemiBold, color = OnSurface)
+                        Text("Actualiza tiempo y kcal estimadas", fontSize = 12.sp, color = OnSurfaceVariant)
+                    }
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(12.dp)
+                    ) {
+                        ProfileStepperButton(
+                            label = "−",
+                            onClick = {
+                                onStateChange(
+                                    state.copy(durationMinutes = (state.durationMinutes - 5).coerceAtLeast(1))
+                                )
+                            }
+                        )
+                        Text(
+                            "${state.durationMinutes} min",
+                            fontSize = 16.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = OnSurface
+                        )
+                        ProfileStepperButton(
+                            label = "+",
+                            onClick = {
+                                onStateChange(
+                                    state.copy(durationMinutes = (state.durationMinutes + 5).coerceAtMost(240))
+                                )
+                            }
+                        )
+                    }
+                }
+            }
+
+            Text(
+                "EJERCICIOS",
+                fontSize = 11.sp,
+                fontWeight = FontWeight.Bold,
+                letterSpacing = 1.5.sp,
+                color = Primary
+            )
+
+            Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                state.exercises.forEachIndexed { exerciseIndex, exercise ->
+                    EditableWorkoutExerciseCard(
+                        exercise = exercise,
+                        onAddSet = {
+                            onStateChange(
+                                state.copy(
+                                    exercises = state.exercises.updateAt(exerciseIndex) { current ->
+                                        current.copy(
+                                            sets = current.sets + (current.sets.lastOrNull()
+                                                ?: WorkoutSet(reps = 10, weightKg = 0f))
+                                        )
+                                    }
+                                )
+                            )
+                        },
+                        onRemoveSet = { setIndex ->
+                            onStateChange(
+                                state.copy(
+                                    exercises = state.exercises.updateAt(exerciseIndex) { current ->
+                                        if (current.sets.size <= 1 || setIndex !in current.sets.indices) current
+                                        else current.copy(
+                                            sets = current.sets.filterIndexed { index, _ -> index != setIndex }
+                                        )
+                                    }
+                                )
+                            )
+                        },
+                        onSetRepsChange = { setIndex, reps ->
+                            onStateChange(
+                                state.copy(
+                                    exercises = state.exercises.updateAt(exerciseIndex) { current ->
+                                        current.copy(
+                                            sets = current.sets.updateAt(setIndex) { set ->
+                                                set.copy(reps = reps.coerceIn(1, 50))
+                                            }
+                                        )
+                                    }
+                                )
+                            )
+                        },
+                        onSetWeightChange = { setIndex, weight ->
+                            onStateChange(
+                                state.copy(
+                                    exercises = state.exercises.updateAt(exerciseIndex) { current ->
+                                        current.copy(
+                                            sets = current.sets.updateAt(setIndex) { set ->
+                                                set.copy(weightKg = weight.coerceIn(0, 300).toFloat())
+                                            }
+                                        )
+                                    }
+                                )
+                            )
+                        }
+                    )
+                }
+            }
+
+            errorMessage?.let { message ->
+                Text(message, color = MaterialTheme.colorScheme.error, fontSize = 13.sp)
+            }
+
+            Button(
+                onClick = onSave,
+                enabled = !isSaving,
+                modifier = Modifier.fillMaxWidth().height(52.dp),
+                shape = RoundedCornerShape(14.dp),
+                colors = ButtonDefaults.buttonColors(containerColor = Primary)
+            ) {
+                if (isSaving) {
+                    CircularProgressIndicator(
+                        modifier = Modifier.size(20.dp),
+                        color = Color.White,
+                        strokeWidth = 2.dp
+                    )
+                } else {
+                    Text("Guardar cambios", fontSize = 16.sp, fontWeight = FontWeight.SemiBold)
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun EditableWorkoutExerciseCard(
+    exercise: WorkoutExercise,
+    onAddSet: () -> Unit,
+    onRemoveSet: (Int) -> Unit,
+    onSetRepsChange: (Int, Int) -> Unit,
+    onSetWeightChange: (Int, Int) -> Unit,
+) {
+    Card(
+        shape = RoundedCornerShape(14.dp),
+        colors = CardDefaults.cardColors(containerColor = SurfaceContainerLow),
+        elevation = CardDefaults.cardElevation(0.dp),
+        modifier = Modifier.fillMaxWidth()
+    ) {
+        Column(modifier = Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        exercise.name,
+                        fontWeight = FontWeight.SemiBold,
+                        fontSize = 14.sp,
+                        color = OnSurface,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                    Text(exercise.muscleGroup, fontSize = 12.sp, color = OnSurfaceVariant)
+                }
+                AssistChip(
+                    onClick = onAddSet,
+                    label = { Text("Añadir serie") },
+                    colors = AssistChipDefaults.assistChipColors(containerColor = SurfaceContainerHigh)
+                )
+            }
+            HorizontalDivider(color = OutlineVariant.copy(alpha = 0.4f))
+            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                exercise.sets.forEachIndexed { setIndex, set ->
+                    EditableWorkoutSetRow(
+                        setIndex = setIndex,
+                        set = set,
+                        canRemove = exercise.sets.size > 1,
+                        onRemove = { onRemoveSet(setIndex) },
+                        onRepsChange = { reps -> onSetRepsChange(setIndex, reps) },
+                        onWeightChange = { weight -> onSetWeightChange(setIndex, weight) },
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun EditableWorkoutSetRow(
+    setIndex: Int,
+    set: WorkoutSet,
+    canRemove: Boolean,
+    onRemove: () -> Unit,
+    onRepsChange: (Int) -> Unit,
+    onWeightChange: (Int) -> Unit,
+) {
+    Card(
+        shape = RoundedCornerShape(12.dp),
+        colors = CardDefaults.cardColors(containerColor = SurfaceContainerLowest),
+        elevation = CardDefaults.cardElevation(0.dp),
+    ) {
+        Column(
+            modifier = Modifier.fillMaxWidth().padding(12.dp),
+            verticalArrangement = Arrangement.spacedBy(10.dp)
+        ) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    "Serie ${setIndex + 1}",
+                    fontSize = 13.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    color = OnSurface
+                )
+                if (canRemove) {
+                    TextButton(onClick = onRemove) {
+                        Text("Eliminar", color = Primary)
+                    }
+                }
+            }
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceAround
+            ) {
+                EditableWorkoutStepper(
+                    label = "Reps",
+                    value = set.reps,
+                    onDecrement = { onRepsChange((set.reps - 1).coerceAtLeast(1)) },
+                    onIncrement = { onRepsChange((set.reps + 1).coerceAtMost(50)) },
+                )
+                EditableWorkoutStepper(
+                    label = "Peso (kg)",
+                    value = set.weightKg.toInt(),
+                    onDecrement = { onWeightChange((set.weightKg.toInt() - 5).coerceAtLeast(0)) },
+                    onIncrement = { onWeightChange((set.weightKg.toInt() + 5).coerceAtMost(300)) },
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun EditableWorkoutStepper(
+    label: String,
+    value: Int,
+    onDecrement: () -> Unit,
+    onIncrement: () -> Unit,
+) {
+    Column(
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.spacedBy(6.dp)
+    ) {
+        Text(label, fontSize = 11.sp, color = OnSurfaceVariant, fontWeight = FontWeight.Medium)
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            ProfileStepperButton(label = "−", onClick = onDecrement)
+            Text(
+                "$value",
+                fontSize = 16.sp,
+                fontWeight = FontWeight.Bold,
+                color = OnSurface,
+                modifier = Modifier.widthIn(min = 28.dp)
+            )
+            ProfileStepperButton(label = "+", onClick = onIncrement)
+        }
+    }
+}
+
+@Composable
+private fun ProfileStepperButton(label: String, onClick: () -> Unit) {
+    Box(
+        modifier = Modifier
+            .size(30.dp)
+            .clip(CircleShape)
+            .background(SurfaceContainerHigh)
+            .clickable(onClick = onClick),
+        contentAlignment = Alignment.Center
+    ) {
+        Text(label, fontSize = 18.sp, color = OnSurface, fontWeight = FontWeight.Bold)
+    }
+}
+
+private fun <T> List<T>.updateAt(index: Int, transform: (T) -> T): List<T> {
+    if (index !in indices) return this
+    return mapIndexed { currentIndex, item ->
+        if (currentIndex == index) transform(item) else item
     }
 }
 

@@ -110,7 +110,17 @@ class MainActivity : ComponentActivity() {
                         }
 
                         composable(Screens.PostDetailScreen.name) {
-                            PantallaPostDetail(navController)
+                            PantallaPostDetail(navController = navController)
+                        }
+
+                        composable(
+                            route = "${Screens.PostDetailScreen.name}/{postId}",
+                            arguments = listOf(navArgument("postId") { type = NavType.StringType })
+                        ) { backStackEntry ->
+                            PantallaPostDetail(
+                                navController = navController,
+                                postId = backStackEntry.arguments?.getString("postId")
+                            )
                         }
 
                         composable(Screens.WorkoutSummaryScreen.name) {

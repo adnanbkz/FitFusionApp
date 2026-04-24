@@ -61,7 +61,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.platform.LocalLifecycleOwner
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -69,8 +68,10 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
+import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavHostController
+import androidx.health.connect.client.PermissionController
 import com.example.fitfusion.R
 import com.example.fitfusion.ui.components.SectionTitle
 import com.example.fitfusion.ui.components.SettingsRow
@@ -103,7 +104,13 @@ fun PantallaSettings(
     val state by settingsViewModel.uiState.collectAsState()
     val context = LocalContext.current
 
-    val permLauncher = rememberLauncherForActivityResult(
+    val permissionLauncher = rememberLauncherForActivityResult(
+        PermissionController.createRequestPermissionResultContract()
+    ) { grantedPermissions ->
+        settingsViewModel.onHealthPermissionsResult(grantedPermissions)
+    }
+
+    val settingsLauncher = rememberLauncherForActivityResult(
         androidx.activity.result.contract.ActivityResultContracts.StartActivityForResult()
     ) {
         settingsViewModel.refreshHealthStatus()
@@ -245,9 +252,10 @@ fun PantallaSettings(
                         HealthConnectStatusPanel(
                             state = state,
                             onRequestPermissions = {
-                                permLauncher.launch(
-                                    settingsViewModel.healthManager.permissionsIntent()
-                                )
+                                permissionLauncher.launch(settingsViewModel.healthManager.permissions)
+                            },
+                            onManageAccess = {
+                                settingsLauncher.launch(settingsViewModel.healthManager.settingsIntent())
                             },
                             onSyncNow = settingsViewModel::syncNow,
                             onInstall = {
@@ -307,6 +315,7 @@ fun PantallaSettings(
 private fun HealthConnectStatusPanel(
     state: com.example.fitfusion.viewmodel.SettingsUiState,
     onRequestPermissions: () -> Unit,
+    onManageAccess: () -> Unit,
     onSyncNow: () -> Unit,
     onInstall: () -> Unit,
     onDismissError: () -> Unit,
@@ -371,6 +380,15 @@ private fun HealthConnectStatusPanel(
                             Icon(Icons.Default.Lock, null, Modifier.size(16.dp))
                             Spacer(modifier = Modifier.width(8.dp))
                             Text("Conceder permisos")
+                        }
+                        OutlinedButton(
+                            onClick = onManageAccess,
+                            modifier = Modifier.fillMaxWidth(),
+                            shape = RoundedCornerShape(12.dp),
+                            colors = ButtonDefaults.outlinedButtonColors(contentColor = Secondary),
+                            border = BorderStroke(1.dp, Secondary.copy(alpha = 0.4f)),
+                        ) {
+                            Text("Gestionar acceso")
                         }
                     }
                 } else {
@@ -488,6 +506,17 @@ private fun HealthConnectStatusPanel(
                                 Spacer(modifier = Modifier.width(8.dp))
                                 Text("Sincronizar ahora")
                             }
+                        }
+                        OutlinedButton(
+                            onClick = onManageAccess,
+                            modifier = Modifier.fillMaxWidth(),
+                            shape = RoundedCornerShape(12.dp),
+                            colors = ButtonDefaults.outlinedButtonColors(contentColor = OnSurfaceVariant),
+                            border = BorderStroke(1.dp, OutlineVariant.copy(alpha = 0.5f)),
+                        ) {
+                            Icon(Icons.Default.Lock, null, Modifier.size(16.dp))
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text("Gestionar acceso")
                         }
                     }
                 }

@@ -2,9 +2,14 @@ package com.example.fitfusion.viewmodel
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.example.fitfusion.data.health.DailyHealthData
 import com.example.fitfusion.data.models.*
 import com.example.fitfusion.data.repository.FoodRepository
+import com.example.fitfusion.data.repository.HealthRepository
 import com.example.fitfusion.data.repository.WorkoutRepository
+import com.google.firebase.auth.FirebaseAuth
+import com.google.firebase.firestore.FirebaseFirestore
+import com.google.firebase.firestore.ListenerRegistration
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
 import java.time.DayOfWeek
@@ -32,6 +37,7 @@ data class TrackingUiState(
     val renameMealId: String = "",
     val renameMealName: String = "",
     val workouts: List<LoggedWorkout> = emptyList(),
+    val healthData: DailyHealthData? = null,
     val editFoodState: EditFoodState? = null,
     val proteinGoal: Int = 160,
     val carbsGoal:   Int = 210,
@@ -40,7 +46,9 @@ data class TrackingUiState(
 ) {
     val kcalGoal:    Int   get() = dayLog.kcalGoal
     val kcalEaten:   Int   get() = dayLog.totalKcal
-    val kcalBurned:  Int   get() = workouts.sumOf { it.kcalBurned }
+    val workoutKcalBurned: Int get() = workouts.sumOf { it.kcalBurned }
+    val stepKcalBurned: Int get() = healthData?.stepCaloriesEstimated ?: 0
+    val kcalBurned:  Int   get() = workoutKcalBurned + stepKcalBurned
     val kcalNet:     Int   get() = (kcalEaten - kcalBurned).coerceAtLeast(0)
     val kcalLeft:    Int   get() = (kcalGoal - kcalNet).coerceAtLeast(0)
     val netProgress: Float get() = (kcalNet.toFloat() / kcalGoal.toFloat()).coerceIn(0f, 1f)
@@ -48,6 +56,11 @@ data class TrackingUiState(
 
 class TrackingViewModel : ViewModel() {
 
+    private val healthRepository = HealthRepository(
+        FirebaseFirestore.getInstance(),
+        FirebaseAuth.getInstance(),
+    )
+    private var healthListenerRegistration: ListenerRegistration? = null
     private val _uiState = MutableStateFlow(TrackingUiState())
     val uiState: StateFlow<TrackingUiState> = _uiState.asStateFlow()
 
@@ -69,6 +82,7 @@ class TrackingViewModel : ViewModel() {
                     }
                 }
         }
+        attachHealthDataListener(LocalDate.now())
     }
 
     fun selectDate(date: LocalDate) {
@@ -80,6 +94,16 @@ class TrackingViewModel : ViewModel() {
                 weekSummary  = FoodRepository.getWeekSummary(weekStart),
                 workouts     = WorkoutRepository.getWorkoutsForDate(date),
             )
+        }
+        attachHealthDataListener(date)
+    }
+
+    private fun attachHealthDataListener(date: LocalDate) {
+        healthListenerRegistration?.remove()
+        healthListenerRegistration = healthRepository.listenDailyHealthData(date) { healthData ->
+            _uiState.update { current ->
+                if (current.selectedDate == date) current.copy(healthData = healthData) else current
+            }
         }
     }
 
@@ -197,5 +221,11 @@ class TrackingViewModel : ViewModel() {
             newSlot     = ef.mealSlot,
         )
         _uiState.update { it.copy(editFoodState = null) }
+    }
+
+    override fun onCleared() {
+        healthListenerRegistration?.remove()
+        healthListenerRegistration = null
+        super.onCleared()
     }
 }

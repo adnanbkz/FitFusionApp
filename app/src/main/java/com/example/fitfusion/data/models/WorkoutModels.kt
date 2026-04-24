@@ -63,6 +63,8 @@ data class UserPost(
     val workoutDurationMinutes: Int? = null,
     val workoutKcal: Int? = null,
     val workoutVideoUri: String? = null,
+    val workoutTotalWeightKg: Float? = null,
+    val workoutExercises: List<WorkoutExercise> = emptyList(),
     val nutritionPhotoUri: String? = null,
     val nutritionKcal: Int? = null,
     val nutritionIngredients: String? = null,

@@ -1,6 +1,7 @@
 package com.example.fitfusion.viewmodel
 
 import android.app.Application
+import android.content.Context
 import android.os.Build
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
@@ -34,6 +35,7 @@ data class SettingsUiState(
 
 class SettingsViewModel(app: Application) : AndroidViewModel(app) {
 
+    private val prefs = app.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
     val healthManager = HealthConnectManager(app)
 
     private val healthRepository = HealthRepository(
@@ -41,7 +43,11 @@ class SettingsViewModel(app: Application) : AndroidViewModel(app) {
         FirebaseAuth.getInstance(),
     )
 
-    private val _uiState = MutableStateFlow(SettingsUiState())
+    private val _uiState = MutableStateFlow(
+        SettingsUiState(
+            healthSyncEnabled = prefs.getBoolean(KEY_HEALTH_SYNC_ENABLED, false)
+        )
+    )
     val uiState: StateFlow<SettingsUiState> = _uiState.asStateFlow()
 
     init {
@@ -61,6 +67,9 @@ class SettingsViewModel(app: Application) : AndroidViewModel(app) {
             viewModelScope.launch {
                 val hasPerms = healthManager.hasAllPermissions()
                 _uiState.update { it.copy(hasPermissions = hasPerms) }
+                if (hasPerms && _uiState.value.healthSyncEnabled && _uiState.value.syncData == null) {
+                    syncNow()
+                }
             }
         }
     }
@@ -70,10 +79,28 @@ class SettingsViewModel(app: Application) : AndroidViewModel(app) {
     }
 
     fun onHealthSyncToggle(enabled: Boolean) {
+        prefs.edit().putBoolean(KEY_HEALTH_SYNC_ENABLED, enabled).apply()
         _uiState.update { it.copy(healthSyncEnabled = enabled, syncError = null) }
         if (enabled && _uiState.value.hcStatus == HealthConnectStatus.AVAILABLE
             && _uiState.value.hasPermissions
         ) {
+            syncNow()
+        }
+    }
+
+    fun onHealthPermissionsResult(grantedPermissions: Set<String>) {
+        val hasPermissions = grantedPermissions.containsAll(healthManager.permissions)
+        _uiState.update {
+            it.copy(
+                hasPermissions = hasPermissions,
+                syncError = if (hasPermissions) {
+                    null
+                } else {
+                    "Faltan permisos de Health Connect. Puedes reintentarlo o gestionarlos desde ajustes."
+                },
+            )
+        }
+        if (hasPermissions && _uiState.value.healthSyncEnabled) {
             syncNow()
         }
     }
@@ -118,3 +145,6 @@ class SettingsViewModel(app: Application) : AndroidViewModel(app) {
         _uiState.update { it.copy(syncError = null) }
     }
 }
+
+private const val PREFS_NAME = "settings_prefs"
+private const val KEY_HEALTH_SYNC_ENABLED = "health_sync_enabled"

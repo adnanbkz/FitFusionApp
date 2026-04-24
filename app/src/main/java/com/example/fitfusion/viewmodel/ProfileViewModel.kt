@@ -8,10 +8,12 @@ import androidx.lifecycle.viewModelScope
 import com.example.fitfusion.data.models.LoggedWorkout
 import com.example.fitfusion.data.models.UserPost
 import com.example.fitfusion.data.models.UserPostType
-import com.example.fitfusion.data.repository.FeedRepository
 import com.example.fitfusion.data.repository.PostRepository
 import com.example.fitfusion.data.repository.UserProfileStore
+import com.example.fitfusion.data.repository.UserRepository
 import com.example.fitfusion.data.repository.WorkoutRepository
+import com.google.firebase.auth.FirebaseAuth
+import com.google.firebase.firestore.ListenerRegistration
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -24,17 +26,23 @@ import java.time.temporal.TemporalAdjusters
 
 data class ProfileUiState(
     val profilePhotoUri: Uri? = null,
-    val displayName: String = "Alex Rivera",
+    val displayName: String = "Usuario",
     val selectedWorkoutDay: LocalDate = LocalDate.now(),
     val selectedDayWorkouts: List<LoggedWorkout> = emptyList(),
-    val handle: String = "@alex_fitfusion",
-    val bio: String = "Elite marathon runner & plant-based nutrition coach. Helping athletes unlock 110% through data-driven performance.",
-    val followers: String = "2.8k",
-    val following: String = "492",
+    val handle: String = "@usuario",
+    val bio: String = "Edita tu perfil para contar tus objetivos y progreso.",
+    val heightCm: Int? = null,
+    val weightKg: Float? = null,
+    val goalType: String? = null,
+    val activityLevel: String? = null,
+    val followers: String = "0",
+    val following: String = "0",
     val currentStreak: Int = 0,
     val selectedTab: Int = 0,
     val userPosts: List<UserPost> = emptyList(),
     val showCreatePostSheet: Boolean = false,
+    val isPublishingPost: Boolean = false,
+    val createPostErrorMessage: String? = null,
     val createPostType: UserPostType = UserPostType.WORKOUT,
     val selectedWorkout: LoggedWorkout? = null,
     val postCaption: String = "",
@@ -84,8 +92,8 @@ data class ProfileUiState(
     }
 
     val canPublish: Boolean get() = when (createPostType) {
-        UserPostType.WORKOUT    -> selectedWorkout != null
-        UserPostType.NUTRITION  -> nutritionTitle.isNotBlank()
+        UserPostType.WORKOUT    -> !isPublishingPost && selectedWorkout != null
+        UserPostType.NUTRITION  -> !isPublishingPost && nutritionTitle.isNotBlank()
     }
 }
 
@@ -95,11 +103,15 @@ private const val KEY_PHOTO_URI = "profile_photo_uri"
 class ProfileViewModel(application: Application) : AndroidViewModel(application) {
 
     private val prefs = application.getSharedPreferences(PREFS_NAME, android.content.Context.MODE_PRIVATE)
+    private val auth = FirebaseAuth.getInstance()
+    private val userRepository = UserRepository()
+    private var profileListenerRegistration: ListenerRegistration? = null
 
     private var workoutsByDay: Map<LocalDate, List<LoggedWorkout>> = emptyMap()
 
     init {
         UserProfileStore.ensureInitialized(application)
+        attachUserProfileListener()
     }
 
     private val _uiState = MutableStateFlow(ProfileUiState(
@@ -198,8 +210,32 @@ class ProfileViewModel(application: Application) : AndroidViewModel(application)
         if (userName != null) {
             _uiState.update { it.copy(
                 displayName = userName,
-                handle      = "@${userName.lowercase()}_fitfusion"
+                handle      = UserRepository.defaultUsername(userName)
             ) }
+        }
+    }
+
+    private fun attachUserProfileListener() {
+        val user = auth.currentUser ?: return
+        profileListenerRegistration?.remove()
+        profileListenerRegistration = userRepository.listenUserProfile(
+            uid = user.uid,
+            fallbackEmail = user.email.orEmpty(),
+        ) { profile ->
+            if (profile == null) return@listenUserProfile
+            _uiState.update {
+                it.copy(
+                    displayName = profile.displayName,
+                    handle = profile.username,
+                    bio = profile.bio.ifBlank { "Edita tu perfil para contar tus objetivos y progreso." },
+                    heightCm = profile.heightCm,
+                    weightKg = profile.weightKg,
+                    goalType = profile.goalType,
+                    activityLevel = profile.activityLevel,
+                    followers = compactCount(profile.followersCount),
+                    following = compactCount(profile.followingCount),
+                )
+            }
         }
     }
 
@@ -247,6 +283,8 @@ class ProfileViewModel(application: Application) : AndroidViewModel(application)
     fun dismissCreatePost() {
         _uiState.update { it.copy(
             showCreatePostSheet  = false,
+            isPublishingPost     = false,
+            createPostErrorMessage = null,
             selectedWorkout      = null,
             postCaption          = "",
             nutritionPhotoUri    = null,
@@ -261,7 +299,7 @@ class ProfileViewModel(application: Application) : AndroidViewModel(application)
     }
 
     fun setCreatePostType(type: UserPostType) {
-        _uiState.update { it.copy(createPostType = type) }
+        _uiState.update { it.copy(createPostType = type, createPostErrorMessage = null) }
     }
 
     fun selectWorkout(workout: LoggedWorkout) {
@@ -269,7 +307,7 @@ class ProfileViewModel(application: Application) : AndroidViewModel(application)
     }
 
     fun onPostCaptionChange(value: String) {
-        _uiState.update { it.copy(postCaption = value) }
+        _uiState.update { it.copy(postCaption = value, createPostErrorMessage = null) }
     }
 
     fun onNutritionPhotoChange(uri: Uri) {
@@ -278,40 +316,40 @@ class ProfileViewModel(application: Application) : AndroidViewModel(application)
                 uri, android.content.Intent.FLAG_GRANT_READ_URI_PERMISSION
             )
         } catch (_: Exception) { }
-        _uiState.update { it.copy(nutritionPhotoUri = uri) }
+        _uiState.update { it.copy(nutritionPhotoUri = uri, createPostErrorMessage = null) }
     }
 
     fun onNutritionTitleChange(value: String) {
-        _uiState.update { it.copy(nutritionTitle = value) }
+        _uiState.update { it.copy(nutritionTitle = value, createPostErrorMessage = null) }
     }
 
     fun onNutritionIngredientsChange(value: String) {
-        _uiState.update { it.copy(nutritionIngredients = value) }
+        _uiState.update { it.copy(nutritionIngredients = value, createPostErrorMessage = null) }
     }
 
     fun onNutritionInstructionsChange(value: String) {
-        _uiState.update { it.copy(nutritionInstructions = value) }
+        _uiState.update { it.copy(nutritionInstructions = value, createPostErrorMessage = null) }
     }
 
     fun onNutritionCookTimeChange(value: String) {
         if (value.all { it.isDigit() } && value.length <= 3) {
-            _uiState.update { it.copy(nutritionCookTime = value) }
+            _uiState.update { it.copy(nutritionCookTime = value, createPostErrorMessage = null) }
         }
     }
 
     fun onNutritionKcalChange(value: String) {
         if (value.all { it.isDigit() } && value.length <= 5) {
-            _uiState.update { it.copy(nutritionKcal = value) }
+            _uiState.update { it.copy(nutritionKcal = value, createPostErrorMessage = null) }
         }
     }
 
     fun onNutritionBestMomentChange(value: String) {
-        _uiState.update { it.copy(nutritionBestMoment = value) }
+        _uiState.update { it.copy(nutritionBestMoment = value, createPostErrorMessage = null) }
     }
 
     fun publishPost() {
         val state = _uiState.value
-        if (!state.canPublish) return
+        if (!state.canPublish || state.isPublishingPost) return
 
         val post = when (state.createPostType) {
             UserPostType.WORKOUT -> {
@@ -324,6 +362,8 @@ class ProfileViewModel(application: Application) : AndroidViewModel(application)
                     workoutDurationMinutes = w.durationMinutes,
                     workoutKcal            = w.kcalBurned,
                     workoutVideoUri        = state.capturedVideoUri?.toString(),
+                    workoutTotalWeightKg   = w.totalVolumeKg,
+                    workoutExercises        = w.exercises,
                 )
             }
             UserPostType.NUTRITION -> UserPost(
@@ -338,9 +378,20 @@ class ProfileViewModel(application: Application) : AndroidViewModel(application)
             )
         }
 
-        PostRepository.addPost(post)
-        FeedRepository.addItem(post.toFeedItem(authorName = state.displayName))
-        dismissCreatePost()
+        viewModelScope.launch {
+            _uiState.update { it.copy(isPublishingPost = true, createPostErrorMessage = null) }
+            try {
+                PostRepository.addPost(post, authorName = state.displayName)
+                dismissCreatePost()
+            } catch (exception: Exception) {
+                _uiState.update {
+                    it.copy(
+                        isPublishingPost = false,
+                        createPostErrorMessage = exception.localizedMessage ?: "No se pudo publicar",
+                    )
+                }
+            }
+        }
     }
 
     private fun minutesPerDay(
@@ -349,5 +400,18 @@ class ProfileViewModel(application: Application) : AndroidViewModel(application)
     ): List<Int> = (0L..6L).map { offset ->
         val date = weekStart.plusDays(offset)
         map[date]?.sumOf { it.durationMinutes } ?: 0
+    }
+
+    private fun compactCount(value: Int): String =
+        when {
+            value >= 10_000 -> "${value / 1_000}k"
+            value >= 1_000 -> "${value / 1_000}.${(value % 1_000) / 100}k"
+            else -> value.toString()
+        }
+
+    override fun onCleared() {
+        profileListenerRegistration?.remove()
+        profileListenerRegistration = null
+        super.onCleared()
     }
 }

@@ -110,7 +110,7 @@ dependencies {
     debugImplementation(libs.androidx.compose.ui.test.manifest)
 
     //HEALTH CONNECT
-    implementation("androidx.health.connect:connect-client:1.2.0-alpha02")
+    implementation("androidx.health.connect:connect-client:1.1.0")
 
     //COROUTINES
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-play-services:1.8.1")

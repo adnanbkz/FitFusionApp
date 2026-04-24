@@ -82,7 +82,7 @@ fun PantallaTracking(
                     Text("FitFusion", fontSize = 22.sp, fontWeight = FontWeight.Black, color = OnSurface)
                 }
                 Text(
-                    state.selectedDate.format(DateTimeFormatter.ofPattern("EEE d MMM", Locale("es"))),
+                    state.selectedDate.format(DateTimeFormatter.ofPattern("EEE d MMM", Locale.forLanguageTag("es"))),
                     fontSize = 14.sp,
                     color = OnSurfaceVariant,
                     fontWeight = FontWeight.Medium
@@ -136,6 +136,45 @@ fun PantallaTracking(
                         StatColumn("INGERIDAS", "${state.kcalEaten}")
                         StatColumn("QUEMADAS",  "${state.kcalBurned}")
                         StatColumn("OBJETIVO",  "${state.kcalGoal}")
+                    }
+                }
+            }
+        }
+
+        state.healthData?.let { healthData ->
+            item {
+                Card(
+                    shape = RoundedCornerShape(20.dp),
+                    colors = CardDefaults.cardColors(containerColor = SurfaceContainerLowest),
+                    elevation = CardDefaults.cardElevation(0.dp),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Column(
+                        modifier = Modifier.padding(20.dp),
+                        verticalArrangement = Arrangement.spacedBy(14.dp)
+                    ) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text(
+                                "ACTIVIDAD HEALTH CONNECT",
+                                fontSize = 11.sp,
+                                fontWeight = FontWeight.Bold,
+                                letterSpacing = 1.5.sp,
+                                color = Primary
+                            )
+                            Text("Sincronizado", fontSize = 12.sp, color = OnSurfaceVariant)
+                        }
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceEvenly
+                        ) {
+                            StatColumn("PASOS", "${healthData.steps}")
+                            StatColumn("KCAL PASOS", "${healthData.stepCaloriesEstimated}")
+                            StatColumn("FC MEDIA", healthData.averageHeartRate?.let { "$it" } ?: "—")
+                        }
                     }
                 }
             }

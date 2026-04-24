@@ -157,7 +157,9 @@ fun PantallaHome(
                         scope.launch { pagerState.animateScrollToPage(2) }
                     },
                     onFabClick = profileViewModel::showCreatePost,
-                    onPostClick = { navController.navigate(Screens.PostDetailScreen.name) },
+                    onPostClick = { postId ->
+                        navController.navigate("${Screens.PostDetailScreen.name}/$postId")
+                    },
                     onLikeClick = homeViewModel::toggleLike,
                     onFilterSelect = homeViewModel::setFilter,
                 )
@@ -185,7 +187,7 @@ private fun HomeFeedPage(
     photoUri: String?,
     onAvatarClick: () -> Unit,
     onFabClick: () -> Unit,
-    onPostClick: () -> Unit,
+    onPostClick: (String) -> Unit,
     onLikeClick: (String) -> Unit,
     onFilterSelect: (FeedFilter) -> Unit,
 ) {
@@ -222,7 +224,7 @@ private fun HomeFeedPage(
                         letterSpacing = (-0.5).sp,
                     )
                     Text(
-                        "Lo último de quienes sigues",
+                        "Lo último de la comunidad",
                         fontSize = 14.sp,
                         color = OnSurfaceVariant,
                     )
@@ -255,12 +257,12 @@ private fun HomeFeedPage(
                         is FeedItem.Workout -> WorkoutPostCard(
                             post        = item.post,
                             onLikeClick = { onLikeClick(item.post.id) },
-                            onCardClick = onPostClick,
+                            onCardClick = { onPostClick(item.post.id) },
                         )
                         is FeedItem.Nutrition -> NutritionPostCard(
                             post        = item.post,
                             onLikeClick = { onLikeClick(item.post.id) },
-                            onCardClick = onPostClick,
+                            onCardClick = { onPostClick(item.post.id) },
                         )
                     }
                     Spacer(modifier = Modifier.height(12.dp))
@@ -382,8 +384,8 @@ private fun FeedFilterRow(
 private fun FeedEmptyState(filter: FeedFilter) {
     val message = when (filter) {
         FeedFilter.ALL       -> "Aún no hay publicaciones"
-        FeedFilter.WORKOUTS  -> "Sin entrenamientos de tus seguidos"
-        FeedFilter.NUTRITION -> "Sin recetas de tus seguidos"
+        FeedFilter.WORKOUTS  -> "Aún no hay entrenos publicados"
+        FeedFilter.NUTRITION -> "Aún no hay recetas publicadas"
     }
     Box(
         modifier = Modifier
@@ -397,7 +399,7 @@ private fun FeedEmptyState(filter: FeedFilter) {
         ) {
             Text(message, fontSize = 15.sp, fontWeight = FontWeight.SemiBold, color = OnSurface)
             Text(
-                "Sigue a más personas para ver su actividad",
+                "Publica un entreno o una receta para empezar el feed",
                 fontSize = 13.sp, color = OnSurfaceVariant
             )
         }
@@ -535,7 +537,7 @@ private fun WorkoutPostCard(
                 if (post.totalWeightKg > 0) {
                     StatBadge(
                         icon = { Icon(Icons.Outlined.FitnessCenter, null, Modifier.size(14.dp), tint = Secondary) },
-                        label = "${"%.3f".format(post.totalWeightKg)}kg",
+                        label = "${post.totalWeightKg.toInt()}kg",
                         labelColor = Secondary,
                     )
                 }
@@ -551,8 +553,16 @@ private fun WorkoutPostCard(
                     .padding(12.dp),
                 verticalArrangement = Arrangement.spacedBy(10.dp),
             ) {
-                post.exercises.forEach { exercise ->
-                    ExerciseRow(exercise)
+                if (post.exercises.isEmpty()) {
+                    Text(
+                        "Sin ejercicios detallados",
+                        fontSize = 13.sp,
+                        color = OnSurfaceVariant,
+                    )
+                } else {
+                    post.exercises.forEach { exercise ->
+                        ExerciseRow(exercise)
+                    }
                 }
             }
 
