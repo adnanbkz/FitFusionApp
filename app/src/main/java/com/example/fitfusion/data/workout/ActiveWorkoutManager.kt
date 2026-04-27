@@ -1,10 +1,12 @@
 package com.example.fitfusion.data.workout
 
+import android.content.Context
 import com.example.fitfusion.data.models.ExerciseCatalogItem
 import com.example.fitfusion.data.models.LoggedWorkout
 import com.example.fitfusion.data.models.WorkoutExercise
 import com.example.fitfusion.data.models.WorkoutSet
 import com.example.fitfusion.data.repository.WorkoutRepository
+import com.example.fitfusion.service.WorkoutForegroundService
 import com.example.fitfusion.util.MuscleTranslations
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -58,6 +60,7 @@ object ActiveWorkoutManager {
 
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
     private var tickerJob: Job? = null
+    private var appContext: Context? = null
 
     private val _session = MutableStateFlow<ActiveWorkoutSession?>(null)
     val session: StateFlow<ActiveWorkoutSession?> = _session.asStateFlow()
@@ -66,6 +69,10 @@ object ActiveWorkoutManager {
     val elapsedSeconds: StateFlow<Long> = _elapsedSeconds.asStateFlow()
 
     val isActive: Boolean get() = _session.value != null
+
+    fun init(context: Context) {
+        appContext = context.applicationContext
+    }
 
     fun startSession(
         name: String,
@@ -85,6 +92,7 @@ object ActiveWorkoutManager {
         )
         _elapsedSeconds.value = 0L
         startTicker()
+        appContext?.let { WorkoutForegroundService.start(it) }
     }
 
     fun renameSession(name: String) {
@@ -221,6 +229,7 @@ object ActiveWorkoutManager {
         tickerJob = null
         _session.value = null
         _elapsedSeconds.value = 0L
+        appContext?.let { WorkoutForegroundService.stop(it) }
     }
 
     private fun startTicker() {
