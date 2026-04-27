@@ -4,6 +4,8 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.fitfusion.data.health.DailyHealthData
 import com.example.fitfusion.data.models.*
+import com.example.fitfusion.data.repository.DailySummary
+import com.example.fitfusion.data.repository.DailySummaryRepository
 import com.example.fitfusion.data.repository.FoodRepository
 import com.example.fitfusion.data.repository.HealthRepository
 import com.example.fitfusion.data.repository.WorkoutRepository
@@ -38,6 +40,7 @@ data class TrackingUiState(
     val renameMealName: String = "",
     val workouts: List<LoggedWorkout> = emptyList(),
     val healthData: DailyHealthData? = null,
+    val dailySummary: DailySummary? = null,
     val editFoodState: EditFoodState? = null,
     val proteinGoal: Int = 160,
     val carbsGoal:   Int = 210,
@@ -61,6 +64,7 @@ class TrackingViewModel : ViewModel() {
         FirebaseAuth.getInstance(),
     )
     private var healthListenerRegistration: ListenerRegistration? = null
+    private var summaryListenerRegistration: ListenerRegistration? = null
     private val _uiState = MutableStateFlow(TrackingUiState())
     val uiState: StateFlow<TrackingUiState> = _uiState.asStateFlow()
 
@@ -83,6 +87,7 @@ class TrackingViewModel : ViewModel() {
                 }
         }
         attachHealthDataListener(LocalDate.now())
+        attachDailySummaryListener(LocalDate.now())
     }
 
     fun selectDate(date: LocalDate) {
@@ -93,9 +98,11 @@ class TrackingViewModel : ViewModel() {
                 dayLog       = FoodRepository.getDayLog(date),
                 weekSummary  = FoodRepository.getWeekSummary(weekStart),
                 workouts     = WorkoutRepository.getWorkoutsForDate(date),
+                dailySummary = null,
             )
         }
         attachHealthDataListener(date)
+        attachDailySummaryListener(date)
     }
 
     private fun attachHealthDataListener(date: LocalDate) {
@@ -103,6 +110,15 @@ class TrackingViewModel : ViewModel() {
         healthListenerRegistration = healthRepository.listenDailyHealthData(date) { healthData ->
             _uiState.update { current ->
                 if (current.selectedDate == date) current.copy(healthData = healthData) else current
+            }
+        }
+    }
+
+    private fun attachDailySummaryListener(date: LocalDate) {
+        summaryListenerRegistration?.remove()
+        summaryListenerRegistration = DailySummaryRepository.listenDay(date) { summary ->
+            _uiState.update { current ->
+                if (current.selectedDate == date) current.copy(dailySummary = summary) else current
             }
         }
     }
@@ -230,6 +246,8 @@ class TrackingViewModel : ViewModel() {
     override fun onCleared() {
         healthListenerRegistration?.remove()
         healthListenerRegistration = null
+        summaryListenerRegistration?.remove()
+        summaryListenerRegistration = null
         super.onCleared()
     }
 }

@@ -141,6 +141,38 @@ fun PantallaTracking(
             }
         }
 
+        state.dailySummary?.takeIf { it.workoutCount > 0 }?.let { ds ->
+            item {
+                Card(
+                    shape  = RoundedCornerShape(20.dp),
+                    colors = CardDefaults.cardColors(containerColor = SurfaceContainerLowest),
+                    elevation = CardDefaults.cardElevation(0.dp),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Column(
+                        modifier = Modifier.padding(20.dp),
+                        verticalArrangement = Arrangement.spacedBy(14.dp)
+                    ) {
+                        Text(
+                            "ENTRENAMIENTO DE HOY",
+                            fontSize = 11.sp,
+                            fontWeight = FontWeight.Bold,
+                            letterSpacing = 1.5.sp,
+                            color = Primary
+                        )
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceEvenly
+                        ) {
+                            StatColumn("SESIONES", "${ds.workoutCount}")
+                            StatColumn("KCAL",     "${ds.kcalBurned}")
+                            StatColumn("VOLUMEN",  "${ds.totalVolumeKg.toInt()} kg")
+                        }
+                    }
+                }
+            }
+        }
+
         state.healthData?.let { healthData ->
             item {
                 Card(
