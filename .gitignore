@@ -16,3 +16,4 @@ local.properties
 
 functions/.env
 functions/node_modules/
+*.md
