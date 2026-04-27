@@ -1,160 +1,240 @@
 package com.example.fitfusion.data.repository
 
 import com.example.fitfusion.data.models.*
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import com.google.firebase.auth.FirebaseAuth
+import com.google.firebase.firestore.FirebaseFirestore
+import com.google.firebase.firestore.ListenerRegistration
+import com.google.firebase.firestore.Query
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
-import java.time.DayOfWeek
+import kotlinx.coroutines.tasks.await
 import java.time.LocalDate
-import java.time.temporal.TemporalAdjusters
+
+private const val FOOD_LOGS_COLLECTION = "foodLogs"
+private const val USERS_COLLECTION     = "users"
 
 object FoodRepository {
 
-    val catalog: List<Food> = listOf(
-        Food("1",  "Ensalada de aguacate", null,     160f,  2f,  9f, 15f,  "aguacate",
-            listOf(Serving("1 racion (200g)", 200f), Serving("100g", 100f))),
-        Food("2",  "Pasta al pesto",       null,     131f,  5f, 25f,  3.5f, "pasta",
-            listOf(Serving("1 plato (300g)", 300f),  Serving("100g", 100f))),
-        Food("3",  "Yogur griego",         "Fage",    97f, 10f,  4f,  5f,  "yogur",
-            listOf(Serving("1 unidad (200g)", 200f), Serving("100g", 100f)), isFavorite = true),
-        Food("4",  "Avena con frutas",     null,      71f,  2.5f, 12f, 1.5f, "avena",
-            listOf(Serving("1 bol (350g)", 350f),    Serving("100g", 100f)), isFavorite = true),
-        Food("5",  "Pechuga de pollo",     null,     165f, 31f,  0f,  3.6f, "pollo",
-            listOf(Serving("1 filete (150g)", 150f), Serving("100g", 100f)), isFavorite = true),
-        Food("6",  "Huevos revueltos",     null,     148f, 10f,  1f, 11f,  "huevo",
-            listOf(Serving("2 huevos (120g)", 120f), Serving("100g", 100f))),
-        Food("7",  "Batido de proteinas",  "MyProtein", 120f, 22f, 4f, 1.5f, "batido",
-            listOf(Serving("1 batido (330ml)", 200f), Serving("100ml", 60f))),
-        Food("8",  "Platano",              null,      89f,  1.1f, 23f, 0.3f, "platano",
-            listOf(Serving("1 unidad (120g)", 120f), Serving("100g", 100f))),
-        Food("9",  "Brocoli al vapor",     null,      34f,  2.8f,  7f, 0.4f, "brocoli",
-            listOf(Serving("1 racion (200g)", 200f), Serving("100g", 100f))),
-        Food("10", "Arroz integral",       null,     111f,  2.6f, 23f, 0.9f, "arroz",
-            listOf(Serving("1 racion (200g)", 200f), Serving("100g", 100f))),
-        Food("11", "Tostada integral",     null,     247f,  8f,  41f, 3.4f, "tostada",
-            listOf(Serving("1 rebanada (40g)", 40f), Serving("100g", 100f))),
-        Food("12", "Manzana",             null,       52f,  0.3f, 14f, 0.2f, "manzana",
-            listOf(Serving("1 unidad (180g)", 180f), Serving("100g", 100f)))
-    )
-
-    val favorites: List<Food> get() = catalog.filter { it.isFavorite }
-    val recents:   List<Food> get() = catalog.take(4)
-
-    fun search(query: String): List<Food> {
-        if (query.isBlank()) return emptyList()
-        val q = query.trim().lowercase()
-        return catalog.filter {
-            it.name.lowercase().contains(q) || it.brand?.lowercase()?.contains(q) == true
-        }
-    }
+    private val auth      = FirebaseAuth.getInstance()
+    private val firestore = FirebaseFirestore.getInstance()
 
     private val _dayLogs = MutableStateFlow<Map<LocalDate, DayLog>>(emptyMap())
     val dayLogs: StateFlow<Map<LocalDate, DayLog>> = _dayLogs.asStateFlow()
 
-    init { seedMockData() }
+    private val _recents = MutableStateFlow<List<Food>>(emptyList())
+    val recents: StateFlow<List<Food>> = _recents.asStateFlow()
 
-    private fun seedMockData() {
-        val today     = LocalDate.now()
-        val weekStart = today.with(TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY))
-        val logs      = mutableMapOf<LocalDate, DayLog>()
+    val favorites: List<Food> get() = emptyList()
 
-        fun entry(foodIdx: Int, slot: MealSlot, date: LocalDate) = LoggedFood(
-            food     = catalog[foodIdx],
-            serving  = catalog[foodIdx].servingOptions[0],
-            quantity = 1,
-            mealSlot = slot,
-            date     = date
-        )
+    // Custom meal slots added via UI but with no food entries yet (in-memory, lost on restart)
+    private val customMealsByDate = mutableMapOf<LocalDate, MutableList<MealSlot>>()
 
-        val mon = weekStart
-        if (mon.isBefore(today)) {
-            logs[mon] = DayLog(mon, MealSlot.DEFAULT, listOf(
-                entry(3, MealSlot.BREAKFAST, mon),
-                entry(2, MealSlot.BREAKFAST, mon),
-                entry(4, MealSlot.LUNCH,     mon),
-                entry(8, MealSlot.LUNCH,     mon),
-                entry(1, MealSlot.DINNER,    mon)
-            ))
-        }
-        val tue = weekStart.plusDays(1)
-        if (tue.isBefore(today)) {
-            logs[tue] = DayLog(tue, MealSlot.DEFAULT, listOf(
-                entry(5, MealSlot.BREAKFAST, tue),
-                entry(0, MealSlot.LUNCH,     tue),
-                entry(9, MealSlot.LUNCH,     tue),
-                entry(6, MealSlot.DINNER,    tue)
-            ))
-        }
-        val wed = weekStart.plusDays(2)
-        if (wed.isBefore(today)) {
-            logs[wed] = DayLog(wed, MealSlot.DEFAULT, listOf(
-                entry(3,  MealSlot.BREAKFAST, wed),
-                entry(10, MealSlot.BREAKFAST, wed),
-                entry(4,  MealSlot.LUNCH,     wed),
-                entry(8,  MealSlot.LUNCH,     wed),
-                entry(0,  MealSlot.DINNER,    wed),
-                entry(1,  MealSlot.DINNER,    wed)
-            ))
-        }
-        _dayLogs.value = logs
+    // Last snapshot of raw entries used to rebuild DayLogs when custom meals change
+    private var rawEntries: List<LoggedFood> = emptyList()
+
+    private var listenerRegistration: ListenerRegistration? = null
+    private var currentUid: String? = null
+    private var authListenerRegistered = false
+
+    private val authListener = FirebaseAuth.AuthStateListener { fbAuth ->
+        attachFoodLogListener(fbAuth.currentUser?.uid)
     }
 
-    fun getDayLog(date: LocalDate): DayLog = _dayLogs.value[date] ?: DayLog(date = date, meals = emptyList())
+    init { ensureInitialized() }
 
-    fun addFood(loggedFood: LoggedFood) {
-        val current = getDayLog(loggedFood.date)
-        val meals   = if (current.meals.any { it.id == loggedFood.mealSlot.id }) current.meals
-                      else current.meals + loggedFood.mealSlot
-        val updated = current.copy(meals = meals, entries = current.entries + loggedFood)
-        _dayLogs.value = _dayLogs.value + (loggedFood.date to updated)
+    fun ensureInitialized() {
+        if (authListenerRegistered) return
+        auth.addAuthStateListener(authListener)
+        authListenerRegistered = true
+        attachFoodLogListener(auth.currentUser?.uid)
     }
 
-    fun removeFood(id: String, date: LocalDate) {
-        val current = getDayLog(date)
-        val updated = current.copy(entries = current.entries.filter { it.id != id })
-        _dayLogs.value = _dayLogs.value + (date to updated)
-    }
+    private fun attachFoodLogListener(uid: String?) {
+        if (uid == currentUid && listenerRegistration != null) return
+        listenerRegistration?.remove()
+        listenerRegistration = null
+        currentUid = uid
 
-    fun updateFood(id: String, date: LocalDate, newServing: Serving, newQuantity: Int, newSlot: MealSlot) {
-        val current = getDayLog(date)
-        val meals   = if (current.meals.any { it.id == newSlot.id }) current.meals
-                      else current.meals + newSlot
-        val updated = current.copy(
-            meals   = meals,
-            entries = current.entries.map { entry ->
-                if (entry.id == id) entry.copy(serving = newServing, quantity = newQuantity, mealSlot = newSlot)
-                else entry
+        if (uid.isNullOrBlank()) {
+            rawEntries = emptyList()
+            customMealsByDate.clear()
+            _dayLogs.value = emptyMap()
+            _recents.value = emptyList()
+            return
+        }
+
+        listenerRegistration = firestore.collection(USERS_COLLECTION).document(uid)
+            .collection(FOOD_LOGS_COLLECTION)
+            .orderBy("createdAtMs", Query.Direction.DESCENDING)
+            .addSnapshotListener { snapshot, error ->
+                if (error != null || snapshot == null) return@addSnapshotListener
+                rawEntries = snapshot.documents.mapNotNull { it.toLoggedFoodOrNull() }
+                rebuildDayLogs()
             }
-        )
-        _dayLogs.value = _dayLogs.value + (date to updated)
+    }
+
+    private fun rebuildDayLogs() {
+        val byDate = rawEntries.groupBy { it.date }
+        val allDates = (byDate.keys + customMealsByDate.keys).toSet()
+        _dayLogs.value = allDates.associateWith { date ->
+            val entries    = byDate[date] ?: emptyList()
+            val entrySlots = entries.map { it.mealSlot }.distinctBy { it.id }
+            val customSlots = customMealsByDate[date] ?: emptyList()
+            val meals      = (entrySlots + customSlots).distinctBy { it.id }
+                .ifEmpty { MealSlot.DEFAULT }
+            DayLog(date = date, meals = meals, entries = entries)
+        }
+        val seen = mutableSetOf<String>()
+        _recents.value = rawEntries.mapNotNull { lf ->
+            if (seen.add(lf.food.name.lowercase())) lf.food else null
+        }.take(4)
+    }
+
+    fun getDayLog(date: LocalDate): DayLog =
+        _dayLogs.value[date] ?: DayLog(date = date, meals = MealSlot.DEFAULT)
+
+    suspend fun addFood(loggedFood: LoggedFood) {
+        ensureInitialized()
+        val uid = auth.currentUser?.uid ?: return
+        firestore.collection(USERS_COLLECTION).document(uid)
+            .collection(FOOD_LOGS_COLLECTION)
+            .document(loggedFood.id)
+            .set(loggedFood.toFirestoreMap())
+            .await()
+        pushFoodSummary(loggedFood.date)
+    }
+
+    suspend fun removeFood(id: String, date: LocalDate) {
+        ensureInitialized()
+        val uid = auth.currentUser?.uid ?: return
+        firestore.collection(USERS_COLLECTION).document(uid)
+            .collection(FOOD_LOGS_COLLECTION)
+            .document(id)
+            .delete()
+            .await()
+        pushFoodSummary(date)
+    }
+
+    suspend fun updateFood(
+        id: String,
+        date: LocalDate,
+        newServing: Serving,
+        newQuantity: Int,
+        newSlot: MealSlot,
+    ) {
+        ensureInitialized()
+        val uid = auth.currentUser?.uid ?: return
+        firestore.collection(USERS_COLLECTION).document(uid)
+            .collection(FOOD_LOGS_COLLECTION)
+            .document(id)
+            .update(mapOf(
+                "servingLabel"    to newServing.label,
+                "servingGrams"    to newServing.grams.toDouble(),
+                "quantity"        to newQuantity,
+                "mealSlotId"      to newSlot.id,
+                "mealSlotName"    to newSlot.name,
+                "mealSlotIsCustom" to newSlot.isCustom,
+            ))
+            .await()
+        pushFoodSummary(date)
     }
 
     fun addMealToDay(date: LocalDate, meal: MealSlot) {
-        val current = getDayLog(date)
-        if (current.meals.any { it.id == meal.id }) return
-        _dayLogs.value = _dayLogs.value + (date to current.copy(meals = current.meals + meal))
-    }
-
-    fun renameMealInDay(date: LocalDate, mealId: String, newName: String) {
-        val current = getDayLog(date)
-        val updated = current.copy(
-            meals   = current.meals.map { if (it.id == mealId) it.copy(name = newName) else it },
-            entries = current.entries.map { if (it.mealSlot.id == mealId) it.copy(mealSlot = it.mealSlot.copy(name = newName)) else it }
-        )
-        _dayLogs.value = _dayLogs.value + (date to updated)
+        val meals = customMealsByDate.getOrPut(date) { mutableListOf() }
+        if (meals.none { it.id == meal.id }) {
+            meals.add(meal)
+            rebuildDayLogs()
+        }
     }
 
     fun removeMealFromDay(date: LocalDate, mealId: String) {
-        val current = getDayLog(date)
-        val updated = current.copy(
-            meals   = current.meals.filter { it.id != mealId },
-            entries = current.entries.filter { it.mealSlot.id != mealId }
-        )
-        _dayLogs.value = _dayLogs.value + (date to updated)
+        customMealsByDate[date]?.removeAll { it.id == mealId }
+        rebuildDayLogs()
+    }
+
+    fun renameMealInDay(date: LocalDate, mealId: String, newName: String) {
+        val meals = customMealsByDate[date] ?: return
+        val idx   = meals.indexOfFirst { it.id == mealId }
+        if (idx >= 0) meals[idx] = meals[idx].copy(name = newName)
+        rebuildDayLogs()
+    }
+
+    private fun pushFoodSummary(date: LocalDate) {
+        val dayLog = getDayLog(date)
+        CoroutineScope(Dispatchers.IO).launch {
+            DailySummaryRepository.mergeFoodSummary(
+                date         = date,
+                kcalConsumed = dayLog.totalKcal,
+                proteinG     = dayLog.totalProtein,
+                carbsG       = dayLog.totalCarbs,
+                fatG         = dayLog.totalFat,
+            )
+        }
     }
 
     fun getWeekSummary(weekStart: LocalDate): WeekSummary {
         val days = (0L..6L).map { getDayLog(weekStart.plusDays(it)) }
         return WeekSummary(weekStart, days)
+    }
+
+    // ─── Firestore serialization ─────────────────────────────────────────────
+
+    private fun LoggedFood.toFirestoreMap(): Map<String, Any?> = mapOf(
+        "id"              to id,
+        "date"            to date.toString(),
+        "mealSlotId"      to mealSlot.id,
+        "mealSlotName"    to mealSlot.name,
+        "mealSlotIsCustom" to mealSlot.isCustom,
+        "quantity"        to quantity,
+        "servingLabel"    to serving.label,
+        "servingGrams"    to serving.grams.toDouble(),
+        "foodId"          to food.id,
+        "fatSecretId"     to food.fatSecretId,
+        "foodName"        to food.name,
+        "foodBrand"       to food.brand,
+        "emoji"           to food.emoji,
+        "kcalPer100g"     to food.kcalPer100g.toDouble(),
+        "proteinPer100g"  to food.proteinPer100g.toDouble(),
+        "carbsPer100g"    to food.carbsPer100g.toDouble(),
+        "fatsPer100g"     to food.fatsPer100g.toDouble(),
+        "createdAtMs"     to System.currentTimeMillis(),
+    )
+
+    private fun com.google.firebase.firestore.DocumentSnapshot.toLoggedFoodOrNull(): LoggedFood? {
+        val foodName  = getString("foodName")?.takeIf { it.isNotBlank() } ?: return null
+        val dateStr   = getString("date") ?: return null
+        val date      = runCatching { LocalDate.parse(dateStr) }.getOrNull() ?: return null
+        val mealSlotId   = getString("mealSlotId") ?: return null
+        val mealSlotName = getString("mealSlotName") ?: return null
+        val mealSlot  = MealSlot.predefinedById(mealSlotId)
+            ?: MealSlot(mealSlotId, mealSlotName, getBoolean("mealSlotIsCustom") ?: false)
+        val serving   = Serving(
+            label = getString("servingLabel") ?: "100g",
+            grams = (getDouble("servingGrams") ?: 100.0).toFloat(),
+        )
+        val food = Food(
+            id             = getString("foodId") ?: id,
+            fatSecretId    = getString("fatSecretId"),
+            name           = foodName,
+            brand          = getString("foodBrand"),
+            emoji          = getString("emoji") ?: "🍽️",
+            kcalPer100g    = (getDouble("kcalPer100g")    ?: 0.0).toFloat(),
+            proteinPer100g = (getDouble("proteinPer100g") ?: 0.0).toFloat(),
+            carbsPer100g   = (getDouble("carbsPer100g")   ?: 0.0).toFloat(),
+            fatsPer100g    = (getDouble("fatsPer100g")    ?: 0.0).toFloat(),
+            servingOptions = listOf(serving, Serving("100g", 100f)).distinctBy { it.label },
+        )
+        return LoggedFood(
+            id       = id,
+            food     = food,
+            serving  = serving,
+            quantity = (getLong("quantity") ?: 1L).toInt(),
+            mealSlot = mealSlot,
+            date     = date,
+        )
     }
 }

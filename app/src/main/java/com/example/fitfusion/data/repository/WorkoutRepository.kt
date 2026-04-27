@@ -6,9 +6,12 @@ import com.example.fitfusion.data.models.WorkoutSet
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.ListenerRegistration
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.tasks.await
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
@@ -65,6 +68,8 @@ object WorkoutRepository {
             .document(workout.id)
             .set(workout.toFirestoreMap())
             .await()
+
+        pushWorkoutSummary(workout.date)
     }
 
     fun removeWorkout(id: String, date: LocalDate) {
@@ -75,6 +80,19 @@ object WorkoutRepository {
             .collection(WORKOUTS_COLLECTION)
             .document(id)
             .delete()
+        pushWorkoutSummary(date)
+    }
+
+    private fun pushWorkoutSummary(date: LocalDate) {
+        val workouts = getWorkoutsForDate(date)
+        CoroutineScope(Dispatchers.IO).launch {
+            DailySummaryRepository.mergeWorkoutSummary(
+                date          = date,
+                workoutCount  = workouts.size,
+                kcalBurned    = workouts.sumOf { it.kcalBurned },
+                totalVolumeKg = workouts.sumOf { it.totalVolumeKg.toDouble() }.toFloat(),
+            )
+        }
     }
 
     private fun attachWorkoutListener(uid: String?) {

@@ -280,7 +280,16 @@ private fun AlimentosContent(
                 )
             }
         } else {
-            if (state.searchResults.isEmpty()) {
+            if (state.isLoadingSearch) {
+                item {
+                    Box(
+                        Modifier.fillMaxWidth().padding(vertical = 48.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        CircularProgressIndicator(color = Primary, modifier = Modifier.size(32.dp))
+                    }
+                }
+            } else if (state.searchResults.isEmpty()) {
                 item {
                     Box(
                         Modifier.fillMaxWidth().padding(vertical = 48.dp),

@@ -116,7 +116,8 @@ class TrackingViewModel : ViewModel() {
     }
 
     fun removeFood(id: String) {
-        FoodRepository.removeFood(id, _uiState.value.selectedDate)
+        val date = _uiState.value.selectedDate
+        viewModelScope.launch { FoodRepository.removeFood(id, date) }
     }
 
     fun showAddMealDialog() {
@@ -212,15 +213,18 @@ class TrackingViewModel : ViewModel() {
     }
 
     fun confirmEdit() {
-        val ef = _uiState.value.editFoodState ?: return
-        FoodRepository.updateFood(
-            id          = ef.loggedFood.id,
-            date        = _uiState.value.selectedDate,
-            newServing  = ef.selectedServing,
-            newQuantity = ef.quantity,
-            newSlot     = ef.mealSlot,
-        )
+        val ef   = _uiState.value.editFoodState ?: return
+        val date = _uiState.value.selectedDate
         _uiState.update { it.copy(editFoodState = null) }
+        viewModelScope.launch {
+            FoodRepository.updateFood(
+                id          = ef.loggedFood.id,
+                date        = date,
+                newServing  = ef.selectedServing,
+                newQuantity = ef.quantity,
+                newSlot     = ef.mealSlot,
+            )
+        }
     }
 
     override fun onCleared() {
