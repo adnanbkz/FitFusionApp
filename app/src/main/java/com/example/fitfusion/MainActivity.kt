@@ -151,6 +151,14 @@ class MainActivity : ComponentActivity() {
                             )
                         }
 
+                        composable(Screens.ActiveWorkoutScreen.name) {
+                            PantallaActiveWorkout(navController)
+                        }
+
+                        composable(Screens.WorkoutFinishScreen.name) {
+                            PantallaWorkoutFinish(navController)
+                        }
+
                         composable(Screens.AccountScreen.name) {
                             PantallaAccount(navController)
                         }

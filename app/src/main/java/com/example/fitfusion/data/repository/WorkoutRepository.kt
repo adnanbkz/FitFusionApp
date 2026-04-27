@@ -49,12 +49,27 @@ object WorkoutRepository {
     fun getWorkoutsForDate(date: LocalDate): List<LoggedWorkout> =
         _workouts.value[date] ?: emptyList()
 
-    suspend fun addWorkout(workout: LoggedWorkout) {
-        saveWorkout(workout)
+    suspend fun addWorkout(
+        workout: LoggedWorkout,
+        description: String = "",
+        mediaUrls: List<String> = emptyList(),
+    ) {
+        saveWorkout(workout.copy(description = description, mediaUrls = mediaUrls))
     }
 
     suspend fun updateWorkout(workout: LoggedWorkout) {
         saveWorkout(workout)
+    }
+
+    suspend fun updateWorkoutMedia(workoutId: String, mediaUrls: List<String>) {
+        ensureInitialized()
+        val uid = auth.currentUser?.uid ?: return
+        firestore.collection(USERS_COLLECTION)
+            .document(uid)
+            .collection(WORKOUTS_COLLECTION)
+            .document(workoutId)
+            .update("mediaUrls", mediaUrls)
+            .await()
     }
 
     private suspend fun saveWorkout(workout: LoggedWorkout) {
@@ -138,6 +153,8 @@ object WorkoutRepository {
         "startedAtMs" to startedAtMs,
         "endedAtMs" to endedAtMs,
         "createdAtMs" to (createdAtMs ?: System.currentTimeMillis()),
+        "description" to description,
+        "mediaUrls" to mediaUrls,
         "exercises" to exercises.map { exercise ->
             mapOf(
                 "exerciseDocumentId" to exercise.exerciseDocumentId,
@@ -173,6 +190,8 @@ object WorkoutRepository {
             endedAtMs = getLong("endedAtMs"),
             createdAtMs = getLong("createdAtMs"),
             exercises = exercises,
+            description = getString("description").orEmpty(),
+            mediaUrls = (get("mediaUrls") as? List<*>)?.mapNotNull { it as? String }.orEmpty(),
         )
     }
 

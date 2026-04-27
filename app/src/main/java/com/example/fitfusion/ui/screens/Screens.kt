@@ -11,6 +11,8 @@ enum class Screens {
     WorkoutSummaryScreen,
     AddFoodScreen,
     AddWorkoutScreen,
+    ActiveWorkoutScreen,
+    WorkoutFinishScreen,
     AccountScreen,
     PrivacyScreen,
     DataStorageScreen,

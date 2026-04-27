@@ -46,6 +46,8 @@ data class LoggedWorkout(
     val endedAtMs: Long? = null,
     val createdAtMs: Long? = null,
     val exercises: List<WorkoutExercise> = emptyList(),
+    val description: String = "",
+    val mediaUrls: List<String> = emptyList(),
 ) {
     val exerciseCount: Int get() = exercises.size
     val totalSets: Int get() = exercises.sumOf { it.sets.size }

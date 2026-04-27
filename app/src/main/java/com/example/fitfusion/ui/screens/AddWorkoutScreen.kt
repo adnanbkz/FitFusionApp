@@ -1,20 +1,18 @@
 package com.example.fitfusion.ui.screens
 
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Clear
+import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -29,12 +27,11 @@ import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavHostController
 import com.example.fitfusion.data.models.ExerciseCatalogItem
+import com.example.fitfusion.data.workout.ActiveWorkoutManager
 import com.example.fitfusion.ui.theme.*
 import com.example.fitfusion.util.EquipmentTranslations
 import com.example.fitfusion.util.MuscleTranslations
 import com.example.fitfusion.viewmodel.AddWorkoutViewModel
-import com.example.fitfusion.viewmodel.EditableSetConfig
-import com.example.fitfusion.viewmodel.ExerciseConfig
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -44,9 +41,18 @@ fun PantallaAddWorkout(
     addWorkoutViewModel: AddWorkoutViewModel = viewModel()
 ) {
     val state by addWorkoutViewModel.uiState.collectAsState()
+    val activeSession by ActiveWorkoutManager.session.collectAsState()
 
     LaunchedEffect(isLogMode) {
         addWorkoutViewModel.setLogMode(isLogMode)
+    }
+
+    LaunchedEffect(activeSession?.id) {
+        if (activeSession != null) {
+            navController.navigate(Screens.ActiveWorkoutScreen.name) {
+                popUpTo(Screens.AddWorkoutScreen.name) { inclusive = true }
+            }
+        }
     }
 
     Scaffold(
@@ -55,11 +61,22 @@ fun PantallaAddWorkout(
             if (state.isLogMode) {
                 if (state.selectedExercises.isNotEmpty()) {
                     ExtendedFloatingActionButton(
-                        onClick            = addWorkoutViewModel::showSessionSheet,
-                        containerColor     = Primary,
-                        contentColor       = Color.White,
-                        icon               = { Icon(Icons.Default.Check, contentDescription = null) },
-                        text               = { Text("Ver sesión · ${state.selectedExercises.size}", fontWeight = FontWeight.SemiBold) }
+                        onClick        = {
+                            if (addWorkoutViewModel.startSession()) {
+                                navController.navigate(Screens.ActiveWorkoutScreen.name) {
+                                    popUpTo(Screens.AddWorkoutScreen.name) { inclusive = true }
+                                }
+                            }
+                        },
+                        containerColor = Primary,
+                        contentColor   = Color.White,
+                        icon           = { Icon(Icons.Default.PlayArrow, contentDescription = null) },
+                        text           = {
+                            Text(
+                                "Iniciar · ${state.selectedExercises.size}",
+                                fontWeight = FontWeight.SemiBold,
+                            )
+                        }
                     )
                 }
             } else {
@@ -85,7 +102,7 @@ fun PantallaAddWorkout(
                 TopAppBar(
                     title = {
                         Text(
-                            if (state.isLogMode) "Registrar entrenamiento" else "Añadir entrenamiento",
+                            if (state.isLogMode) "Nuevo entrenamiento" else "Catálogo de ejercicios",
                             fontWeight = FontWeight.Bold, fontSize = 18.sp
                         )
                     },
@@ -101,9 +118,9 @@ fun PantallaAddWorkout(
             item {
                 Text(
                     if (state.isLogMode)
-                        "Selecciona los ejercicios de tu sesión de hoy."
+                        "Selecciona los ejercicios y pulsa iniciar; el cronómetro arranca automáticamente."
                     else
-                        "Explora el catálogo global de Firestore y elige ejercicios reales para el flujo de entrenamientos.",
+                        "Explora el catálogo global de Firestore.",
                     modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp),
                     fontSize = 14.sp,
                     color = OnSurfaceVariant
@@ -248,376 +265,7 @@ fun PantallaAddWorkout(
             }
         }
     }
-
-    if (state.showSessionSheet) {
-        LogWorkoutSheet(
-            state      = state,
-            onDismiss  = addWorkoutViewModel::dismissSessionSheet,
-            onNameChange    = addWorkoutViewModel::updateSessionName,
-            onIncrDuration  = addWorkoutViewModel::incrementDuration,
-            onDecrDuration  = addWorkoutViewModel::decrementDuration,
-            onStartStopwatch = addWorkoutViewModel::startStopwatch,
-            onPauseStopwatch = addWorkoutViewModel::pauseStopwatch,
-            onResetStopwatch = addWorkoutViewModel::resetStopwatch,
-            onAddSet = addWorkoutViewModel::addSet,
-            onRemoveSet = addWorkoutViewModel::removeSet,
-            onSetRepsChange = addWorkoutViewModel::updateSetReps,
-            onSetWeightChange = addWorkoutViewModel::updateSetWeight,
-            onSave     = {
-                addWorkoutViewModel.saveSession {
-                    navController.popBackStack()
-                }
-            }
-        )
-    }
 }
-
-
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-private fun LogWorkoutSheet(
-    state: com.example.fitfusion.viewmodel.AddWorkoutUiState,
-    onDismiss: () -> Unit,
-    onNameChange: (String) -> Unit,
-    onIncrDuration: () -> Unit,
-    onDecrDuration: () -> Unit,
-    onStartStopwatch: () -> Unit,
-    onPauseStopwatch: () -> Unit,
-    onResetStopwatch: () -> Unit,
-    onAddSet: (String) -> Unit,
-    onRemoveSet: (String, Int) -> Unit,
-    onSetRepsChange: (String, Int, Int) -> Unit,
-    onSetWeightChange: (String, Int, Int) -> Unit,
-    onSave: () -> Unit,
-) {
-    val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
-
-    ModalBottomSheet(
-        onDismissRequest  = onDismiss,
-        sheetState        = sheetState,
-        containerColor    = SurfaceContainerLowest,
-        dragHandle        = { BottomSheetDefaults.DragHandle() }
-    ) {
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .verticalScroll(rememberScrollState())
-                .padding(horizontal = 20.dp)
-                .padding(bottom = 32.dp),
-            verticalArrangement = Arrangement.spacedBy(20.dp)
-        ) {
-            Text("Tu sesión", fontSize = 20.sp, fontWeight = FontWeight.Bold, color = OnSurface)
-
-            OutlinedTextField(
-                value         = state.sessionName,
-                onValueChange = onNameChange,
-                label         = { Text("Nombre del entrenamiento") },
-                modifier      = Modifier.fillMaxWidth(),
-                singleLine    = true,
-                shape         = RoundedCornerShape(12.dp),
-                colors        = OutlinedTextFieldDefaults.colors(
-                    unfocusedContainerColor = SurfaceContainerLow,
-                    focusedContainerColor   = SurfaceContainerLow,
-                    unfocusedBorderColor    = Color.Transparent,
-                    focusedBorderColor      = Primary,
-                )
-            )
-
-            Card(
-                shape  = RoundedCornerShape(14.dp),
-                colors = CardDefaults.cardColors(containerColor = SurfaceContainerLow),
-                elevation = CardDefaults.cardElevation(0.dp)
-            ) {
-                Row(
-                    modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 14.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.SpaceBetween
-                ) {
-                    Column {
-                        Text("Cronómetro", fontSize = 14.sp, fontWeight = FontWeight.SemiBold, color = OnSurface)
-                        Text(
-                            if (state.isStopwatchUsed) "Tiempo real de la sesión"
-                            else "Si no lo usas, se guardará la duración manual",
-                            fontSize = 12.sp,
-                            color = OnSurfaceVariant
-                        )
-                    }
-                    Column(horizontalAlignment = Alignment.End) {
-                        Text(
-                            state.formattedStopwatch,
-                            fontSize = 22.sp,
-                            fontWeight = FontWeight.Bold,
-                            color = OnSurface
-                        )
-                        Text("~${state.kcalEstimate} kcal estimadas", fontSize = 12.sp, color = OnSurfaceVariant)
-                    }
-                }
-                HorizontalDivider(color = OutlineVariant.copy(alpha = 0.4f))
-                Row(
-                    modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 14.dp),
-                    horizontalArrangement = Arrangement.spacedBy(10.dp)
-                ) {
-                    if (state.isStopwatchRunning) {
-                        Button(
-                            onClick = onPauseStopwatch,
-                            modifier = Modifier.weight(1f),
-                            shape = RoundedCornerShape(12.dp),
-                        ) {
-                            Text("Pausar")
-                        }
-                    } else {
-                        Button(
-                            onClick = onStartStopwatch,
-                            modifier = Modifier.weight(1f),
-                            shape = RoundedCornerShape(12.dp),
-                        ) {
-                            Text(if (state.isStopwatchUsed) "Reanudar" else "Iniciar")
-                        }
-                    }
-                    OutlinedButton(
-                        onClick = onResetStopwatch,
-                        modifier = Modifier.weight(1f),
-                        shape = RoundedCornerShape(12.dp),
-                        enabled = state.isStopwatchUsed
-                    ) {
-                        Text("Reiniciar")
-                    }
-                }
-            }
-
-            Card(
-                shape  = RoundedCornerShape(14.dp),
-                colors = CardDefaults.cardColors(containerColor = SurfaceContainerLow),
-                elevation = CardDefaults.cardElevation(0.dp)
-            ) {
-                Row(
-                    modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 14.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.SpaceBetween
-                ) {
-                    Column {
-                        Text("Duración manual", fontSize = 14.sp, fontWeight = FontWeight.SemiBold, color = OnSurface)
-                        Text(
-                            if (state.isStopwatchUsed) "El cronómetro la sustituirá al guardar"
-                            else "Se usa si registras el entreno manualmente",
-                            fontSize = 12.sp,
-                            color = OnSurfaceVariant
-                        )
-                    }
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(12.dp)
-                    ) {
-                        StepperButton(label = "−", onClick = onDecrDuration)
-                        Text(
-                            "${state.sessionDurationMinutes} min",
-                            fontSize = 16.sp,
-                            fontWeight = FontWeight.Bold,
-                            color = OnSurface
-                        )
-                        StepperButton(label = "+", onClick = onIncrDuration)
-                    }
-                }
-            }
-
-            if (state.selectedExercises.isNotEmpty()) {
-                Text(
-                    "EJERCICIOS (${state.selectedExercises.size})",
-                    fontSize = 11.sp, fontWeight = FontWeight.Bold,
-                    letterSpacing = 1.5.sp, color = Primary
-                )
-                Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                    state.selectedExercises.forEach { exercise ->
-                        val config = state.exerciseConfigs[exercise.documentId] ?: ExerciseConfig()
-                        ExerciseConfigCard(
-                            exerciseDocumentId = exercise.documentId,
-                            exerciseName = exercise.name,
-                            muscleLabel  = MuscleTranslations.translate(exercise.displayMuscleGroup),
-                            config       = config,
-                            onAddSet = onAddSet,
-                            onRemoveSet = onRemoveSet,
-                            onSetRepsChange = onSetRepsChange,
-                            onSetWeightChange = onSetWeightChange,
-                        )
-                    }
-                }
-            }
-
-            state.sessionErrorMessage?.let { message ->
-                Text(
-                    message,
-                    color = MaterialTheme.colorScheme.error,
-                    fontSize = 13.sp
-                )
-            }
-
-            Button(
-                onClick  = onSave,
-                enabled = !state.isSavingSession,
-                modifier = Modifier.fillMaxWidth().height(52.dp),
-                shape    = RoundedCornerShape(14.dp),
-                colors   = ButtonDefaults.buttonColors(containerColor = Primary)
-            ) {
-                if (state.isSavingSession) {
-                    CircularProgressIndicator(
-                        modifier = Modifier.size(20.dp),
-                        color = Color.White,
-                        strokeWidth = 2.dp
-                    )
-                } else {
-                    Text(
-                        "Guardar entrenamiento",
-                        fontSize = 16.sp, fontWeight = FontWeight.SemiBold
-                    )
-                }
-            }
-        }
-    }
-}
-
-@Composable
-private fun ExerciseConfigCard(
-    exerciseDocumentId: String,
-    exerciseName: String,
-    muscleLabel: String,
-    config: ExerciseConfig,
-    onAddSet: (String) -> Unit,
-    onRemoveSet: (String, Int) -> Unit,
-    onSetRepsChange: (String, Int, Int) -> Unit,
-    onSetWeightChange: (String, Int, Int) -> Unit,
-) {
-    Card(
-        shape  = RoundedCornerShape(14.dp),
-        colors = CardDefaults.cardColors(containerColor = SurfaceContainerLow),
-        elevation = CardDefaults.cardElevation(0.dp),
-        modifier = Modifier.fillMaxWidth()
-    ) {
-        Column(modifier = Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Column(modifier = Modifier.weight(1f)) {
-                    Text(exerciseName, fontWeight = FontWeight.SemiBold, fontSize = 14.sp, color = OnSurface, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                    Text(muscleLabel, fontSize = 12.sp, color = OnSurfaceVariant)
-                }
-                AssistChip(
-                    onClick = { onAddSet(exerciseDocumentId) },
-                    label = { Text("Añadir serie") },
-                    colors = AssistChipDefaults.assistChipColors(containerColor = SurfaceContainerHigh)
-                )
-            }
-            HorizontalDivider(color = OutlineVariant.copy(alpha = 0.4f))
-            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                config.sets.forEachIndexed { setIndex, setConfig ->
-                    SetConfigRow(
-                        setIndex = setIndex,
-                        setConfig = setConfig,
-                        canRemove = config.sets.size > 1,
-                        onRemove = { onRemoveSet(exerciseDocumentId, setIndex) },
-                        onRepsChange = { reps -> onSetRepsChange(exerciseDocumentId, setIndex, reps) },
-                        onWeightChange = { weight -> onSetWeightChange(exerciseDocumentId, setIndex, weight) },
-                    )
-                }
-            }
-        }
-    }
-}
-
-@Composable
-private fun SetConfigRow(
-    setIndex: Int,
-    setConfig: EditableSetConfig,
-    canRemove: Boolean,
-    onRemove: () -> Unit,
-    onRepsChange: (Int) -> Unit,
-    onWeightChange: (Int) -> Unit,
-) {
-    Card(
-        shape = RoundedCornerShape(12.dp),
-        colors = CardDefaults.cardColors(containerColor = SurfaceContainerLowest),
-        elevation = CardDefaults.cardElevation(0.dp),
-    ) {
-        Column(
-            modifier = Modifier.fillMaxWidth().padding(12.dp),
-            verticalArrangement = Arrangement.spacedBy(10.dp)
-        ) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Text(
-                    "Serie ${setIndex + 1}",
-                    fontSize = 13.sp,
-                    fontWeight = FontWeight.SemiBold,
-                    color = OnSurface
-                )
-                if (canRemove) {
-                    TextButton(onClick = onRemove) {
-                        Text("Eliminar", color = Primary)
-                    }
-                }
-            }
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceAround
-            ) {
-                ConfigStepper(
-                    label = "Reps",
-                    value = setConfig.reps,
-                    onDecrement = { onRepsChange((setConfig.reps - 1).coerceAtLeast(1)) },
-                    onIncrement = { onRepsChange((setConfig.reps + 1).coerceAtMost(50)) }
-                )
-                ConfigStepper(
-                    label = "Peso (kg)",
-                    value = setConfig.weightKg,
-                    onDecrement = { onWeightChange((setConfig.weightKg - 5).coerceAtLeast(0)) },
-                    onIncrement = { onWeightChange((setConfig.weightKg + 5).coerceAtMost(300)) }
-                )
-            }
-        }
-    }
-}
-
-@Composable
-private fun ConfigStepper(
-    label: String,
-    value: Int,
-    onDecrement: () -> Unit,
-    onIncrement: () -> Unit,
-) {
-    Column(
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.spacedBy(6.dp)
-    ) {
-        Text(label, fontSize = 11.sp, color = OnSurfaceVariant, fontWeight = FontWeight.Medium)
-        Row(
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(8.dp)
-        ) {
-            StepperButton(label = "−", onClick = onDecrement)
-            Text("$value", fontSize = 16.sp, fontWeight = FontWeight.Bold, color = OnSurface, modifier = Modifier.widthIn(min = 28.dp))
-            StepperButton(label = "+", onClick = onIncrement)
-        }
-    }
-}
-
-@Composable
-private fun StepperButton(label: String, onClick: () -> Unit) {
-    Box(
-        modifier = Modifier
-            .size(30.dp)
-            .clip(CircleShape)
-            .background(SurfaceContainerHigh)
-            .clickable(onClick = onClick),
-        contentAlignment = Alignment.Center
-    ) {
-        Text(label, fontSize = 18.sp, color = OnSurface, fontWeight = FontWeight.Bold)
-    }
-}
-
 
 @Composable
 private fun ExerciseCatalogRow(
