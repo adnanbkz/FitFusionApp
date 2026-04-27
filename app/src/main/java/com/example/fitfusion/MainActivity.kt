@@ -144,10 +144,6 @@ class MainActivity : ComponentActivity() {
                             )
                         }
 
-                        composable(Screens.WorkoutSummaryScreen.name) {
-                            PantallaWorkoutSummary(navController)
-                        }
-
                         composable(
                             route = "${Screens.AddFoodScreen.name}/{mealSlot}",
                             arguments = listOf(navArgument("mealSlot") { type = NavType.StringType })
