@@ -1,160 +1,94 @@
 package com.example.fitfusion.viewmodel
 
+import android.net.Uri
 import androidx.lifecycle.ViewModel
-import androidx.lifecycle.viewModelScope
-import com.example.fitfusion.data.models.Food
 import com.example.fitfusion.data.models.Recipe
-import com.example.fitfusion.data.models.RecipeIngredient
-import com.example.fitfusion.data.models.Serving
-import com.example.fitfusion.data.repository.IngredientRepository
 import com.example.fitfusion.data.repository.RecipeRepository
-import kotlinx.coroutines.FlowPreview
-import kotlinx.coroutines.flow.*
-import kotlinx.coroutines.launch
+import com.google.firebase.auth.FirebaseAuth
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.update
 
 data class CreateRecipeUiState(
-    val name: String  = "",
-    val emoji: String = "🍽️",
-    val ingredients: List<RecipeIngredient> = emptyList(),
-    val searchQuery: String = "",
-    val searchResults: List<Food> = emptyList(),
-    val isLoadingResults: Boolean = false,
-    // Sheet de añadir ingrediente
-    val selectedFood: Food? = null,
-    val selectedServing: Serving? = null,
-    val ingredientQuantity: Int = 1,
-    val isSaving: Boolean = false,
-    val saveError: String? = null,
+    val name: String         = "",
+    val emoji: String        = "🍽️",
+    val description: String  = "",
+    val ingredients: String  = "",
+    val instructions: String = "",
+    val cookTime: String     = "",
+    val kcal: String         = "",
+    val bestMoment: String?  = null,
+    val isPublic: Boolean    = false,
+    val photoUri: Uri?       = null,
+    val showPhotoOptions: Boolean = false,
+    val showCamera: Boolean  = false,
+    val isSaving: Boolean    = false,
+    val saveError: String?   = null,
 ) {
-    val isValid: Boolean  get() = name.isNotBlank() && ingredients.isNotEmpty()
-    val totalKcal: Int    get() = ingredients.sumOf { it.kcal }
-    val totalProtein: Int get() = ingredients.sumOf { it.protein }
-    val totalCarbs: Int   get() = ingredients.sumOf { it.carbs }
-    val totalFat: Int     get() = ingredients.sumOf { it.fat }
+    val isValid: Boolean get() = name.isNotBlank()
 }
 
-@OptIn(FlowPreview::class)
-class CreateRecipeViewModel : ViewModel() {
-
-    private val ingredientRepository = IngredientRepository()
-    private val recipeRepository     = RecipeRepository()
+class CreateRecipeViewModel(
+    private val recipeRepository: RecipeRepository = RecipeRepository(),
+    private val auth: FirebaseAuth = FirebaseAuth.getInstance(),
+) : ViewModel() {
 
     private val _uiState = MutableStateFlow(CreateRecipeUiState())
     val uiState: StateFlow<CreateRecipeUiState> = _uiState.asStateFlow()
 
-    init {
-        viewModelScope.launch {
-            _uiState
-                .map { it.searchQuery }
-                .distinctUntilChanged()
-                .debounce(300)
-                .collect { query ->
-                    if (query.isBlank()) {
-                        _uiState.update { it.copy(searchResults = emptyList(), isLoadingResults = false) }
-                        return@collect
-                    }
-                    _uiState.update { it.copy(isLoadingResults = true) }
-                    ingredientRepository.fetchPage(
-                        searchQuery = query,
-                        pageSize    = 20,
-                        onSuccess   = { page ->
-                            _uiState.update { it.copy(searchResults = page.ingredients, isLoadingResults = false) }
-                        },
-                        onError     = {
-                            _uiState.update { it.copy(searchResults = emptyList(), isLoadingResults = false) }
-                        }
-                    )
-                }
-        }
+    fun onNameChange(value: String)         = _uiState.update { it.copy(name = value, saveError = null) }
+    fun onEmojiChange(value: String)        = _uiState.update { it.copy(emoji = value.takeLast(2).ifBlank { "🍽️" }) }
+    fun onDescriptionChange(value: String)  = _uiState.update { it.copy(description = value) }
+    fun onIngredientsChange(value: String)  = _uiState.update { it.copy(ingredients = value) }
+    fun onInstructionsChange(value: String) = _uiState.update { it.copy(instructions = value) }
+    fun onCookTimeChange(value: String)     = _uiState.update { it.copy(cookTime = value.filter(Char::isDigit).take(4)) }
+    fun onKcalChange(value: String)         = _uiState.update { it.copy(kcal = value.filter(Char::isDigit).take(5)) }
+    fun onBestMomentChange(value: String?)  = _uiState.update { it.copy(bestMoment = value) }
+    fun onPublicToggle(value: Boolean)      = _uiState.update { it.copy(isPublic = value) }
+
+    fun openPhotoOptions()  = _uiState.update { it.copy(showPhotoOptions = true) }
+    fun dismissPhotoOptions() = _uiState.update { it.copy(showPhotoOptions = false) }
+
+    fun openCamera() = _uiState.update { it.copy(showPhotoOptions = false, showCamera = true) }
+    fun closeCamera() = _uiState.update { it.copy(showCamera = false) }
+
+    fun onPhotoSelected(uri: Uri) {
+        _uiState.update { it.copy(photoUri = uri, showPhotoOptions = false, showCamera = false) }
     }
 
-    fun onNameChange(value: String) {
-        _uiState.update { it.copy(name = value, saveError = null) }
-    }
-
-    fun onEmojiChange(value: String) {
-        _uiState.update { it.copy(emoji = value.takeLast(2).ifBlank { "🍽️" }) }
-    }
-
-    fun onSearchQueryChange(query: String) {
-        _uiState.update { it.copy(searchQuery = query) }
-    }
-
-    fun clearSearch() {
-        _uiState.update { it.copy(searchQuery = "", searchResults = emptyList()) }
-    }
-
-    fun openIngredientSheet(food: Food) {
-        _uiState.update {
-            it.copy(
-                selectedFood     = food,
-                selectedServing  = food.servingOptions.first(),
-                ingredientQuantity = 1,
-            )
-        }
-    }
-
-    fun dismissIngredientSheet() {
-        _uiState.update { it.copy(selectedFood = null) }
-    }
-
-    fun selectServing(serving: Serving) {
-        _uiState.update { it.copy(selectedServing = serving) }
-    }
-
-    fun incrementQuantity() {
-        _uiState.update { it.copy(ingredientQuantity = (it.ingredientQuantity + 1).coerceAtMost(20)) }
-    }
-
-    fun decrementQuantity() {
-        _uiState.update { it.copy(ingredientQuantity = (it.ingredientQuantity - 1).coerceAtLeast(1)) }
-    }
-
-    fun confirmAddIngredient() {
-        val state   = _uiState.value
-        val food    = state.selectedFood    ?: return
-        val serving = state.selectedServing ?: return
-        val ingredient = RecipeIngredient(
-            ingredientId   = food.id,
-            name           = food.name,
-            emoji          = food.emoji,
-            kcalPer100g    = food.kcalPer100g,
-            proteinPer100g = food.proteinPer100g,
-            carbsPer100g   = food.carbsPer100g,
-            fatsPer100g    = food.fatsPer100g,
-            servingLabel   = serving.label,
-            servingGrams   = serving.grams,
-            quantity       = state.ingredientQuantity,
-        )
-        _uiState.update { it.copy(
-            ingredients = it.ingredients + ingredient,
-            selectedFood = null,
-            searchQuery  = "",
-            searchResults = emptyList(),
-        ) }
-    }
-
-    fun removeIngredient(ingredientId: String) {
-        _uiState.update { it.copy(ingredients = it.ingredients.filter { i -> i.ingredientId != ingredientId }) }
-    }
+    fun clearPhoto() = _uiState.update { it.copy(photoUri = null) }
 
     fun saveRecipe(onSuccess: () -> Unit) {
         val state = _uiState.value
-        if (!state.isValid) return
+        if (!state.isValid || state.isSaving) return
         _uiState.update { it.copy(isSaving = true, saveError = null) }
+
         val recipe = Recipe(
-            name        = state.name.trim(),
-            emoji       = state.emoji,
-            ingredients = state.ingredients,
+            name         = state.name.trim(),
+            emoji        = state.emoji,
+            description  = state.description.trim(),
+            ingredients  = state.ingredients.trim(),
+            instructions = state.instructions.trim(),
+            cookTimeMin  = state.cookTime.toIntOrNull(),
+            kcal         = state.kcal.toIntOrNull(),
+            bestMoment   = state.bestMoment,
+            isPublic     = state.isPublic,
         )
+
+        val authorName = auth.currentUser?.displayName?.takeIf { it.isNotBlank() }
+            ?: auth.currentUser?.email?.substringBefore("@")
+
         recipeRepository.save(
-            recipe    = recipe,
-            onSuccess = {
+            recipe         = recipe,
+            localPhotoUri  = state.photoUri,
+            authorName     = authorName,
+            onSuccess      = {
                 _uiState.update { it.copy(isSaving = false) }
                 onSuccess()
             },
-            onError   = { e ->
-                _uiState.update { it.copy(isSaving = false, saveError = e.message) }
+            onError        = { e ->
+                _uiState.update { it.copy(isSaving = false, saveError = e.message ?: "Error al guardar") }
             }
         )
     }
