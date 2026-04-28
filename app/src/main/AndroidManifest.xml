@@ -59,7 +59,7 @@
 
         <service
             android:name=".service.WorkoutForegroundService"
-            android:foregroundServiceType="health"
+            android:foregroundServiceType="dataSync"
             android:exported="false"/>
     </application>
 
