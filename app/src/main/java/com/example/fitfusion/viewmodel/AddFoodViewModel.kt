@@ -16,6 +16,7 @@ import kotlin.coroutines.suspendCoroutine
 import java.time.LocalDate
 
 enum class FoodTab { ALIMENTOS, RECETAS }
+enum class RecipeSubTab { USUARIOS, MIS_RECETAS }
 
 data class AddFoodUiState(
     val activeTab: FoodTab = FoodTab.ALIMENTOS,
@@ -30,10 +31,14 @@ data class AddFoodUiState(
     val sheetMealSlot: MealSlot = MealSlot.fromCurrentHour(),
     val favorites: List<Food> = emptyList(),
     val recents: List<Food> = emptyList(),
-    val recipes: List<Recipe> = emptyList(),
-    val isLoadingRecipes: Boolean = false,
+    val recipeSubTab: RecipeSubTab = RecipeSubTab.MIS_RECETAS,
+    val myRecipes: List<Recipe> = emptyList(),
+    val communityRecipes: List<Recipe> = emptyList(),
+    val isLoadingMyRecipes: Boolean = false,
+    val isLoadingCommunityRecipes: Boolean = false,
     val selectedRecipe: Recipe? = null,
-    val recipeSheetMealSlot: MealSlot = MealSlot.fromCurrentHour(),
+    val savingCommunityRecipeId: String? = null,
+    val recipeFeedback: String? = null,
 )
 
 @OptIn(FlowPreview::class)
@@ -106,8 +111,12 @@ class AddFoodViewModel : ViewModel() {
         _uiState.update { it.copy(activeTab = tab) }
     }
 
+    fun setRecipeSubTab(tab: RecipeSubTab) {
+        _uiState.update { it.copy(recipeSubTab = tab) }
+    }
+
     fun setActiveMealSlot(slot: MealSlot) {
-        _uiState.update { it.copy(activeMealSlot = slot, sheetMealSlot = slot, recipeSheetMealSlot = slot) }
+        _uiState.update { it.copy(activeMealSlot = slot, sheetMealSlot = slot) }
     }
 
     fun onSearchQueryChange(query: String) {
@@ -167,48 +176,66 @@ class AddFoodViewModel : ViewModel() {
         }
     }
 
-    fun loadRecipes() {
-        if (_uiState.value.isLoadingRecipes) return
-        _uiState.update { it.copy(isLoadingRecipes = true) }
-        recipeRepository.fetchAll(
+    fun loadMyRecipes() {
+        if (_uiState.value.isLoadingMyRecipes) return
+        _uiState.update { it.copy(isLoadingMyRecipes = true) }
+        recipeRepository.fetchMine(
             onSuccess = { recipes ->
-                _uiState.update { it.copy(recipes = recipes, isLoadingRecipes = false) }
+                _uiState.update { it.copy(myRecipes = recipes, isLoadingMyRecipes = false) }
             },
             onError = {
-                _uiState.update { it.copy(isLoadingRecipes = false) }
+                _uiState.update { it.copy(isLoadingMyRecipes = false) }
             }
         )
     }
 
-    fun openRecipeSheet(recipe: Recipe, preselectedSlot: MealSlot) {
-        _uiState.update { it.copy(selectedRecipe = recipe, recipeSheetMealSlot = preselectedSlot) }
-    }
-
-    fun dismissRecipeSheet() {
-        _uiState.update { it.copy(selectedRecipe = null) }
-    }
-
-    fun selectRecipeSheetMealSlot(slot: MealSlot) {
-        _uiState.update { it.copy(recipeSheetMealSlot = slot) }
-    }
-
-    fun confirmAddRecipe() {
-        val state  = _uiState.value
-        val recipe = state.selectedRecipe ?: return
-        val date   = LocalDate.now()
-        dismissRecipeSheet()
-        viewModelScope.launch {
-            recipe.ingredients.forEach { ingredient ->
-                FoodRepository.addFood(
-                    LoggedFood(
-                        food     = ingredient.toFood(),
-                        serving  = ingredient.toServing(),
-                        quantity = ingredient.quantity,
-                        mealSlot = state.recipeSheetMealSlot,
-                        date     = date,
-                    )
-                )
+    fun loadCommunityRecipes() {
+        if (_uiState.value.isLoadingCommunityRecipes) return
+        _uiState.update { it.copy(isLoadingCommunityRecipes = true) }
+        recipeRepository.fetchCommunity(
+            onSuccess = { recipes ->
+                _uiState.update { it.copy(communityRecipes = recipes, isLoadingCommunityRecipes = false) }
+            },
+            onError = {
+                _uiState.update { it.copy(isLoadingCommunityRecipes = false) }
             }
-        }
+        )
+    }
+
+    fun saveCommunityRecipeToMine(recipe: Recipe) {
+        if (_uiState.value.savingCommunityRecipeId != null) return
+        _uiState.update { it.copy(savingCommunityRecipeId = recipe.id) }
+        recipeRepository.saveFromCommunity(
+            recipe    = recipe,
+            onSuccess = {
+                _uiState.update {
+                    it.copy(
+                        savingCommunityRecipeId = null,
+                        recipeFeedback          = "Receta guardada en Mis recetas",
+                    )
+                }
+                loadMyRecipes()
+            },
+            onError = { e ->
+                _uiState.update {
+                    it.copy(
+                        savingCommunityRecipeId = null,
+                        recipeFeedback          = e.message ?: "No se pudo guardar",
+                    )
+                }
+            }
+        )
+    }
+
+    fun clearRecipeFeedback() {
+        _uiState.update { it.copy(recipeFeedback = null) }
+    }
+
+    fun openRecipeDetail(recipe: Recipe) {
+        _uiState.update { it.copy(selectedRecipe = recipe) }
+    }
+
+    fun dismissRecipeDetail() {
+        _uiState.update { it.copy(selectedRecipe = null) }
     }
 }

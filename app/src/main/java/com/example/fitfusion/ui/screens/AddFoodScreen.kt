@@ -10,7 +10,10 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Clear
+import androidx.compose.material.icons.filled.Public
+import androidx.compose.material.icons.filled.Restaurant
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.*
 import androidx.compose.material3.TabRowDefaults.tabIndicatorOffset
@@ -19,13 +22,17 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavHostController
+import coil3.compose.AsyncImage
 import com.example.fitfusion.R
 import com.example.fitfusion.data.models.Food
 import com.example.fitfusion.data.models.MealSlot
@@ -36,6 +43,8 @@ import java.time.LocalDate
 import com.example.fitfusion.ui.theme.*
 import com.example.fitfusion.viewmodel.AddFoodViewModel
 import com.example.fitfusion.viewmodel.FoodTab
+import com.example.fitfusion.viewmodel.RecipeSubTab
+import android.widget.Toast
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -56,8 +65,21 @@ fun PantallaAddFood(
         addFoodViewModel.setActiveMealSlot(resolvedSlot)
     }
 
-    LaunchedEffect(state.activeTab) {
-        if (state.activeTab == FoodTab.RECETAS) addFoodViewModel.loadRecipes()
+    LaunchedEffect(state.activeTab, state.recipeSubTab) {
+        if (state.activeTab == FoodTab.RECETAS) {
+            when (state.recipeSubTab) {
+                RecipeSubTab.MIS_RECETAS -> addFoodViewModel.loadMyRecipes()
+                RecipeSubTab.USUARIOS    -> addFoodViewModel.loadCommunityRecipes()
+            }
+        }
+    }
+
+    val context = LocalContext.current
+    LaunchedEffect(state.recipeFeedback) {
+        state.recipeFeedback?.let {
+            Toast.makeText(context, it, Toast.LENGTH_SHORT).show()
+            addFoodViewModel.clearRecipeFeedback()
+        }
     }
 
     Scaffold(
@@ -142,8 +164,9 @@ fun PantallaAddFood(
                     viewModel  = addFoodViewModel,
                 )
                 FoodTab.RECETAS -> RecetasContent(
-                    state     = state,
-                    viewModel = addFoodViewModel,
+                    state         = state,
+                    viewModel     = addFoodViewModel,
+                    navController = navController,
                 )
             }
         }
@@ -178,21 +201,12 @@ fun PantallaAddFood(
     if (state.selectedRecipe != null) {
         val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
         ModalBottomSheet(
-            onDismissRequest = addFoodViewModel::dismissRecipeSheet,
+            onDismissRequest = addFoodViewModel::dismissRecipeDetail,
             sheetState       = sheetState,
             containerColor   = SurfaceContainerLowest,
             dragHandle       = { BottomSheetDefaults.DragHandle(color = OutlineVariant) }
         ) {
-            RecipeDetailSheet(
-                recipe          = state.selectedRecipe!!,
-                sheetMealSlot   = state.recipeSheetMealSlot,
-                activeMealSlots = state.availableSlots,
-                onSelectSlot    = addFoodViewModel::selectRecipeSheetMealSlot,
-                onConfirm       = {
-                    addFoodViewModel.confirmAddRecipe()
-                    navController.popBackStack()
-                }
-            )
+            RecipeDetailSheet(recipe = state.selectedRecipe!!)
         }
     }
 }
@@ -329,55 +343,191 @@ private fun AlimentosContent(
 private fun RecetasContent(
     state: com.example.fitfusion.viewmodel.AddFoodUiState,
     viewModel: AddFoodViewModel,
+    navController: NavHostController,
+) {
+    Box(modifier = Modifier.fillMaxSize()) {
+        Column(modifier = Modifier.fillMaxSize()) {
+            RecipeSubTabRow(
+                selected = state.recipeSubTab,
+                onSelect = viewModel::setRecipeSubTab,
+            )
+
+            when (state.recipeSubTab) {
+                RecipeSubTab.USUARIOS    -> CommunityRecipesList(state = state, viewModel = viewModel)
+                RecipeSubTab.MIS_RECETAS -> MyRecipesList(state = state, viewModel = viewModel)
+            }
+        }
+
+        if (state.recipeSubTab == RecipeSubTab.MIS_RECETAS) {
+            FloatingActionButton(
+                onClick        = { navController.navigate(Screens.CreateRecipeScreen.name) },
+                containerColor = Primary,
+                contentColor   = Color.White,
+                modifier       = Modifier
+                    .align(Alignment.BottomEnd)
+                    .padding(20.dp),
+            ) {
+                Icon(Icons.Default.Add, "Añadir receta")
+            }
+        }
+    }
+}
+
+@Composable
+private fun RecipeSubTabRow(
+    selected: RecipeSubTab,
+    onSelect: (RecipeSubTab) -> Unit,
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp, vertical = 10.dp)
+            .clip(RoundedCornerShape(14.dp))
+            .background(SurfaceContainerLow)
+            .padding(4.dp),
+        horizontalArrangement = Arrangement.spacedBy(4.dp),
+    ) {
+        listOf(
+            Triple(RecipeSubTab.USUARIOS,    "Recetas de usuarios", Icons.Default.Public),
+            Triple(RecipeSubTab.MIS_RECETAS, "Mis recetas",         Icons.Default.Restaurant),
+        ).forEach { (tab, label, icon) ->
+            val isSelected = selected == tab
+            Row(
+                modifier = Modifier
+                    .weight(1f)
+                    .clip(RoundedCornerShape(12.dp))
+                    .background(if (isSelected) SurfaceContainerLowest else Color.Transparent)
+                    .clickable { onSelect(tab) }
+                    .padding(vertical = 10.dp),
+                horizontalArrangement = Arrangement.Center,
+                verticalAlignment     = Alignment.CenterVertically,
+            ) {
+                Icon(
+                    icon,
+                    contentDescription = null,
+                    tint               = if (isSelected) Primary else OnSurfaceVariant,
+                    modifier           = Modifier.size(16.dp),
+                )
+                Spacer(Modifier.width(6.dp))
+                Text(
+                    label,
+                    fontSize   = 13.sp,
+                    fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
+                    color      = if (isSelected) OnSurface else OnSurfaceVariant,
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun MyRecipesList(
+    state: com.example.fitfusion.viewmodel.AddFoodUiState,
+    viewModel: AddFoodViewModel,
 ) {
     LazyColumn(
-        modifier = Modifier.fillMaxSize(),
-        contentPadding = PaddingValues(horizontal = 16.dp, vertical = 12.dp),
-        verticalArrangement = Arrangement.spacedBy(10.dp)
+        modifier       = Modifier.fillMaxSize(),
+        contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
+        verticalArrangement = Arrangement.spacedBy(10.dp),
     ) {
         when {
-            state.isLoadingRecipes -> {
-                item {
-                    Box(
-                        Modifier.fillMaxWidth().padding(vertical = 48.dp),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        CircularProgressIndicator(color = Primary, modifier = Modifier.size(32.dp))
-                    }
-                }
-            }
-            state.recipes.isEmpty() -> {
-                item {
-                    Column(
-                        modifier = Modifier.fillMaxWidth().padding(vertical = 48.dp),
-                        horizontalAlignment = Alignment.CenterHorizontally,
-                        verticalArrangement = Arrangement.spacedBy(8.dp)
-                    ) {
-                        Text("Sin recetas", fontWeight = FontWeight.SemiBold, fontSize = 16.sp, color = OnSurface)
-                        Text(
-                            "Crea tu primera receta con ingredientes\nde la base de datos",
-                            fontSize = 13.sp, color = OnSurfaceVariant,
-                            textAlign = androidx.compose.ui.text.style.TextAlign.Center,
-                            lineHeight = 18.sp
-                        )
-                    }
-                }
+            state.isLoadingMyRecipes && state.myRecipes.isEmpty() -> item { LoadingBox() }
+            state.myRecipes.isEmpty() -> item {
+                EmptyRecipesMessage(
+                    title    = "Aún no tienes recetas",
+                    subtitle = "Pulsa el botón + para crear tu primera receta",
+                )
             }
             else -> {
-                item {
-                    SectionLabel(
-                        "${state.recipes.size} RECETA${if (state.recipes.size > 1) "S" else ""}",
-                        modifier = Modifier.padding(top = 4.dp, bottom = 4.dp)
+                items(state.myRecipes, key = { it.id }) { recipe ->
+                    RecipeCard(
+                        recipe = recipe,
+                        onTap  = { viewModel.openRecipeDetail(recipe) },
+                        trailing = null,
                     )
                 }
-                items(state.recipes) { recipe ->
+                item { Spacer(Modifier.height(72.dp)) }
+            }
+        }
+    }
+}
+
+@Composable
+private fun CommunityRecipesList(
+    state: com.example.fitfusion.viewmodel.AddFoodUiState,
+    viewModel: AddFoodViewModel,
+) {
+    LazyColumn(
+        modifier       = Modifier.fillMaxSize(),
+        contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
+        verticalArrangement = Arrangement.spacedBy(10.dp),
+    ) {
+        when {
+            state.isLoadingCommunityRecipes && state.communityRecipes.isEmpty() -> item { LoadingBox() }
+            state.communityRecipes.isEmpty() -> item {
+                EmptyRecipesMessage(
+                    title    = "Sin recetas de la comunidad",
+                    subtitle = "Sé el primero en publicar una",
+                )
+            }
+            else -> {
+                items(state.communityRecipes, key = { it.id }) { recipe ->
                     RecipeCard(
-                        recipe  = recipe,
-                        onTap   = { viewModel.openRecipeSheet(recipe, state.activeMealSlot) }
+                        recipe = recipe,
+                        onTap  = { viewModel.openRecipeDetail(recipe) },
+                        trailing = {
+                            val isSaving = state.savingCommunityRecipeId == recipe.id
+                            Box(
+                                modifier = Modifier
+                                    .size(36.dp)
+                                    .clip(CircleShape)
+                                    .background(Primary)
+                                    .clickable(enabled = !isSaving) {
+                                        viewModel.saveCommunityRecipeToMine(recipe)
+                                    },
+                                contentAlignment = Alignment.Center,
+                            ) {
+                                if (isSaving) {
+                                    CircularProgressIndicator(
+                                        modifier    = Modifier.size(16.dp),
+                                        strokeWidth = 2.dp,
+                                        color       = Color.White,
+                                    )
+                                } else {
+                                    Icon(Icons.Default.Add, "Guardar", tint = Color.White, modifier = Modifier.size(20.dp))
+                                }
+                            }
+                        },
                     )
                 }
             }
         }
+    }
+}
+
+@Composable
+private fun LoadingBox() {
+    Box(
+        Modifier.fillMaxWidth().padding(vertical = 48.dp),
+        contentAlignment = Alignment.Center,
+    ) { CircularProgressIndicator(color = Primary, modifier = Modifier.size(32.dp)) }
+}
+
+@Composable
+private fun EmptyRecipesMessage(title: String, subtitle: String) {
+    Column(
+        modifier = Modifier.fillMaxWidth().padding(vertical = 56.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.spacedBy(6.dp),
+    ) {
+        Text(title, fontWeight = FontWeight.SemiBold, fontSize = 16.sp, color = OnSurface)
+        Text(
+            subtitle,
+            fontSize   = 13.sp,
+            color      = OnSurfaceVariant,
+            textAlign  = TextAlign.Center,
+            lineHeight = 18.sp,
+        )
     }
 }
 
@@ -478,25 +628,40 @@ private fun FoodRow(food: Food, onTap: () -> Unit, onQuickAdd: () -> Unit) {
 }
 
 @Composable
-private fun RecipeCard(recipe: Recipe, onTap: () -> Unit) {
+private fun RecipeCard(
+    recipe: Recipe,
+    onTap: () -> Unit,
+    trailing: (@Composable () -> Unit)? = null,
+) {
     Card(
         shape     = RoundedCornerShape(16.dp),
         colors    = CardDefaults.cardColors(containerColor = SurfaceContainerLowest),
         elevation = CardDefaults.cardElevation(0.dp),
-        modifier  = Modifier.fillMaxWidth().clickable(onClick = onTap)
+        modifier  = Modifier.fillMaxWidth().clickable(onClick = onTap),
     ) {
         Row(
-            modifier = Modifier.padding(14.dp),
+            modifier = Modifier.padding(12.dp),
             verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(12.dp)
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
         ) {
             Box(
                 modifier = Modifier
-                    .size(50.dp)
-                    .clip(RoundedCornerShape(12.dp))
+                    .size(56.dp)
+                    .clip(RoundedCornerShape(14.dp))
                     .background(SurfaceContainerHigh),
-                contentAlignment = Alignment.Center
-            ) { Text(recipe.emoji, fontSize = 24.sp) }
+                contentAlignment = Alignment.Center,
+            ) {
+                if (recipe.photoUrl != null) {
+                    AsyncImage(
+                        model             = recipe.photoUrl,
+                        contentDescription = null,
+                        contentScale       = ContentScale.Crop,
+                        modifier           = Modifier.fillMaxSize(),
+                    )
+                } else {
+                    Text(recipe.emoji, fontSize = 24.sp)
+                }
+            }
 
             Column(modifier = Modifier.weight(1f)) {
                 Text(
@@ -505,19 +670,30 @@ private fun RecipeCard(recipe: Recipe, onTap: () -> Unit) {
                     fontSize   = 15.sp,
                     color      = OnSurface,
                     maxLines   = 1,
-                    overflow   = TextOverflow.Ellipsis
+                    overflow   = TextOverflow.Ellipsis,
                 )
+                val subtitle = buildString {
+                    recipe.authorName?.let { append("por $it") }
+                    recipe.cookTimeMin?.let {
+                        if (isNotEmpty()) append(" · ")
+                        append("$it min")
+                    }
+                    recipe.kcal?.let {
+                        if (isNotEmpty()) append(" · ")
+                        append("$it kcal")
+                    }
+                    if (isEmpty()) append(recipe.bestMoment ?: "Receta")
+                }
                 Text(
-                    "${recipe.ingredients.size} ingrediente${if (recipe.ingredients.size != 1) "s" else ""} · ${recipe.totalKcal} kcal",
+                    subtitle,
                     fontSize = 12.sp,
-                    color    = OnSurfaceVariant
+                    color    = OnSurfaceVariant,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
                 )
             }
 
-            Column(horizontalAlignment = Alignment.End) {
-                Text("${recipe.totalProtein}g", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = Primary)
-                Text("PROT", fontSize = 9.sp, color = OnSurfaceVariant, letterSpacing = 0.5.sp)
-            }
+            trailing?.invoke()
         }
     }
 }
@@ -690,122 +866,92 @@ internal fun NutritionStatDivider() {
 
 
 @Composable
-private fun RecipeDetailSheet(
-    recipe: Recipe,
-    sheetMealSlot: MealSlot,
-    activeMealSlots: List<MealSlot>,
-    onSelectSlot: (MealSlot) -> Unit,
-    onConfirm: () -> Unit,
-) {
+private fun RecipeDetailSheet(recipe: Recipe) {
     Column(
         modifier = Modifier
             .fillMaxWidth()
             .padding(horizontal = 24.dp)
             .padding(bottom = 32.dp),
-        verticalArrangement = Arrangement.spacedBy(20.dp)
+        verticalArrangement = Arrangement.spacedBy(16.dp),
     ) {
+        if (recipe.photoUrl != null) {
+            AsyncImage(
+                model              = recipe.photoUrl,
+                contentDescription = null,
+                contentScale       = ContentScale.Crop,
+                modifier           = Modifier
+                    .fillMaxWidth()
+                    .height(180.dp)
+                    .clip(RoundedCornerShape(16.dp)),
+            )
+        }
+
         Row(
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(12.dp)
+            verticalAlignment     = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
         ) {
             Box(
                 modifier = Modifier
                     .size(56.dp)
                     .clip(RoundedCornerShape(14.dp))
                     .background(SurfaceContainerHigh),
-                contentAlignment = Alignment.Center
+                contentAlignment = Alignment.Center,
             ) { Text(recipe.emoji, fontSize = 28.sp) }
             Column(modifier = Modifier.weight(1f)) {
                 Text(recipe.name, fontWeight = FontWeight.Bold, fontSize = 18.sp, color = OnSurface)
-                Text(
-                    "${recipe.ingredients.size} ingrediente${if (recipe.ingredients.size != 1) "s" else ""}",
-                    fontSize = 13.sp, color = OnSurfaceVariant
-                )
+                recipe.authorName?.let {
+                    Text("por $it", fontSize = 13.sp, color = OnSurfaceVariant)
+                }
             }
-            Column(horizontalAlignment = Alignment.End) {
-                Text("${recipe.totalKcal}", fontSize = 20.sp, fontWeight = FontWeight.Bold, color = OnSurface)
-                Text("KCAL", fontSize = 9.sp, fontWeight = FontWeight.Bold, color = OnSurfaceVariant, letterSpacing = 1.sp)
-            }
-        }
-
-        HorizontalDivider(color = OutlineVariant.copy(alpha = 0.3f))
-
-        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            Text("INGREDIENTES", fontSize = 11.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.5.sp, color = Primary)
-            recipe.ingredients.forEach { ingredient ->
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(10.dp)
-                ) {
-                    Box(
-                        modifier = Modifier
-                            .size(36.dp)
-                            .clip(RoundedCornerShape(8.dp))
-                            .background(SurfaceContainerHigh),
-                        contentAlignment = Alignment.Center
-                    ) { Text(ingredient.emoji, fontSize = 16.sp) }
-                    Column(modifier = Modifier.weight(1f)) {
-                        Text(
-                            ingredient.name,
-                            fontSize = 13.sp, fontWeight = FontWeight.SemiBold, color = OnSurface,
-                            maxLines = 1, overflow = TextOverflow.Ellipsis
-                        )
-                        Text(
-                            "${ingredient.servingLabel} × ${ingredient.quantity}",
-                            fontSize = 11.sp, color = OnSurfaceVariant
-                        )
-                    }
-                    Text("${ingredient.kcal} kcal", fontSize = 12.sp, fontWeight = FontWeight.Medium, color = OnSurface)
+            recipe.kcal?.let {
+                Column(horizontalAlignment = Alignment.End) {
+                    Text("$it", fontSize = 20.sp, fontWeight = FontWeight.Bold, color = OnSurface)
+                    Text("KCAL", fontSize = 9.sp, fontWeight = FontWeight.Bold, color = OnSurfaceVariant, letterSpacing = 1.sp)
                 }
             }
         }
 
-        Card(
-            shape  = RoundedCornerShape(16.dp),
-            colors = CardDefaults.cardColors(containerColor = SurfaceContainerLow),
-            elevation = CardDefaults.cardElevation(0.dp)
-        ) {
-            Row(
-                modifier = Modifier.fillMaxWidth().padding(vertical = 16.dp),
-                horizontalArrangement = Arrangement.SpaceEvenly
-            ) {
-                NutritionStat("${recipe.totalKcal}", "KCAL", OnSurface)
-                NutritionStatDivider()
-                NutritionStat("${recipe.totalProtein}g", "PROT", Primary)
-                NutritionStatDivider()
-                NutritionStat("${recipe.totalCarbs}g", "CARB", Secondary)
-                NutritionStatDivider()
-                NutritionStat("${recipe.totalFat}g", "GRASA", Tertiary)
+        if (recipe.description.isNotBlank()) {
+            Text(recipe.description, fontSize = 14.sp, color = OnSurface, lineHeight = 20.sp)
+        }
+
+        RecipeDetailMeta(recipe = recipe)
+
+        if (recipe.ingredients.isNotBlank()) {
+            Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                Text("INGREDIENTES", fontSize = 11.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.5.sp, color = Primary)
+                Text(recipe.ingredients, fontSize = 14.sp, color = OnSurface, lineHeight = 20.sp)
             }
         }
 
-        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            Text("AÑADIR A", fontSize = 11.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.5.sp, color = Primary)
-            LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                items(activeMealSlots) { slot ->
-                    val selected = slot == sheetMealSlot
-                    FilterChip(
-                        selected = selected,
-                        onClick  = { onSelectSlot(slot) },
-                        label    = { Text(slot.name, fontSize = 13.sp) },
-                        colors   = FilterChipDefaults.filterChipColors(
-                            selectedContainerColor = PrimaryContainer.copy(alpha = 0.15f),
-                            selectedLabelColor     = Primary,
-                            containerColor         = SurfaceContainerHigh
-                        )
-                    )
-                }
+        if (recipe.instructions.isNotBlank()) {
+            Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                Text("PREPARACIÓN", fontSize = 11.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.5.sp, color = Primary)
+                Text(recipe.instructions, fontSize = 14.sp, color = OnSurface, lineHeight = 20.sp)
             }
         }
+    }
+}
 
-        Button(
-            onClick  = onConfirm,
-            modifier = Modifier.fillMaxWidth().height(52.dp),
-            shape    = RoundedCornerShape(14.dp),
-            colors   = ButtonDefaults.buttonColors(containerColor = Primary)
-        ) {
-            Text("Añadir receta al registro", fontSize = 16.sp, fontWeight = FontWeight.Bold)
+@Composable
+private fun RecipeDetailMeta(recipe: Recipe) {
+    val items = buildList {
+        recipe.cookTimeMin?.let { add("⏱ $it min") }
+        recipe.bestMoment?.let  { add("🍽 $it") }
+        if (recipe.isPublic) add("🌍 Pública")
+    }
+    if (items.isEmpty()) return
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
+        items.forEach { label ->
+            Box(
+                modifier = Modifier
+                    .clip(RoundedCornerShape(10.dp))
+                    .background(SurfaceContainerLow)
+                    .padding(horizontal = 10.dp, vertical = 6.dp),
+            ) { Text(label, fontSize = 12.sp, color = OnSurface) }
         }
     }
 }
