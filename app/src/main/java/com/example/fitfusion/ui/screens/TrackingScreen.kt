@@ -69,18 +69,7 @@ fun PantallaTracking(
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    Box(
-                        modifier = Modifier.size(36.dp).clip(CircleShape).background(Primary),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Icon(painterResource(R.drawable.ic_dumbbell), null, Modifier.size(18.dp), tint = Color.White)
-                    }
-                    Text("FitFusion", fontSize = 22.sp, fontWeight = FontWeight.Black, color = OnSurface)
-                }
+                Text("FitFusion", fontSize = 22.sp, fontWeight = FontWeight.Black, color = OnSurface)
                 Text(
                     state.selectedDate.format(DateTimeFormatter.ofPattern("EEE d MMM", Locale.forLanguageTag("es"))),
                     fontSize = 14.sp,
@@ -225,7 +214,7 @@ fun PantallaTracking(
                         horizontalArrangement = Arrangement.SpaceBetween,
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Text("Balance de macros", fontSize = 17.sp, fontWeight = FontWeight.Bold, color = OnSurface)
+                        Text("BALANCE DE MACROS", fontSize = 11.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.5.sp, color = Primary)
                         TextButton(onClick = { navController.navigate(Screens.WeeklyLogScreen.name) }) {
                             Text("Ver semana →", fontSize = 13.sp, color = Primary, fontWeight = FontWeight.SemiBold)
                         }

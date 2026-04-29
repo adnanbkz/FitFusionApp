@@ -98,7 +98,7 @@ fun PantallaWorkoutFinish(
                         }
                         Column(horizontalAlignment = Alignment.End) {
                             Text("${session.exerciseCount}", fontSize = 22.sp, fontWeight = FontWeight.Bold, color = OnSurface)
-                            Text("EJERCICIOS", fontSize = 10.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.sp, color = OnSurfaceVariant)
+                            Text("EJERCICIOS", fontSize = 11.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.5.sp, color = OnSurfaceVariant)
                             Spacer(Modifier.height(4.dp))
                             Text("${session.totalSets} series", fontSize = 12.sp, color = OnSurfaceVariant)
                         }
