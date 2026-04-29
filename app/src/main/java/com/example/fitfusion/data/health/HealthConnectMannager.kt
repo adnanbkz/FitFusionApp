@@ -7,6 +7,8 @@ import androidx.health.connect.client.permission.HealthPermission
 import androidx.health.connect.client.records.HeartRateRecord
 import androidx.health.connect.client.records.StepsRecord
 
+private const val HEALTH_CONNECT_PROVIDER_PACKAGE = "com.google.android.apps.healthdata"
+
 class HealthConnectManager(private val context: Context) {
     val permissions = setOf(
         HealthPermission.getReadPermission(StepsRecord::class),
@@ -14,10 +16,16 @@ class HealthConnectManager(private val context: Context) {
     )
 
     fun isAvailable(): Boolean =
-        HealthConnectClient.getSdkStatus(context) == HealthConnectClient.SDK_AVAILABLE
+        HealthConnectClient.getSdkStatus(
+            context,
+            HEALTH_CONNECT_PROVIDER_PACKAGE,
+        ) == HealthConnectClient.SDK_AVAILABLE
 
     fun needsUpdate(): Boolean =
-        HealthConnectClient.getSdkStatus(context) ==
+        HealthConnectClient.getSdkStatus(
+            context,
+            HEALTH_CONNECT_PROVIDER_PACKAGE,
+        ) ==
             HealthConnectClient.SDK_UNAVAILABLE_PROVIDER_UPDATE_REQUIRED
 
     fun getClient(): HealthConnectClient = HealthConnectClient.getOrCreate(context)
@@ -25,10 +33,6 @@ class HealthConnectManager(private val context: Context) {
     suspend fun hasAllPermissions(): Boolean =
         getClient().permissionController.getGrantedPermissions().containsAll(permissions)
 
-    /**
-     * Intent that opens the Health Connect settings/permissions page.
-     * The user grants permissions there; call [hasAllPermissions] on return.
-     */
-    fun permissionsIntent(): Intent =
+    fun settingsIntent(): Intent =
         Intent(HealthConnectClient.ACTION_HEALTH_CONNECT_SETTINGS)
 }

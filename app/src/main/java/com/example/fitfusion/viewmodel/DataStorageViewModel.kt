@@ -7,6 +7,7 @@ import android.os.StatFs
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.google.firebase.auth.FirebaseAuth
+import com.google.firebase.firestore.FieldValue
 import com.google.firebase.firestore.FirebaseFirestore
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableSharedFlow
@@ -183,6 +184,14 @@ class DataStorageViewModel(private val app: Application) : AndroidViewModel(app)
         }
         root.put("healthDaily", healthArray)
 
+        val summarySnap = firestore.collection("users").document(uid)
+            .collection("dailySummaries").get().await()
+        val summaryArray = JSONArray()
+        summarySnap.documents.forEach { doc ->
+            summaryArray.put(JSONObject(doc.data ?: emptyMap<String, Any>()))
+        }
+        root.put("dailySummaries", summaryArray)
+
         return root.toString(2)
     }
 
@@ -204,6 +213,18 @@ class DataStorageViewModel(private val app: Application) : AndroidViewModel(app)
 
                 val batch = firestore.batch()
                 snap.documents.forEach { batch.delete(it.reference) }
+
+                val summarySnap = firestore.collection("users").document(uid)
+                    .collection("dailySummaries").get().await()
+                val healthSummaryDeletes = mapOf(
+                    "steps" to FieldValue.delete(),
+                    "stepCaloriesEstimated" to FieldValue.delete(),
+                    "averageHeartRate" to FieldValue.delete(),
+                    "healthSource" to FieldValue.delete(),
+                    "healthSyncedAt" to FieldValue.delete(),
+                )
+                summarySnap.documents.forEach { batch.update(it.reference, healthSummaryDeletes) }
+
                 batch.commit().await()
 
                 _uiState.update {

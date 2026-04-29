@@ -10,9 +10,10 @@ data class Food(
     val proteinPer100g: Float,
     val carbsPer100g: Float,
     val fatsPer100g: Float,
-    val emoji: String,
+    val emoji: String = "🍽️",
     val servingOptions: List<Serving> = listOf(Serving("100g", 100f)),
-    val isFavorite: Boolean = false
+    val isFavorite: Boolean = false,
+    val fatSecretId: String? = null,
 )
 
 data class Serving(

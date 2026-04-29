@@ -1,6 +1,10 @@
 package com.example.fitfusion.ui.screens
 
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.PickVisualMediaRequest
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
@@ -15,12 +19,16 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavHostController
+import coil3.compose.AsyncImage
+import com.example.fitfusion.data.repository.UserProfileStore
 import com.example.fitfusion.ui.theme.*
 import com.example.fitfusion.viewmodel.AccountViewModel
 
@@ -31,7 +39,23 @@ fun PantallaAccount(
     accountViewModel: AccountViewModel = viewModel()
 ) {
     val state by accountViewModel.uiState.collectAsState()
+    val context = LocalContext.current
+    val profilePhotoUri by UserProfileStore.photoUri.collectAsState()
     val snackbarHostState = remember { SnackbarHostState() }
+    val photoLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.PickVisualMedia()
+    ) { uri ->
+        uri?.let {
+            try {
+                context.contentResolver.takePersistableUriPermission(
+                    it,
+                    android.content.Intent.FLAG_GRANT_READ_URI_PERMISSION
+                )
+            } catch (_: Exception) {
+            }
+            UserProfileStore.updatePhotoUri(context, it)
+        }
+    }
 
     LaunchedEffect(state.saveSuccess) {
         if (state.saveSuccess) {
@@ -43,7 +67,7 @@ fun PantallaAccount(
         state.errorMessage?.let {
             snackbarHostState.showSnackbar(it)
             accountViewModel.clearError()
-}
+        }
     }
 
     Scaffold(
@@ -67,6 +91,18 @@ fun PantallaAccount(
                 .padding(innerPadding)
                 .verticalScroll(rememberScrollState())
         ) {
+            if (state.isLoading) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(vertical = 48.dp),
+                    contentAlignment = Alignment.Center
+                ) {
+                    CircularProgressIndicator(color = Primary)
+                }
+                return@Column
+            }
+
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -74,7 +110,14 @@ fun PantallaAccount(
                     .padding(vertical = 24.dp),
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
-                Box(contentAlignment = Alignment.BottomEnd) {
+                Box(
+                    contentAlignment = Alignment.BottomEnd,
+                    modifier = Modifier.clickable {
+                        photoLauncher.launch(
+                            PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)
+                        )
+                    }
+                ) {
                     Box(
                         modifier = Modifier
                             .size(96.dp)
@@ -82,10 +125,19 @@ fun PantallaAccount(
                             .background(SurfaceContainerHigh),
                         contentAlignment = Alignment.Center
                     ) {
-                        Icon(
-                            Icons.Default.Person, null,
-                            Modifier.size(48.dp), tint = OnSurfaceVariant
-                        )
+                        if (profilePhotoUri != null) {
+                            AsyncImage(
+                                model = profilePhotoUri,
+                                contentDescription = "Foto de perfil",
+                                contentScale = ContentScale.Crop,
+                                modifier = Modifier.fillMaxSize()
+                            )
+                        } else {
+                            Icon(
+                                Icons.Default.Person, null,
+                                Modifier.size(48.dp), tint = OnSurfaceVariant
+                            )
+                        }
                     }
                     Box(
                         modifier = Modifier
@@ -144,8 +196,9 @@ fun PantallaAccount(
                     AccountField(
                         label = "Correo electrónico",
                         value = state.email,
-                        onValueChange = accountViewModel::onEmailChange,
-                        placeholder = "correo@ejemplo.com"
+                        onValueChange = {},
+                        placeholder = "correo@ejemplo.com",
+                        enabled = false
                     )
                     HorizontalDivider(
                         modifier = Modifier.padding(vertical = 12.dp),
@@ -157,6 +210,57 @@ fun PantallaAccount(
                         onValueChange = accountViewModel::onBioChange,
                         placeholder = "Cuéntanos algo sobre ti",
                         singleLine = false
+                    )
+                }
+            }
+
+            Spacer(modifier = Modifier.height(12.dp))
+
+            SettingsSectionHeader("DATOS FITNESS")
+            Card(
+                shape = RoundedCornerShape(20.dp),
+                colors = CardDefaults.cardColors(containerColor = SurfaceContainerLowest),
+                elevation = CardDefaults.cardElevation(0.dp),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 24.dp)
+            ) {
+                Column(modifier = Modifier.padding(20.dp)) {
+                    AccountField(
+                        label = "Altura (cm)",
+                        value = state.heightCm,
+                        onValueChange = accountViewModel::onHeightCmChange,
+                        placeholder = "175"
+                    )
+                    HorizontalDivider(
+                        modifier = Modifier.padding(vertical = 12.dp),
+                        color = OutlineVariant.copy(alpha = 0.3f)
+                    )
+                    AccountField(
+                        label = "Peso (kg)",
+                        value = state.weightKg,
+                        onValueChange = accountViewModel::onWeightKgChange,
+                        placeholder = "72.5"
+                    )
+                    HorizontalDivider(
+                        modifier = Modifier.padding(vertical = 12.dp),
+                        color = OutlineVariant.copy(alpha = 0.3f)
+                    )
+                    AccountField(
+                        label = "Objetivo",
+                        value = state.goalType,
+                        onValueChange = accountViewModel::onGoalTypeChange,
+                        placeholder = "Perder grasa, ganar músculo..."
+                    )
+                    HorizontalDivider(
+                        modifier = Modifier.padding(vertical = 12.dp),
+                        color = OutlineVariant.copy(alpha = 0.3f)
+                    )
+                    AccountField(
+                        label = "Nivel de actividad",
+                        value = state.activityLevel,
+                        onValueChange = accountViewModel::onActivityLevelChange,
+                        placeholder = "Sedentario, moderado, alto..."
                     )
                 }
             }
@@ -231,7 +335,8 @@ fun PantallaAccount(
                     .padding(horizontal = 24.dp)
                     .height(50.dp),
                 shape = RoundedCornerShape(14.dp),
-                colors = ButtonDefaults.outlinedButtonColors(contentColor = Primary)
+                colors = ButtonDefaults.outlinedButtonColors(contentColor = Primary),
+                enabled = !state.isSaving
             ) {
                 Icon(Icons.Default.Lock, null, Modifier.size(18.dp))
                 Spacer(modifier = Modifier.width(8.dp))
@@ -304,7 +409,8 @@ private fun AccountField(
     value: String,
     onValueChange: (String) -> Unit,
     placeholder: String,
-    singleLine: Boolean = true
+    singleLine: Boolean = true,
+    enabled: Boolean = true,
 ) {
     Text(label, fontSize = 12.sp, fontWeight = FontWeight.Medium, color = OnSurfaceVariant)
     Spacer(modifier = Modifier.height(4.dp))
@@ -313,6 +419,7 @@ private fun AccountField(
         onValueChange = onValueChange,
         placeholder = { Text(placeholder, color = OnSurfaceVariant, fontSize = 14.sp) },
         singleLine = singleLine,
+        enabled = enabled,
         shape = RoundedCornerShape(10.dp),
         colors = OutlinedTextFieldDefaults.colors(
             unfocusedContainerColor = SurfaceContainerLow,

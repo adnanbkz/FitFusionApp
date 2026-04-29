@@ -162,6 +162,15 @@ private fun CreatePostSheetContent(
             UserPostType.NUTRITION -> NutritionPostForm(state = state, viewModel = viewModel)
         }
 
+        state.createPostErrorMessage?.let { message ->
+            Text(
+                message,
+                fontSize = 13.sp,
+                color = com.example.fitfusion.ui.theme.Tertiary,
+                modifier = Modifier.fillMaxWidth()
+            )
+        }
+
         Box(
             modifier = Modifier
                 .fillMaxWidth()
@@ -175,7 +184,7 @@ private fun CreatePostSheetContent(
             contentAlignment = Alignment.Center
         ) {
             Text(
-                "Publicar",
+                if (state.isPublishingPost) "Publicando..." else "Publicar",
                 fontSize = 16.sp, fontWeight = FontWeight.Bold,
                 color = if (state.canPublish) Color.White else OnSurfaceVariant
             )

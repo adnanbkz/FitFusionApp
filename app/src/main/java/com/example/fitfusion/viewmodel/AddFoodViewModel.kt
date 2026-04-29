@@ -3,12 +3,16 @@ package com.example.fitfusion.viewmodel
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.fitfusion.data.models.*
+import com.example.fitfusion.data.repository.FatSecretRepository
 import com.example.fitfusion.data.repository.FoodRepository
 import com.example.fitfusion.data.repository.IngredientRepository
 import com.example.fitfusion.data.repository.RecipeRepository
 import kotlinx.coroutines.FlowPreview
+import kotlinx.coroutines.async
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
+import kotlin.coroutines.resume
+import kotlin.coroutines.suspendCoroutine
 import java.time.LocalDate
 
 enum class FoodTab { ALIMENTOS, RECETAS }
@@ -20,6 +24,7 @@ data class AddFoodUiState(
     val availableSlots: List<MealSlot> = MealSlot.DEFAULT,
     val searchQuery: String = "",
     val searchResults: List<Food> = emptyList(),
+    val isLoadingSearch: Boolean = false,
     val selectedFood: Food? = null,
     val selectedServing: Serving? = null,
     val quantity: Int = 1,
@@ -44,20 +49,26 @@ class AddFoodViewModel : ViewModel() {
 
     private val _uiState = MutableStateFlow(
         AddFoodUiState(
-            favorites      = FoodRepository.favorites,
-            recents        = FoodRepository.recents,
             availableSlots = FoodRepository.getDayLog(LocalDate.now()).meals,
         )
     )
     val uiState: StateFlow<AddFoodUiState> = _uiState.asStateFlow()
 
     init {
+        // Sync available meal slots with the current day's DayLog
         viewModelScope.launch {
             FoodRepository.dayLogs.collect { logs ->
                 val slots = logs[LocalDate.now()]?.meals ?: MealSlot.DEFAULT
                 _uiState.update { it.copy(availableSlots = slots) }
             }
         }
+        // Sync recents from FoodRepository
+        viewModelScope.launch {
+            FoodRepository.recents.collect { recents ->
+                _uiState.update { it.copy(recents = recents) }
+            }
+        }
+        // Parallel search: Firestore ingredients + FatSecret
         viewModelScope.launch {
             _uiState
                 .map { it.searchQuery }
@@ -65,19 +76,33 @@ class AddFoodViewModel : ViewModel() {
                 .debounce(300)
                 .collect { query ->
                     if (query.isBlank()) {
-                        _uiState.update { it.copy(searchResults = emptyList()) }
+                        _uiState.update { it.copy(searchResults = emptyList(), isLoadingSearch = false) }
                         return@collect
                     }
-                    ingredientRepository.fetchPage(
-                        searchQuery = query,
-                        pageSize    = 20,
-                        onSuccess   = { page ->
-                            _uiState.update { it.copy(searchResults = page.ingredients) }
-                        },
-                        onError     = {
-                            _uiState.update { it.copy(searchResults = emptyList()) }
+                    _uiState.update { it.copy(isLoadingSearch = true) }
+                    try {
+                        val firestoreDeferred = async {
+                            suspendCoroutine { cont ->
+                                ingredientRepository.fetchPage(
+                                    searchQuery = query,
+                                    pageSize    = 20,
+                                    onSuccess   = { page -> cont.resume(page.ingredients) },
+                                    onError     = { cont.resume(emptyList()) },
+                                )
+                            }
                         }
-                    )
+                        val fatSecretDeferred = async {
+                            try { FatSecretRepository.searchFoods(query) } catch (_: Exception) { emptyList() }
+                        }
+                        val firestoreResults  = firestoreDeferred.await()
+                        val fatSecretResults  = fatSecretDeferred.await()
+                        val merged = firestoreResults + fatSecretResults.filter { fs ->
+                            firestoreResults.none { it.name.equals(fs.name, ignoreCase = true) }
+                        }
+                        _uiState.update { it.copy(searchResults = merged, isLoadingSearch = false) }
+                    } catch (_: Exception) {
+                        _uiState.update { it.copy(searchResults = emptyList(), isLoadingSearch = false) }
+                    }
                 }
         }
     }
@@ -99,7 +124,7 @@ class AddFoodViewModel : ViewModel() {
     }
 
     fun clearSearch() {
-        _uiState.update { it.copy(searchQuery = "", searchResults = emptyList()) }
+        _uiState.update { it.copy(searchQuery = "", searchResults = emptyList(), isLoadingSearch = false) }
     }
 
     fun openSheet(food: Food, preselectedSlot: MealSlot) {
@@ -137,16 +162,18 @@ class AddFoodViewModel : ViewModel() {
         val state   = _uiState.value
         val food    = state.selectedFood    ?: return
         val serving = state.selectedServing ?: return
-        FoodRepository.addFood(
-            LoggedFood(
-                food     = food,
-                serving  = serving,
-                quantity = state.quantity,
-                mealSlot = state.sheetMealSlot,
-                date     = LocalDate.now(),
-            )
-        )
         dismissSheet()
+        viewModelScope.launch {
+            FoodRepository.addFood(
+                LoggedFood(
+                    food     = food,
+                    serving  = serving,
+                    quantity = state.quantity,
+                    mealSlot = state.sheetMealSlot,
+                    date     = LocalDate.now(),
+                )
+            )
+        }
     }
 
     fun loadMyRecipes() {

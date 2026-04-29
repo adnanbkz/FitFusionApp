@@ -46,6 +46,8 @@ data class LoggedWorkout(
     val endedAtMs: Long? = null,
     val createdAtMs: Long? = null,
     val exercises: List<WorkoutExercise> = emptyList(),
+    val description: String = "",
+    val mediaUrls: List<String> = emptyList(),
 ) {
     val exerciseCount: Int get() = exercises.size
     val totalSets: Int get() = exercises.sumOf { it.sets.size }
@@ -63,6 +65,8 @@ data class UserPost(
     val workoutDurationMinutes: Int? = null,
     val workoutKcal: Int? = null,
     val workoutVideoUri: String? = null,
+    val workoutTotalWeightKg: Float? = null,
+    val workoutExercises: List<WorkoutExercise> = emptyList(),
     val nutritionPhotoUri: String? = null,
     val nutritionKcal: Int? = null,
     val nutritionIngredients: String? = null,

@@ -2,9 +2,16 @@ package com.example.fitfusion.viewmodel
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.example.fitfusion.data.health.DailyHealthData
 import com.example.fitfusion.data.models.*
+import com.example.fitfusion.data.repository.DailySummary
+import com.example.fitfusion.data.repository.DailySummaryRepository
 import com.example.fitfusion.data.repository.FoodRepository
+import com.example.fitfusion.data.repository.HealthRepository
 import com.example.fitfusion.data.repository.WorkoutRepository
+import com.google.firebase.auth.FirebaseAuth
+import com.google.firebase.firestore.FirebaseFirestore
+import com.google.firebase.firestore.ListenerRegistration
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
 import java.time.DayOfWeek
@@ -32,6 +39,8 @@ data class TrackingUiState(
     val renameMealId: String = "",
     val renameMealName: String = "",
     val workouts: List<LoggedWorkout> = emptyList(),
+    val healthData: DailyHealthData? = null,
+    val dailySummary: DailySummary? = null,
     val editFoodState: EditFoodState? = null,
     val proteinGoal: Int = 160,
     val carbsGoal:   Int = 210,
@@ -40,7 +49,9 @@ data class TrackingUiState(
 ) {
     val kcalGoal:    Int   get() = dayLog.kcalGoal
     val kcalEaten:   Int   get() = dayLog.totalKcal
-    val kcalBurned:  Int   get() = workouts.sumOf { it.kcalBurned }
+    val workoutKcalBurned: Int get() = workouts.sumOf { it.kcalBurned }
+    val stepKcalBurned: Int get() = healthData?.stepCaloriesEstimated ?: 0
+    val kcalBurned:  Int   get() = workoutKcalBurned + stepKcalBurned
     val kcalNet:     Int   get() = (kcalEaten - kcalBurned).coerceAtLeast(0)
     val kcalLeft:    Int   get() = (kcalGoal - kcalNet).coerceAtLeast(0)
     val netProgress: Float get() = (kcalNet.toFloat() / kcalGoal.toFloat()).coerceIn(0f, 1f)
@@ -48,6 +59,12 @@ data class TrackingUiState(
 
 class TrackingViewModel : ViewModel() {
 
+    private val healthRepository = HealthRepository(
+        FirebaseFirestore.getInstance(),
+        FirebaseAuth.getInstance(),
+    )
+    private var healthListenerRegistration: ListenerRegistration? = null
+    private var summaryListenerRegistration: ListenerRegistration? = null
     private val _uiState = MutableStateFlow(TrackingUiState())
     val uiState: StateFlow<TrackingUiState> = _uiState.asStateFlow()
 
@@ -69,6 +86,8 @@ class TrackingViewModel : ViewModel() {
                     }
                 }
         }
+        attachHealthDataListener(LocalDate.now())
+        attachDailySummaryListener(LocalDate.now())
     }
 
     fun selectDate(date: LocalDate) {
@@ -79,7 +98,28 @@ class TrackingViewModel : ViewModel() {
                 dayLog       = FoodRepository.getDayLog(date),
                 weekSummary  = FoodRepository.getWeekSummary(weekStart),
                 workouts     = WorkoutRepository.getWorkoutsForDate(date),
+                dailySummary = null,
             )
+        }
+        attachHealthDataListener(date)
+        attachDailySummaryListener(date)
+    }
+
+    private fun attachHealthDataListener(date: LocalDate) {
+        healthListenerRegistration?.remove()
+        healthListenerRegistration = healthRepository.listenDailyHealthData(date) { healthData ->
+            _uiState.update { current ->
+                if (current.selectedDate == date) current.copy(healthData = healthData) else current
+            }
+        }
+    }
+
+    private fun attachDailySummaryListener(date: LocalDate) {
+        summaryListenerRegistration?.remove()
+        summaryListenerRegistration = DailySummaryRepository.listenDay(date) { summary ->
+            _uiState.update { current ->
+                if (current.selectedDate == date) current.copy(dailySummary = summary) else current
+            }
         }
     }
 
@@ -92,7 +132,8 @@ class TrackingViewModel : ViewModel() {
     }
 
     fun removeFood(id: String) {
-        FoodRepository.removeFood(id, _uiState.value.selectedDate)
+        val date = _uiState.value.selectedDate
+        viewModelScope.launch { FoodRepository.removeFood(id, date) }
     }
 
     fun showAddMealDialog() {
@@ -188,14 +229,25 @@ class TrackingViewModel : ViewModel() {
     }
 
     fun confirmEdit() {
-        val ef = _uiState.value.editFoodState ?: return
-        FoodRepository.updateFood(
-            id          = ef.loggedFood.id,
-            date        = _uiState.value.selectedDate,
-            newServing  = ef.selectedServing,
-            newQuantity = ef.quantity,
-            newSlot     = ef.mealSlot,
-        )
+        val ef   = _uiState.value.editFoodState ?: return
+        val date = _uiState.value.selectedDate
         _uiState.update { it.copy(editFoodState = null) }
+        viewModelScope.launch {
+            FoodRepository.updateFood(
+                id          = ef.loggedFood.id,
+                date        = date,
+                newServing  = ef.selectedServing,
+                newQuantity = ef.quantity,
+                newSlot     = ef.mealSlot,
+            )
+        }
+    }
+
+    override fun onCleared() {
+        healthListenerRegistration?.remove()
+        healthListenerRegistration = null
+        summaryListenerRegistration?.remove()
+        summaryListenerRegistration = null
+        super.onCleared()
     }
 }

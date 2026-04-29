@@ -30,8 +30,11 @@ import androidx.navigation.NavHostController
 import com.example.fitfusion.data.models.DayLog
 import com.example.fitfusion.data.models.MealSlot
 import com.example.fitfusion.data.models.WeekSummary
+import com.example.fitfusion.data.repository.DailySummary
+import com.example.fitfusion.data.repository.DailySummaryRepository
 import com.example.fitfusion.data.repository.FoodRepository
 import com.example.fitfusion.ui.theme.*
+import com.google.firebase.firestore.ListenerRegistration
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -49,6 +52,7 @@ data class WeeklyLogUiState(
         LocalDate.now().with(TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY)),
         emptyList()
     ),
+    val summaries: Map<LocalDate, DailySummary> = emptyMap(),
     val expandedDay: LocalDate? = null,
 )
 
@@ -60,15 +64,23 @@ class WeeklyLogViewModel : ViewModel() {
     )
     val uiState: StateFlow<WeeklyLogUiState> = _uiState.asStateFlow()
 
+    private var summaryListenerRegistration: ListenerRegistration? = null
+
+    init {
+        attachWeekSummaryListener(_uiState.value.weekStart)
+    }
+
     fun previousWeek() {
+        val newStart = _uiState.value.weekStart.minusWeeks(1)
         _uiState.update {
-            val newStart = it.weekStart.minusWeeks(1)
             it.copy(
                 weekStart   = newStart,
                 weekSummary = FoodRepository.getWeekSummary(newStart),
+                summaries   = emptyMap(),
                 expandedDay = null,
             )
         }
+        attachWeekSummaryListener(newStart)
     }
 
     fun nextWeek() {
@@ -80,15 +92,32 @@ class WeeklyLogViewModel : ViewModel() {
             it.copy(
                 weekStart   = nextStart,
                 weekSummary = FoodRepository.getWeekSummary(nextStart),
+                summaries   = emptyMap(),
                 expandedDay = null,
             )
         }
+        attachWeekSummaryListener(nextStart)
     }
 
     fun toggleDay(date: LocalDate) {
         _uiState.update {
             it.copy(expandedDay = if (it.expandedDay == date) null else date)
         }
+    }
+
+    private fun attachWeekSummaryListener(weekStart: LocalDate) {
+        summaryListenerRegistration?.remove()
+        summaryListenerRegistration = DailySummaryRepository.listenWeek(weekStart) { map ->
+            _uiState.update { current ->
+                if (current.weekStart == weekStart) current.copy(summaries = map) else current
+            }
+        }
+    }
+
+    override fun onCleared() {
+        summaryListenerRegistration?.remove()
+        summaryListenerRegistration = null
+        super.onCleared()
     }
 }
 
@@ -198,6 +227,20 @@ fun PantallaWeeklyLog(
                             SummaryStatCard("${state.weekSummary.daysOnTrack}/7", "EN OBJETIVO", "", Secondary)
                             SummaryStatCard("${state.weekSummary.avgProtein}g", "PROT. MEDIA", "/día", Tertiary)
                         }
+                        Spacer(Modifier.height(12.dp))
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceAround
+                        ) {
+                            SummaryStatCard(
+                                "${state.summaries.values.sumOf { it.workoutCount }}",
+                                "ENTRENOS", "", Primary
+                            )
+                            SummaryStatCard(
+                                "${state.summaries.values.sumOf { it.kcalBurned }}",
+                                "KCAL QUEM.", "", Tertiary
+                            )
+                        }
                     }
                 }
             }
@@ -216,6 +259,7 @@ fun PantallaWeeklyLog(
                     DayLogRow(
                         dayName    = dayLabels[idx],
                         dayLog     = dayLog,
+                        summary    = state.summaries[dayLog.date],
                         isToday    = dayLog.date == today,
                         isExpanded = state.expandedDay == dayLog.date,
                         onToggle   = { weeklyLogViewModel.toggleDay(dayLog.date) }
@@ -338,6 +382,7 @@ private fun SummaryStatCard(value: String, label: String, unit: String, color: C
 private fun DayLogRow(
     dayName: String,
     dayLog: DayLog,
+    summary: DailySummary?,
     isToday: Boolean,
     isExpanded: Boolean,
     onToggle: () -> Unit,
@@ -401,6 +446,20 @@ private fun DayLogRow(
                             }
                         } else {
                             Text("Sin registros", fontSize = 12.sp, color = OnSurfaceVariant.copy(alpha = 0.6f))
+                        }
+                        if (summary != null && (summary.workoutCount > 0 || summary.steps > 0)) {
+                            Row(
+                                horizontalArrangement = Arrangement.spacedBy(10.dp),
+                                modifier = Modifier.padding(top = 4.dp)
+                            ) {
+                                if (summary.workoutCount > 0) {
+                                    MacroTag("🏋 ${summary.workoutCount}", Primary)
+                                    MacroTag("🔥 ${summary.kcalBurned}", Tertiary)
+                                }
+                                if (summary.steps > 0) {
+                                    MacroTag("👟 ${summary.steps}", Secondary)
+                                }
+                            }
                         }
                     }
                 }

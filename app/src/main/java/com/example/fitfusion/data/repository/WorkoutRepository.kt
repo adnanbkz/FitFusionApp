@@ -6,9 +6,12 @@ import com.example.fitfusion.data.models.WorkoutSet
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.ListenerRegistration
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.tasks.await
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
@@ -46,12 +49,27 @@ object WorkoutRepository {
     fun getWorkoutsForDate(date: LocalDate): List<LoggedWorkout> =
         _workouts.value[date] ?: emptyList()
 
-    suspend fun addWorkout(workout: LoggedWorkout) {
-        saveWorkout(workout)
+    suspend fun addWorkout(
+        workout: LoggedWorkout,
+        description: String = "",
+        mediaUrls: List<String> = emptyList(),
+    ) {
+        saveWorkout(workout.copy(description = description, mediaUrls = mediaUrls))
     }
 
     suspend fun updateWorkout(workout: LoggedWorkout) {
         saveWorkout(workout)
+    }
+
+    suspend fun updateWorkoutMedia(workoutId: String, mediaUrls: List<String>) {
+        ensureInitialized()
+        val uid = auth.currentUser?.uid ?: return
+        firestore.collection(USERS_COLLECTION)
+            .document(uid)
+            .collection(WORKOUTS_COLLECTION)
+            .document(workoutId)
+            .update("mediaUrls", mediaUrls)
+            .await()
     }
 
     private suspend fun saveWorkout(workout: LoggedWorkout) {
@@ -65,6 +83,8 @@ object WorkoutRepository {
             .document(workout.id)
             .set(workout.toFirestoreMap())
             .await()
+
+        pushWorkoutSummary(workout.date)
     }
 
     fun removeWorkout(id: String, date: LocalDate) {
@@ -75,6 +95,19 @@ object WorkoutRepository {
             .collection(WORKOUTS_COLLECTION)
             .document(id)
             .delete()
+        pushWorkoutSummary(date)
+    }
+
+    private fun pushWorkoutSummary(date: LocalDate) {
+        val workouts = getWorkoutsForDate(date)
+        CoroutineScope(Dispatchers.IO).launch {
+            DailySummaryRepository.mergeWorkoutSummary(
+                date          = date,
+                workoutCount  = workouts.size,
+                kcalBurned    = workouts.sumOf { it.kcalBurned },
+                totalVolumeKg = workouts.sumOf { it.totalVolumeKg.toDouble() }.toFloat(),
+            )
+        }
     }
 
     private fun attachWorkoutListener(uid: String?) {
@@ -120,6 +153,8 @@ object WorkoutRepository {
         "startedAtMs" to startedAtMs,
         "endedAtMs" to endedAtMs,
         "createdAtMs" to (createdAtMs ?: System.currentTimeMillis()),
+        "description" to description,
+        "mediaUrls" to mediaUrls,
         "exercises" to exercises.map { exercise ->
             mapOf(
                 "exerciseDocumentId" to exercise.exerciseDocumentId,
@@ -155,6 +190,8 @@ object WorkoutRepository {
             endedAtMs = getLong("endedAtMs"),
             createdAtMs = getLong("createdAtMs"),
             exercises = exercises,
+            description = getString("description").orEmpty(),
+            mediaUrls = (get("mediaUrls") as? List<*>)?.mapNotNull { it as? String }.orEmpty(),
         )
     }
 
