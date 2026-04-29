@@ -123,8 +123,7 @@ fun PantallaPostDetail(
                     Text(state.likeCount, fontWeight = FontWeight.SemiBold, fontSize = 14.sp)
                 }
                 Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-                    Icon(Icons.Default.Email, null, Modifier.size(18.dp), tint = OnSurfaceVariant)
-                    Text(state.commentCount, fontWeight = FontWeight.SemiBold, fontSize = 14.sp)
+                    Text(state.commentCount, fontWeight = FontWeight.SemiBold, fontSize = 14.sp, color = OnSurfaceVariant)
                 }
                 Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
                     Text(state.energyCount, fontWeight = FontWeight.SemiBold, fontSize = 14.sp)
@@ -151,9 +150,9 @@ fun PantallaPostDetail(
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
+                    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
                         Text("Comentarios", fontSize = 18.sp, fontWeight = FontWeight.Bold, color = OnSurface)
-                        Text("  (${state.commentCount})", fontSize = 14.sp, color = OnSurfaceVariant)
+                        Text("(${state.commentCount})", fontSize = 14.sp, color = OnSurfaceVariant)
                     }
                     Text("Recientes ▾", fontSize = 13.sp, color = Primary, fontWeight = FontWeight.SemiBold)
                 }

@@ -51,35 +51,12 @@ fun PantallaLogin(
                 .padding(horizontal = 24.dp, vertical = 32.dp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Text("FitFusion", fontSize = 24.sp, fontWeight = FontWeight.Black, color = OnSurface)
-                Box(
-                    modifier = Modifier.size(40.dp).clip(CircleShape).background(SurfaceContainerHigh),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Icon(painterResource(R.drawable.ic_dumbbell), null, Modifier.size(20.dp), tint = OnSurfaceVariant)
-                }
-            }
-
-            Box(
-                modifier = Modifier
-                    .padding(top = 32.dp)
-                    .size(120.dp)
-                    .clip(CircleShape)
-                    .background(SurfaceContainerHigh),
-                contentAlignment = Alignment.Center
-            ) {
-                Icon(Icons.Default.Person, "Avatar", Modifier.size(60.dp), tint = OnSurfaceVariant)
-            }
+            Text("FitFusion", fontSize = 24.sp, fontWeight = FontWeight.Black, color = OnSurface)
 
             Text(
                 "Bienvenido de nuevo",
                 fontSize = 28.sp, fontWeight = FontWeight.Bold, color = OnSurface,
-                modifier = Modifier.padding(top = 20.dp)
+                modifier = Modifier.padding(top = 48.dp)
             )
             Text(
                 "Seguimiento preciso para tu camino fitness.",

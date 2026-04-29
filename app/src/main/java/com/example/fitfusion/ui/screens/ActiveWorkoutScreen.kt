@@ -211,16 +211,10 @@ private fun TimerCard(
             horizontalArrangement = Arrangement.SpaceBetween,
         ) {
             Column {
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(6.dp),
-                ) {
-                    Icon(Icons.Outlined.Timer, contentDescription = null, tint = Primary, modifier = Modifier.size(16.dp))
-                    Text(
-                        if (isPaused) "EN PAUSA" else "TIEMPO ACTIVO",
-                        fontSize = 11.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.5.sp, color = Primary,
-                    )
-                }
+                Text(
+                    if (isPaused) "EN PAUSA" else "TIEMPO ACTIVO",
+                    fontSize = 11.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.5.sp, color = Primary,
+                )
                 Text(
                     formatElapsed(elapsedSeconds),
                     fontSize = 38.sp, fontWeight = FontWeight.Bold, color = OnSurface,

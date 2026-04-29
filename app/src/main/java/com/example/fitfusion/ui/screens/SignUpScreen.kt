@@ -17,6 +17,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -49,39 +50,16 @@ fun PantallaSignUp(
                 .padding(horizontal = 24.dp, vertical = 32.dp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Text("FitFusion", fontSize = 24.sp, fontWeight = FontWeight.Black, color = OnSurface)
-                Box(
-                    modifier = Modifier.size(40.dp).clip(CircleShape).background(SurfaceContainerHigh),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Icon(painterResource(R.drawable.ic_dumbbell), null, Modifier.size(20.dp), tint = OnSurfaceVariant)
-                }
-            }
-
-            Box(
-                modifier = Modifier
-                    .padding(top = 32.dp)
-                    .size(120.dp)
-                    .clip(CircleShape)
-                    .background(PrimaryContainer.copy(alpha = 0.15f)),
-                contentAlignment = Alignment.Center
-            ) {
-                Icon(Icons.Default.Person, null, Modifier.size(60.dp), tint = Primary)
-            }
+            Text("FitFusion", fontSize = 24.sp, fontWeight = FontWeight.Black, color = OnSurface)
 
             Text(
                 "Crear cuenta",
                 fontSize = 28.sp, fontWeight = FontWeight.Bold, color = OnSurface,
-                modifier = Modifier.padding(top = 20.dp)
+                modifier = Modifier.padding(top = 48.dp)
             )
             Text(
                 "Comienza tu camino fitness hoy.",
-                fontSize = 15.sp, color = OnSurfaceVariant,
+                fontSize = 15.sp, color = OnSurfaceVariant, textAlign = TextAlign.Center,
                 modifier = Modifier.padding(top = 6.dp)
             )
 

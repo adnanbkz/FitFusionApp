@@ -485,11 +485,11 @@ private fun PostsTab(posts: List<UserPost>, isSearching: Boolean) {
             ) {
                 Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     if (isSearching) {
-                        Text("Sin resultados", fontWeight = FontWeight.SemiBold, color = OnSurface)
-                        Text("Prueba con otro término", fontSize = 13.sp, color = OnSurfaceVariant)
+                        Text("Sin resultados", fontSize = 15.sp, fontWeight = FontWeight.SemiBold, color = OnSurface, textAlign = TextAlign.Center)
+                        Text("Prueba con otro término", fontSize = 13.sp, color = OnSurfaceVariant, textAlign = TextAlign.Center)
                     } else {
-                        Text("Sin publicaciones aún", fontWeight = FontWeight.SemiBold, color = OnSurface)
-                        Text("Comparte tus entrenos desde el feed", fontSize = 13.sp, color = OnSurfaceVariant)
+                        Text("Sin publicaciones aún", fontSize = 15.sp, fontWeight = FontWeight.SemiBold, color = OnSurface, textAlign = TextAlign.Center)
+                        Text("Comparte tus entrenos desde el feed", fontSize = 13.sp, color = OnSurfaceVariant, textAlign = TextAlign.Center)
                     }
                 }
             }
@@ -955,20 +955,6 @@ private fun SelectedDayWorkoutsSection(
                     horizontalAlignment = Alignment.CenterHorizontally,
                     verticalArrangement = Arrangement.spacedBy(10.dp)
                 ) {
-                    Box(
-                        modifier = Modifier
-                            .size(56.dp)
-                            .clip(CircleShape)
-                            .background(Primary.copy(alpha = 0.12f)),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Icon(
-                            Icons.Default.FitnessCenter,
-                            contentDescription = null,
-                            tint = Primary,
-                            modifier = Modifier.size(28.dp)
-                        )
-                    }
                     if (isSearching) {
                         Text(
                             "Sin resultados",
@@ -1505,20 +1491,6 @@ private fun LikesTab(onExplore: () -> Unit) {
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
-            Box(
-                modifier = Modifier
-                    .size(72.dp)
-                    .clip(CircleShape)
-                    .background(Tertiary.copy(alpha = 0.12f)),
-                contentAlignment = Alignment.Center
-            ) {
-                Icon(
-                    Icons.Default.FavoriteBorder,
-                    contentDescription = null,
-                    tint = Tertiary,
-                    modifier = Modifier.size(36.dp)
-                )
-            }
             Text("Sin likes aún", fontWeight = FontWeight.SemiBold, fontSize = 16.sp, color = OnSurface)
             Text(
                 "Las publicaciones que te gusten aparecerán aquí",

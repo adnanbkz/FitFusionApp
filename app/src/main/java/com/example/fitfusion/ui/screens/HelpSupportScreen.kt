@@ -94,9 +94,9 @@ fun PantallaHelpSupport(
             ) {
                 Row(
                     modifier = Modifier.padding(20.dp),
-                    verticalAlignment = Alignment.CenterVertically
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(16.dp)
                 ) {
-                    Spacer(modifier = Modifier.width(16.dp))
                     Column(modifier = Modifier.weight(1f)) {
                         Text(
                             "¿Necesitas ayuda?",

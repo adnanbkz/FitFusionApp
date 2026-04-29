@@ -64,6 +64,7 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -342,33 +343,23 @@ private fun FeedFilterRow(
     modifier: Modifier = Modifier,
 ) {
     val items = listOf(
-        Triple(FeedFilter.ALL, "Todo", null),
-        Triple(FeedFilter.WORKOUTS, "Entrenos", Icons.Outlined.FitnessCenter),
-        Triple(FeedFilter.NUTRITION, "Recetas", Icons.Default.Restaurant),
+        FeedFilter.ALL to "Todo",
+        FeedFilter.WORKOUTS to "Entrenos",
+        FeedFilter.NUTRITION to "Recetas",
     )
     Row(
         modifier = modifier,
         horizontalArrangement = Arrangement.spacedBy(8.dp)
     ) {
-        items.forEach { (filter, label, icon) ->
+        items.forEach { (filter, label) ->
             val selected = current == filter
-            Row(
+            Box(
                 modifier = Modifier
                     .clip(RoundedCornerShape(20.dp))
                     .background(if (selected) Primary else SurfaceContainerLow)
                     .clickable { onSelect(filter) }
                     .padding(horizontal = 14.dp, vertical = 8.dp),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(6.dp)
             ) {
-                if (icon != null) {
-                    Icon(
-                        icon,
-                        contentDescription = null,
-                        modifier = Modifier.size(14.dp),
-                        tint = if (selected) Color.White else OnSurfaceVariant
-                    )
-                }
                 Text(
                     label,
                     fontSize = 13.sp,
@@ -397,10 +388,10 @@ private fun FeedEmptyState(filter: FeedFilter) {
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.spacedBy(6.dp)
         ) {
-            Text(message, fontSize = 15.sp, fontWeight = FontWeight.SemiBold, color = OnSurface)
+            Text(message, fontSize = 15.sp, fontWeight = FontWeight.SemiBold, color = OnSurface, textAlign = TextAlign.Center)
             Text(
                 "Publica un entreno o una receta para empezar el feed",
-                fontSize = 13.sp, color = OnSurfaceVariant
+                fontSize = 13.sp, color = OnSurfaceVariant, textAlign = TextAlign.Center
             )
         }
     }
