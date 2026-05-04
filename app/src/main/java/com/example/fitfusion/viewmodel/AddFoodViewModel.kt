@@ -1,15 +1,12 @@
 package com.example.fitfusion.viewmodel
 
-import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.fitfusion.data.models.*
-import com.example.fitfusion.data.repository.FatSecretRepository
 import com.example.fitfusion.data.repository.FoodRepository
 import com.example.fitfusion.data.repository.IngredientRepository
 import com.example.fitfusion.data.repository.RecipeRepository
 import kotlinx.coroutines.FlowPreview
-import kotlinx.coroutines.async
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
 import kotlin.coroutines.resume
@@ -69,7 +66,6 @@ class AddFoodViewModel : ViewModel() {
                 _uiState.update { it.copy(recents = recents) }
             }
         }
-        // Parallel search: Firestore ingredients + FatSecret
         viewModelScope.launch {
             _uiState
                 .map { it.searchQuery }
@@ -82,30 +78,15 @@ class AddFoodViewModel : ViewModel() {
                     }
                     _uiState.update { it.copy(isLoadingSearch = true) }
                     try {
-                        val firestoreDeferred = async {
-                            suspendCoroutine { cont ->
-                                ingredientRepository.fetchPage(
-                                    searchQuery = query,
-                                    pageSize    = 20,
-                                    onSuccess   = { page -> cont.resume(page.ingredients) },
-                                    onError     = { cont.resume(emptyList()) },
-                                )
-                            }
+                        val results = suspendCoroutine { cont ->
+                            ingredientRepository.fetchPage(
+                                searchQuery = query,
+                                pageSize    = 20,
+                                onSuccess   = { page -> cont.resume(page.ingredients) },
+                                onError     = { cont.resume(emptyList()) },
+                            )
                         }
-                        val fatSecretDeferred = async {
-                            try {
-                                FatSecretRepository.searchFoods(query)
-                            } catch (e: Exception) {
-                                Log.e("FatSecret", "search failed for query='$query'", e)
-                                emptyList()
-                            }
-                        }
-                        val firestoreResults  = firestoreDeferred.await()
-                        val fatSecretResults  = fatSecretDeferred.await()
-                        val merged = firestoreResults + fatSecretResults.filter { fs ->
-                            firestoreResults.none { it.name.equals(fs.name, ignoreCase = true) }
-                        }
-                        _uiState.update { it.copy(searchResults = merged, isLoadingSearch = false) }
+                        _uiState.update { it.copy(searchResults = results, isLoadingSearch = false) }
                     } catch (_: Exception) {
                         _uiState.update { it.copy(searchResults = emptyList(), isLoadingSearch = false) }
                     }

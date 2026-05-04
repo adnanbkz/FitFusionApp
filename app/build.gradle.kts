@@ -119,10 +119,7 @@ dependencies {
     implementation(platform("com.google.firebase:firebase-bom:34.11.0"))
     implementation("com.google.firebase:firebase-auth")
     implementation("com.google.firebase:firebase-firestore")
-    implementation("com.google.firebase:firebase-functions")
     implementation("com.google.firebase:firebase-storage")
-    implementation("com.google.firebase:firebase-appcheck-playintegrity")
-    debugImplementation("com.google.firebase:firebase-appcheck-debug")
 
     //COIL
     implementation("io.coil-kt.coil3:coil-compose:3.0.4")

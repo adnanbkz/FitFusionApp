@@ -4,11 +4,21 @@ Aquí voy apuntando los marrones que me he ido encontrando y cómo los he resuel
 
 ---
 
-## Deploy de Cloud Functions y la búsqueda FatSecret a medias (29 abr 2026) — EN PAUSA
+## FatSecret + Cloud Functions: el agujero negro (29 abr – 4 may 2026) — DESCARTADO
 
-### Qué pasaba
+### Decisión final
 
-Activé Blaze, hice `firebase deploy --only functions` y desplegué las dos Cloud Functions (`searchFoods` y `getFoodDetail`) en `us-central1`. El primer intento falló por un IAM clásico que pasa siempre en proyectos nuevos:
+Después de todo lo que viene abajo, decidimos tirar la toalla con FatSecret y Cloud Functions y pasarnos a **Open Food Facts** (API pública, sin autenticación, llamada directa desde Android). Los alimentos que el usuario seleccione se guardan en nuestra Firestore directamente como si fueran alimentos propios — sin depender de ninguna API externa en runtime.
+
+Las Cloud Functions (`searchFoods`, `getFoodDetail`) quedan borradas del proyecto.
+
+---
+
+### El camino completo del sufrimiento
+
+#### 1. IAM en el primer deploy
+
+`firebase deploy --only functions` falló con:
 
 ```
 Build failed: Access to bucket gcf-sources-... denied.
@@ -16,15 +26,22 @@ You must grant Storage Object Viewer permission to
 113203546446-compute@developer.gserviceaccount.com.
 ```
 
-Le di `roles/storage.objectViewer` a la service account de Compute desde la consola IAM y al segundo intento desplegó OK.
+Fix: dar `roles/storage.objectViewer` a la service account de Compute desde la consola IAM. Al segundo intento desplegó.
 
-Hasta aquí bonito. Abro la app, busco "apple" en AddFood... y solo me salen resultados de Firestore, ningún resultado de FatSecret.
+#### 2. App Check sin inicializar
 
-### El paseo por el árbol de causas
+La dependencia `firebase-appcheck-playintegrity` estaba en `build.gradle` pero no había ni una línea de código que la arrancara. Sin `installAppCheckProviderFactory`, el proveedor nunca inicializa y el cliente adjunta tokens vacíos o incorrectos. Lo arreglamos añadiendo en `MainActivity.onCreate`:
 
-1. Miro `firebase functions:log --only searchFoods --lines 30` → solo audit logs administrativos del propio deploy. **Cero invocaciones**. La function ni se está ejecutando.
+```kotlin
+FirebaseAppCheck.getInstance().installAppCheckProviderFactory(
+    if (BuildConfig.DEBUG) DebugAppCheckProviderFactory.getInstance()
+    else PlayIntegrityAppCheckProviderFactory.getInstance()
+)
+```
 
-2. Caigo en que en `AddFoodViewModel.kt:95` había un catch que se tragaba todo silenciosamente:
+#### 3. El catch silencioso
+
+`AddFoodViewModel` tenía esto:
 
 ```kotlin
 val fatSecretDeferred = async {
@@ -32,77 +49,47 @@ val fatSecretDeferred = async {
 }
 ```
 
-Lo cambio para que al menos meta `Log.e`:
+Cualquier error desaparecía sin dejar rastro. Lo cambiamos a `Log.e`. Lección: catch silencioso en features en desarrollo es veneno.
 
-```kotlin
-val fatSecretDeferred = async {
-    try {
-        FatSecretRepository.searchFoods(query)
-    } catch (e: Exception) {
-        Log.e("FatSecret", "search failed for query='$query'", e)
-        emptyList()
-    }
-}
-```
+#### 4. UNAUTHENTICATED — el error que mentía
 
-3. Reproduzco con logcat abierto y ahora sí veo el error real:
+El log real tras quitar el catch:
 
 ```
-E FatSecret: search failed for query='apple'
-E FatSecret: com.google.firebase.functions.FirebaseFunctionsException: UNAUTHENTICATED
-E FatSecret:     at FirebaseFunctionsException$Companion.fromResponse(...)
+E FatSecret: FirebaseFunctionsException: UNAUTHENTICATED
 ```
 
-4. Pero antes de quitar el catch, había caído en otro problema más gordo: `firebase-appcheck-playintegrity` estaba en el `build.gradle` pero **no había ni una línea de código que inicializara App Check**. Sin `installAppCheckProviderFactory`, el provider de Play Integrity nunca arranca y el cliente intenta adjuntar tokens vacíos. Lo arreglé añadiendo `debugImplementation("com.google.firebase:firebase-appcheck-debug")` y en `MainActivity.onCreate`:
+Pasamos horas pensando que era un problema de auth de Firebase. El usuario estaba logueado (`user=AHA162XzsdVbXYabs7TdXx4hExz2`), App Check parecía configurado... pero la función seguía rechazando.
 
-```kotlin
-FirebaseApp.initializeApp(this)
-FirebaseAppCheck.getInstance().installAppCheckProviderFactory(
-    if (BuildConfig.DEBUG) DebugAppCheckProviderFactory.getInstance()
-    else PlayIntegrityAppCheckProviderFactory.getInstance()
-)
+La causa real era **Cloud IAM**: la función estaba desplegada pero Google Cloud no tenía a `allUsers` como `Cloud Functions Invoker`. Firebase CLI no asigna ese permiso automáticamente en proyectos nuevos. El SDK de Firebase envía el token de Firebase Auth (no un token de IAM de Google Cloud), Cloud lo rechazaba con 401, y el SDK mapeaba ese 401 a `UNAUTHENTICATED`. Perfecto para confundir.
+
+Fix: desde Google Cloud Console → Cloud Functions → Permisos → añadir `allUsers` con rol `Cloud Functions Invoker`.
+
+```bash
+gcloud functions add-iam-policy-binding searchFoods \
+  --region=us-central1 \
+  --member="allUsers" \
+  --role="roles/cloudfunctions.invoker"
 ```
 
-El debug provider escupe en logcat un token tipo `Enter this debug secret into the allow list ... XXXX-XXXX-XXXX`. Lo registré en Firebase Console → App Check → Manage debug tokens.
+#### 5. "Invalid signature" de FatSecret
 
-### Dónde me he quedado
+Con el IAM arreglado, la función ya llegaba a FatSecret. Pero FatSecret devolvía:
 
-Después de todo esto, la function **sí se ejecuta** pero devuelve `UNAUTHENTICATED` porque la function tiene este check:
-
-```js
-if (!context.auth) {
-    throw new functions.https.HttpsError('unauthenticated', 'Autenticacion requerida.');
-}
+```json
+{"error":{"code":8,"message":"Invalid signature: please refer to the documentation"}}
 ```
 
-`context.auth` se rellena automáticamente cuando el cliente Android adjunta el ID token de Firebase Auth. Si el usuario no está logueado, ese token no va y la function rechaza.
+La implementación usaba `https.get` con `qs.stringify` (el módulo `querystring` deprecado de Node). La codificación de caracteres en la URL no era 100% consistente con lo que FatSecret esperaba para verificar la firma OAuth 1.0a. Lo reescribimos para usar `fetch` con POST y `encodeURIComponent` directo — que es lo que FatSecret documenta en sus ejemplos — pero el problema persistió.
 
-Para confirmarlo añadí un log más en `FatSecretRepository.searchFoods`:
+En ese punto, con cuatro capas de problemas encadenadas (IAM, App Check, auth SDK, firma OAuth), decidimos que FatSecret no valía la pena para lo que necesitábamos.
 
-```kotlin
-val user = FirebaseAuth.getInstance().currentUser
-Log.d("FatSecret", "searchFoods user=${user?.uid ?: "NULL"} email=${user?.email}")
-```
+### Lo que me llevo
 
-Pero he dejado este tema en pausa antes de reproducirlo. Cuando vuelva, los dos casos posibles son:
-
-- **`user=NULL`** → el flujo de login no llega a meter realmente al usuario en Firebase Auth (probable que tras reinstalar haya entrado como invitado sin darme cuenta).
-- **`user=<uid> email=algo`** → cliente sí está logueado, hay que mirar otra cosa: token caducado por reloj del móvil, App Check rechazado por SHA-256 mal registrado, o algún tema más raro.
-
-### Estado de los archivos
-
-Cambios sin commitear todavía (los hago cuando retome esto):
-
-- `app/build.gradle.kts` — añadida dependencia `firebase-appcheck-debug` con `debugImplementation`.
-- `MainActivity.kt` — inicialización de App Check al arrancar.
-- `AddFoodViewModel.kt` — catch silencioso reemplazado por `Log.e`.
-- `FatSecretRepository.kt` — log diagnóstico del `currentUser` antes de cada llamada.
-
-### Lo que me llevo (aunque no esté cerrado)
-
-- Si tienes el SDK de App Check en el classpath, **inicialízalo siempre**. Lo de "está la dependencia pero no llamo a nada" deja al cliente medio configurado y los errores son confusos.
-- Antes de tocar nada en server, si en logs no hay invocaciones de la function, el problema está en cliente. No te pongas a debuggear el lado server cuando ni le ha llegado la llamada.
-- Catch silenciosos del estilo `catch (_: Exception) { emptyList() }` son veneno — esconden semanas de trabajo. Siempre como mínimo `Log.e`.
+- Si Firebase CLI no dice explícitamente que está configurando permisos públicos, compruébalo tú en Cloud Console. No lo da por sentado.
+- `UNAUTHENTICATED` de Firebase Functions puede significar cosas muy distintas: auth de la app, App Check, o IAM de Google Cloud. Antes de tocar el código, descarta capas con `curl` directo a la URL de la función.
+- OAuth 1.0a es frágil. Cualquier diferencia mínima en codificación de caracteres rompe la firma. Si puedes evitarlo, evítalo.
+- Para una app de fitness, Open Food Facts da lo mismo que FatSecret sin ninguno de estos marrones.
 
 ---
 
