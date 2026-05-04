@@ -4,6 +4,108 @@ Aquí voy apuntando los marrones que me he ido encontrando y cómo los he resuel
 
 ---
 
+## Deploy de Cloud Functions y la búsqueda FatSecret a medias (29 abr 2026) — EN PAUSA
+
+### Qué pasaba
+
+Activé Blaze, hice `firebase deploy --only functions` y desplegué las dos Cloud Functions (`searchFoods` y `getFoodDetail`) en `us-central1`. El primer intento falló por un IAM clásico que pasa siempre en proyectos nuevos:
+
+```
+Build failed: Access to bucket gcf-sources-... denied.
+You must grant Storage Object Viewer permission to
+113203546446-compute@developer.gserviceaccount.com.
+```
+
+Le di `roles/storage.objectViewer` a la service account de Compute desde la consola IAM y al segundo intento desplegó OK.
+
+Hasta aquí bonito. Abro la app, busco "apple" en AddFood... y solo me salen resultados de Firestore, ningún resultado de FatSecret.
+
+### El paseo por el árbol de causas
+
+1. Miro `firebase functions:log --only searchFoods --lines 30` → solo audit logs administrativos del propio deploy. **Cero invocaciones**. La function ni se está ejecutando.
+
+2. Caigo en que en `AddFoodViewModel.kt:95` había un catch que se tragaba todo silenciosamente:
+
+```kotlin
+val fatSecretDeferred = async {
+    try { FatSecretRepository.searchFoods(query) } catch (_: Exception) { emptyList() }
+}
+```
+
+Lo cambio para que al menos meta `Log.e`:
+
+```kotlin
+val fatSecretDeferred = async {
+    try {
+        FatSecretRepository.searchFoods(query)
+    } catch (e: Exception) {
+        Log.e("FatSecret", "search failed for query='$query'", e)
+        emptyList()
+    }
+}
+```
+
+3. Reproduzco con logcat abierto y ahora sí veo el error real:
+
+```
+E FatSecret: search failed for query='apple'
+E FatSecret: com.google.firebase.functions.FirebaseFunctionsException: UNAUTHENTICATED
+E FatSecret:     at FirebaseFunctionsException$Companion.fromResponse(...)
+```
+
+4. Pero antes de quitar el catch, había caído en otro problema más gordo: `firebase-appcheck-playintegrity` estaba en el `build.gradle` pero **no había ni una línea de código que inicializara App Check**. Sin `installAppCheckProviderFactory`, el provider de Play Integrity nunca arranca y el cliente intenta adjuntar tokens vacíos. Lo arreglé añadiendo `debugImplementation("com.google.firebase:firebase-appcheck-debug")` y en `MainActivity.onCreate`:
+
+```kotlin
+FirebaseApp.initializeApp(this)
+FirebaseAppCheck.getInstance().installAppCheckProviderFactory(
+    if (BuildConfig.DEBUG) DebugAppCheckProviderFactory.getInstance()
+    else PlayIntegrityAppCheckProviderFactory.getInstance()
+)
+```
+
+El debug provider escupe en logcat un token tipo `Enter this debug secret into the allow list ... XXXX-XXXX-XXXX`. Lo registré en Firebase Console → App Check → Manage debug tokens.
+
+### Dónde me he quedado
+
+Después de todo esto, la function **sí se ejecuta** pero devuelve `UNAUTHENTICATED` porque la function tiene este check:
+
+```js
+if (!context.auth) {
+    throw new functions.https.HttpsError('unauthenticated', 'Autenticacion requerida.');
+}
+```
+
+`context.auth` se rellena automáticamente cuando el cliente Android adjunta el ID token de Firebase Auth. Si el usuario no está logueado, ese token no va y la function rechaza.
+
+Para confirmarlo añadí un log más en `FatSecretRepository.searchFoods`:
+
+```kotlin
+val user = FirebaseAuth.getInstance().currentUser
+Log.d("FatSecret", "searchFoods user=${user?.uid ?: "NULL"} email=${user?.email}")
+```
+
+Pero he dejado este tema en pausa antes de reproducirlo. Cuando vuelva, los dos casos posibles son:
+
+- **`user=NULL`** → el flujo de login no llega a meter realmente al usuario en Firebase Auth (probable que tras reinstalar haya entrado como invitado sin darme cuenta).
+- **`user=<uid> email=algo`** → cliente sí está logueado, hay que mirar otra cosa: token caducado por reloj del móvil, App Check rechazado por SHA-256 mal registrado, o algún tema más raro.
+
+### Estado de los archivos
+
+Cambios sin commitear todavía (los hago cuando retome esto):
+
+- `app/build.gradle.kts` — añadida dependencia `firebase-appcheck-debug` con `debugImplementation`.
+- `MainActivity.kt` — inicialización de App Check al arrancar.
+- `AddFoodViewModel.kt` — catch silencioso reemplazado por `Log.e`.
+- `FatSecretRepository.kt` — log diagnóstico del `currentUser` antes de cada llamada.
+
+### Lo que me llevo (aunque no esté cerrado)
+
+- Si tienes el SDK de App Check en el classpath, **inicialízalo siempre**. Lo de "está la dependencia pero no llamo a nada" deja al cliente medio configurado y los errores son confusos.
+- Antes de tocar nada en server, si en logs no hay invocaciones de la function, el problema está en cliente. No te pongas a debuggear el lado server cuando ni le ha llegado la llamada.
+- Catch silenciosos del estilo `catch (_: Exception) { emptyList() }` son veneno — esconden semanas de trabajo. Siempre como mínimo `Log.e`.
+
+---
+
 ## El crash del foreground service al iniciar workout (28 abr 2026)
 
 ### Qué pasaba

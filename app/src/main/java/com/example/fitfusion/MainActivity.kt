@@ -34,12 +34,21 @@ import com.example.fitfusion.ui.screens.PantallaLogin
 import com.example.fitfusion.ui.screens.Screens
 import com.example.fitfusion.viewmodel.AuthViewModel
 import com.example.fitfusion.ui.screens.*
+import com.google.firebase.FirebaseApp
+import com.google.firebase.appcheck.FirebaseAppCheck
+import com.google.firebase.appcheck.debug.DebugAppCheckProviderFactory
+import com.google.firebase.appcheck.playintegrity.PlayIntegrityAppCheckProviderFactory
 
 @OptIn(ExperimentalMaterial3Api::class)
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
+        FirebaseApp.initializeApp(this)
+        FirebaseAppCheck.getInstance().installAppCheckProviderFactory(
+            if (BuildConfig.DEBUG) DebugAppCheckProviderFactory.getInstance()
+            else PlayIntegrityAppCheckProviderFactory.getInstance()
+        )
         UserProfileStore.ensureInitialized(applicationContext)
         ActiveWorkoutManager.init(applicationContext)
         setContent {

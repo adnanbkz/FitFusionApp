@@ -1,5 +1,6 @@
 package com.example.fitfusion.viewmodel
 
+import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.fitfusion.data.models.*
@@ -92,7 +93,12 @@ class AddFoodViewModel : ViewModel() {
                             }
                         }
                         val fatSecretDeferred = async {
-                            try { FatSecretRepository.searchFoods(query) } catch (_: Exception) { emptyList() }
+                            try {
+                                FatSecretRepository.searchFoods(query)
+                            } catch (e: Exception) {
+                                Log.e("FatSecret", "search failed for query='$query'", e)
+                                emptyList()
+                            }
                         }
                         val firestoreResults  = firestoreDeferred.await()
                         val fatSecretResults  = fatSecretDeferred.await()

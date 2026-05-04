@@ -1,7 +1,9 @@
 package com.example.fitfusion.data.repository
 
+import android.util.Log
 import com.example.fitfusion.data.models.Food
 import com.example.fitfusion.data.models.Serving
+import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.functions.FirebaseFunctions
 import kotlinx.coroutines.tasks.await
 
@@ -10,6 +12,8 @@ object FatSecretRepository {
     private val functions = FirebaseFunctions.getInstance()
 
     suspend fun searchFoods(query: String, maxResults: Int = 20): List<Food> {
+        val user = FirebaseAuth.getInstance().currentUser
+        Log.d("FatSecret", "searchFoods user=${user?.uid ?: "NULL"} email=${user?.email}")
         val result = functions
             .getHttpsCallable("searchFoods")
             .call(mapOf("query" to query, "maxResults" to maxResults))
