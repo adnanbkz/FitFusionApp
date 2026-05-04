@@ -13,7 +13,6 @@ data class Food(
     val emoji: String = "🍽️",
     val servingOptions: List<Serving> = listOf(Serving("100g", 100f)),
     val isFavorite: Boolean = false,
-    val fatSecretId: String? = null,
 )
 
 data class Serving(

@@ -12,6 +12,16 @@ Después de todo lo que viene abajo, decidimos tirar la toalla con FatSecret y C
 
 Las Cloud Functions (`searchFoods`, `getFoodDetail`) quedan borradas del proyecto.
 
+### Nota de implementación Open Food Facts
+
+La búsqueda de texto no debe usar `/api/v2/search?q=...`: ese endpoint v2 es para filtros estructurados y devuelve resultados generales si se le pasa `q`. Para buscar por nombre/marca usamos:
+
+```text
+https://es.openfoodfacts.org/cgi/search.pl?search_terms=<query>&search_simple=1&action=process&json=1
+```
+
+La integración Android limita `fields`, prioriza `product_name_es`, ordena por popularidad cuando el endpoint lo permite, cachea resultados en memoria y evita llamadas con menos de 3 caracteres para no chocar con los rate limits públicos de Open Food Facts.
+
 ---
 
 ### El camino completo del sufrimiento

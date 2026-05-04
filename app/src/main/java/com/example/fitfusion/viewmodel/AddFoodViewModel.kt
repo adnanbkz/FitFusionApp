@@ -5,8 +5,10 @@ import androidx.lifecycle.viewModelScope
 import com.example.fitfusion.data.models.*
 import com.example.fitfusion.data.repository.FoodRepository
 import com.example.fitfusion.data.repository.IngredientRepository
+import com.example.fitfusion.data.repository.OpenFoodFactsRepository
 import com.example.fitfusion.data.repository.RecipeRepository
 import kotlinx.coroutines.FlowPreview
+import kotlinx.coroutines.async
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
 import kotlin.coroutines.resume
@@ -42,6 +44,10 @@ data class AddFoodUiState(
 @OptIn(FlowPreview::class)
 class AddFoodViewModel : ViewModel() {
 
+    private companion object {
+        const val FOOD_SEARCH_DEBOUNCE_MS = 800L
+    }
+
     private val ingredientRepository = IngredientRepository()
     private val recipeRepository     = RecipeRepository()
 
@@ -70,23 +76,35 @@ class AddFoodViewModel : ViewModel() {
             _uiState
                 .map { it.searchQuery }
                 .distinctUntilChanged()
-                .debounce(300)
-                .collect { query ->
+                .debounce(FOOD_SEARCH_DEBOUNCE_MS)
+                .collectLatest { rawQuery ->
+                    val query = rawQuery.trim()
                     if (query.isBlank()) {
                         _uiState.update { it.copy(searchResults = emptyList(), isLoadingSearch = false) }
-                        return@collect
+                        return@collectLatest
                     }
                     _uiState.update { it.copy(isLoadingSearch = true) }
                     try {
-                        val results = suspendCoroutine { cont ->
-                            ingredientRepository.fetchPage(
-                                searchQuery = query,
-                                pageSize    = 20,
-                                onSuccess   = { page -> cont.resume(page.ingredients) },
-                                onError     = { cont.resume(emptyList()) },
-                            )
+                        val firestoreDeferred = async {
+                            suspendCoroutine { cont ->
+                                ingredientRepository.fetchPage(
+                                    searchQuery = query,
+                                    pageSize    = 20,
+                                    onSuccess   = { page -> cont.resume(page.ingredients) },
+                                    onError     = { cont.resume(emptyList()) },
+                                )
+                            }
                         }
-                        _uiState.update { it.copy(searchResults = results, isLoadingSearch = false) }
+                        val offDeferred = async {
+                            try { OpenFoodFactsRepository.search(query) }
+                            catch (_: Exception) { emptyList() }
+                        }
+                        val firestoreResults = firestoreDeferred.await()
+                        val offResults       = offDeferred.await()
+                        val merged = firestoreResults + offResults.filter { off ->
+                            firestoreResults.none { it.name.equals(off.name, ignoreCase = true) }
+                        }
+                        _uiState.update { it.copy(searchResults = merged, isLoadingSearch = false) }
                     } catch (_: Exception) {
                         _uiState.update { it.copy(searchResults = emptyList(), isLoadingSearch = false) }
                     }

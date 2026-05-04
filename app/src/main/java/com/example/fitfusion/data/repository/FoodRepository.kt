@@ -193,7 +193,6 @@ object FoodRepository {
         "servingLabel"    to serving.label,
         "servingGrams"    to serving.grams.toDouble(),
         "foodId"          to food.id,
-        "fatSecretId"     to food.fatSecretId,
         "foodName"        to food.name,
         "foodBrand"       to food.brand,
         "emoji"           to food.emoji,
@@ -218,7 +217,6 @@ object FoodRepository {
         )
         val food = Food(
             id             = getString("foodId") ?: id,
-            fatSecretId    = getString("fatSecretId"),
             name           = foodName,
             brand          = getString("foodBrand"),
             emoji          = getString("emoji") ?: "🍽️",
