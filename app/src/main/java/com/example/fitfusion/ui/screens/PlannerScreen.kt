@@ -10,9 +10,10 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Delete
-import androidx.compose.material.icons.filled.KeyboardArrowRight
+import androidx.compose.material.icons.filled.FitnessCenter
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -176,7 +177,7 @@ private fun EstaSemanaTab(state: com.example.fitfusion.viewmodel.PlannerUiState,
     ) {
         item {
             Text(
-                "Semana del ${state.weekStart.format(DateTimeFormatter.ofPattern("d MMM", Locale("es")))}",
+                "Semana del ${state.weekStart.format(DateTimeFormatter.ofPattern("d MMM", Locale.forLanguageTag("es")))}",
                 fontSize = 13.sp, color = OnSurfaceVariant, fontWeight = FontWeight.Medium,
             )
         }
@@ -223,7 +224,7 @@ private fun ScheduleDayRow(
             ) {
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
                     Text(
-                        day.getDisplayName(TextStyle.SHORT, Locale("es")).take(3).uppercase(),
+                        day.getDisplayName(TextStyle.SHORT, Locale.forLanguageTag("es")).take(3).uppercase(),
                         fontSize = 10.sp, fontWeight = FontWeight.Bold,
                         color = if (scheduled != null) Primary else OnSurfaceVariant,
                     )
@@ -236,12 +237,12 @@ private fun ScheduleDayRow(
             }
             Column(modifier = Modifier.weight(1f)) {
                 Text(
-                    day.getDisplayName(TextStyle.FULL, Locale("es")).replaceFirstChar { it.uppercase() },
+                    day.getDisplayName(TextStyle.FULL, Locale.forLanguageTag("es")).replaceFirstChar { it.uppercase() },
                     fontWeight = FontWeight.SemiBold, fontSize = 14.sp, color = OnSurface,
                 )
                 if (scheduled != null) {
                     Text(
-                        "${scheduled.emoji}  ${scheduled.routineName}",
+                        scheduled.routineName,
                         fontSize = 13.sp, color = Primary, fontWeight = FontWeight.Medium,
                         maxLines = 1, overflow = TextOverflow.Ellipsis,
                     )
@@ -249,7 +250,7 @@ private fun ScheduleDayRow(
                     Text("Descanso — toca para asignar", fontSize = 12.sp, color = OnSurfaceVariant)
                 }
             }
-            Icon(Icons.Default.KeyboardArrowRight, null, tint = OnSurfaceVariant, modifier = Modifier.size(20.dp))
+            Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, null, tint = OnSurfaceVariant, modifier = Modifier.size(20.dp))
         }
     }
 }
@@ -400,7 +401,7 @@ private fun RoutineCard(
             Box(
                 modifier = Modifier.size(50.dp).clip(RoundedCornerShape(14.dp)).background(SurfaceContainerHigh),
                 contentAlignment = Alignment.Center,
-            ) { Text(routine.emoji, fontSize = 24.sp) }
+            ) { Icon(Icons.Default.FitnessCenter, null, Modifier.size(24.dp), tint = Primary) }
             Column(modifier = Modifier.weight(1f)) {
                 Text(routine.name, fontWeight = FontWeight.SemiBold, fontSize = 15.sp, color = OnSurface, maxLines = 1, overflow = TextOverflow.Ellipsis)
                 val subtitle = buildString {
@@ -458,7 +459,7 @@ private fun PlanCard(
                 Box(
                     modifier = Modifier.size(50.dp).clip(RoundedCornerShape(14.dp)).background(SurfaceContainerHigh),
                     contentAlignment = Alignment.Center,
-                ) { Text(plan.emoji, fontSize = 24.sp) }
+                ) { Icon(Icons.Default.FitnessCenter, null, Modifier.size(24.dp), tint = Primary) }
                 Column(modifier = Modifier.weight(1f)) {
                     Text(plan.name, fontWeight = FontWeight.SemiBold, fontSize = 15.sp, color = OnSurface, maxLines = 1, overflow = TextOverflow.Ellipsis)
                     val subtitle = buildString {
@@ -529,7 +530,7 @@ private fun RoutineDetailSheet(routine: Routine, onDismiss: () -> Unit) {
                 Box(
                     modifier = Modifier.size(56.dp).clip(RoundedCornerShape(14.dp)).background(SurfaceContainerHigh),
                     contentAlignment = Alignment.Center,
-                ) { Text(routine.emoji, fontSize = 28.sp) }
+                ) { Icon(Icons.Default.FitnessCenter, null, Modifier.size(28.dp), tint = Primary) }
                 Column(modifier = Modifier.weight(1f)) {
                     Text(routine.name, fontWeight = FontWeight.Bold, fontSize = 18.sp, color = OnSurface)
                     routine.authorName?.let { Text("por $it", fontSize = 13.sp, color = OnSurfaceVariant) }
@@ -554,7 +555,7 @@ private fun RoutineDetailSheet(routine: Routine, onDismiss: () -> Unit) {
                     Box(
                         modifier = Modifier.size(40.dp).clip(RoundedCornerShape(10.dp)).background(SurfaceContainerHigh),
                         contentAlignment = Alignment.Center,
-                    ) { Text(ex.emoji, fontSize = 18.sp) }
+                    ) { Icon(Icons.Default.FitnessCenter, null, Modifier.size(18.dp), tint = Primary) }
                     Column(modifier = Modifier.weight(1f)) {
                         Text(ex.exerciseName, fontWeight = FontWeight.SemiBold, fontSize = 14.sp, color = OnSurface, maxLines = 1, overflow = TextOverflow.Ellipsis)
                         val w = if (ex.targetWeightKg > 0f) " · ${ex.targetWeightKg.toInt()} kg" else ""
@@ -585,7 +586,7 @@ private fun PlanDetailSheet(plan: WeeklyRoutinePlan, onDismiss: () -> Unit) {
                 Box(
                     modifier = Modifier.size(56.dp).clip(RoundedCornerShape(14.dp)).background(SurfaceContainerHigh),
                     contentAlignment = Alignment.Center,
-                ) { Text(plan.emoji, fontSize = 28.sp) }
+                ) { Icon(Icons.Default.FitnessCenter, null, Modifier.size(28.dp), tint = Primary) }
                 Column(modifier = Modifier.weight(1f)) {
                     Text(plan.name, fontWeight = FontWeight.Bold, fontSize = 18.sp, color = OnSurface)
                     plan.authorName?.let { Text("por $it", fontSize = 13.sp, color = OnSurfaceVariant) }
@@ -606,7 +607,7 @@ private fun PlanDetailSheet(plan: WeeklyRoutinePlan, onDismiss: () -> Unit) {
                         contentAlignment = Alignment.Center,
                     ) {
                         Text(
-                            day.getDisplayName(TextStyle.SHORT, Locale("es")).take(3).uppercase(),
+                            day.getDisplayName(TextStyle.SHORT, Locale.forLanguageTag("es")).take(3).uppercase(),
                             fontWeight = FontWeight.Bold, fontSize = 11.sp,
                             color = if (hasRoutine) Primary else OnSurfaceVariant,
                         )
@@ -647,7 +648,7 @@ private fun DayRoutinePickerSheet(
             verticalArrangement = Arrangement.spacedBy(10.dp),
         ) {
             Text(
-                "Asignar rutina a ${date.format(DateTimeFormatter.ofPattern("EEEE d MMM", Locale("es")))}",
+                "Asignar rutina a ${date.format(DateTimeFormatter.ofPattern("EEEE d MMM", Locale.forLanguageTag("es")))}",
                 fontWeight = FontWeight.Bold, fontSize = 16.sp, color = OnSurface,
             )
             Row(
@@ -663,7 +664,7 @@ private fun DayRoutinePickerSheet(
                 Box(
                     modifier = Modifier.size(40.dp).clip(CircleShape).background(SurfaceContainerHigh),
                     contentAlignment = Alignment.Center,
-                ) { Text("🛌", fontSize = 20.sp) }
+                ) { Text("REST", fontSize = 10.sp, fontWeight = FontWeight.Bold, color = OnSurfaceVariant) }
                 Text("Descanso", fontWeight = FontWeight.SemiBold, fontSize = 14.sp, color = OnSurface)
             }
             when {
@@ -691,7 +692,7 @@ private fun DayRoutinePickerSheet(
                         Box(
                             modifier = Modifier.size(40.dp).clip(CircleShape).background(SurfaceContainerHigh),
                             contentAlignment = Alignment.Center,
-                        ) { Text(routine.emoji, fontSize = 20.sp) }
+                        ) { Icon(Icons.Default.FitnessCenter, null, Modifier.size(20.dp), tint = Primary) }
                         Column(modifier = Modifier.weight(1f)) {
                             Text(routine.name, fontWeight = FontWeight.SemiBold, fontSize = 14.sp, color = OnSurface, maxLines = 1, overflow = TextOverflow.Ellipsis)
                             Text(
@@ -729,7 +730,7 @@ private fun ApplyPlanConfirmSheet(
             Text("Aplicar plan semanal", fontWeight = FontWeight.Bold, fontSize = 18.sp, color = OnSurface)
             Text(
                 "Vas a sobrescribir las rutinas ya asignadas de la semana del " +
-                    weekStart.format(DateTimeFormatter.ofPattern("d MMM", Locale("es"))) +
+                    weekStart.format(DateTimeFormatter.ofPattern("d MMM", Locale.forLanguageTag("es"))) +
                     " con las de \"${plan.name}\".",
                 fontSize = 14.sp, color = OnSurfaceVariant, lineHeight = 20.sp,
             )

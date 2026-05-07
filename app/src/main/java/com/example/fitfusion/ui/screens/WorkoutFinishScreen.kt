@@ -238,6 +238,20 @@ fun PantallaWorkoutFinish(
                 }
             }
 
+            OutlinedButton(
+                onClick = {
+                    workoutFinishViewModel.saveAndPublish {
+                        navController.popBackStack(Screens.HomeScreen.name, inclusive = false)
+                    }
+                },
+                enabled  = !state.isSaving,
+                modifier = Modifier.fillMaxWidth().height(54.dp),
+                shape    = RoundedCornerShape(14.dp),
+                colors   = ButtonDefaults.outlinedButtonColors(contentColor = Primary),
+            ) {
+                Text("Guardar y publicar", fontSize = 16.sp, fontWeight = FontWeight.SemiBold)
+            }
+
             Spacer(Modifier.height(12.dp))
         }
     }

@@ -52,6 +52,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.rememberBottomSheetScaffoldState
 import androidx.compose.material3.rememberStandardBottomSheetState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
@@ -69,6 +70,9 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
+import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.navigation.NavHostController
 import coil3.compose.AsyncImage
 import com.example.fitfusion.data.repository.UserProfileStore
@@ -110,6 +114,22 @@ fun PantallaHome(
     val scaffoldState = rememberBottomSheetScaffoldState(bottomSheetState = sheetState)
     val pagerState = rememberPagerState(initialPage = 1, pageCount = { 3 })
     val scope = rememberCoroutineScope()
+    val lifecycle = LocalLifecycleOwner.current.lifecycle
+
+    fun consumePendingWorkoutPost() {
+        val workoutId = ProfileViewModel.consumePendingWorkoutPostId() ?: return
+        profileViewModel.openWorkoutPostWhenAvailable(workoutId)
+        scope.launch { pagerState.animateScrollToPage(2) }
+    }
+
+    DisposableEffect(lifecycle) {
+        consumePendingWorkoutPost()
+        val observer = LifecycleEventObserver { _, event ->
+            if (event == Lifecycle.Event.ON_RESUME) consumePendingWorkoutPost()
+        }
+        lifecycle.addObserver(observer)
+        onDispose { lifecycle.removeObserver(observer) }
+    }
 
     BackHandler(
         enabled = sheetState.currentValue == SheetValue.Expanded || pagerState.currentPage != 1
@@ -510,6 +530,20 @@ private fun WorkoutPostCard(
             )
 
             Spacer(modifier = Modifier.height(14.dp))
+
+            (post.mediaUrls.firstOrNull() ?: post.videoUri)?.let { mediaUrl ->
+                AsyncImage(
+                    model = mediaUrl,
+                    contentDescription = null,
+                    contentScale = ContentScale.Crop,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(180.dp)
+                        .clip(RoundedCornerShape(18.dp))
+                        .background(SurfaceContainerLow),
+                )
+                Spacer(modifier = Modifier.height(14.dp))
+            }
 
             Text(
                 post.workoutName,

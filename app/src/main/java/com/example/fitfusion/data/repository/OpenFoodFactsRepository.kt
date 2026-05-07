@@ -221,7 +221,7 @@ object OpenFoodFactsRepository {
             proteinPer100g = protein,
             carbsPer100g   = carbs,
             fatsPer100g    = fat,
-            emoji          = "🍽️",
+            emoji          = "",
             servingOptions = servingOptions,
         )
     }

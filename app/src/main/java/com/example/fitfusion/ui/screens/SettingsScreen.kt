@@ -48,11 +48,12 @@ import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.*
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
@@ -63,6 +64,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -194,6 +196,93 @@ fun PantallaSettings(
         SettingsRow(Icons.Default.Lock, "Privacidad", "Controla quién ve tu actividad y datos") {
             navController.navigate(Screens.PrivacyScreen.name)
         }
+
+        Spacer(modifier = Modifier.height(12.dp))
+
+        SectionTitle("CAMBIAR CONTRASEÑA")
+        Card(
+            shape = RoundedCornerShape(20.dp),
+            colors = CardDefaults.cardColors(containerColor = SurfaceContainerLowest),
+            elevation = CardDefaults.cardElevation(0.dp),
+            modifier = Modifier.fillMaxWidth().padding(horizontal = 24.dp)
+        ) {
+            Column(modifier = Modifier.padding(20.dp)) {
+                SettingsPasswordField(
+                    label = "Contraseña actual",
+                    value = state.currentPassword,
+                    onValueChange = settingsViewModel::onCurrentPasswordChange,
+                )
+                HorizontalDivider(
+                    modifier = Modifier.padding(vertical = 12.dp),
+                    color = OutlineVariant.copy(alpha = 0.3f)
+                )
+                SettingsPasswordField(
+                    label = "Nueva contraseña",
+                    value = state.newPassword,
+                    onValueChange = settingsViewModel::onNewPasswordChange,
+                )
+                HorizontalDivider(
+                    modifier = Modifier.padding(vertical = 12.dp),
+                    color = OutlineVariant.copy(alpha = 0.3f)
+                )
+                SettingsPasswordField(
+                    label = "Confirmar nueva contraseña",
+                    value = state.confirmNewPassword,
+                    onValueChange = settingsViewModel::onConfirmNewPasswordChange,
+                )
+            }
+        }
+
+        Spacer(modifier = Modifier.height(8.dp))
+
+        state.passwordChangeError?.let { error ->
+            Text(
+                error,
+                color = Tertiary,
+                fontSize = 13.sp,
+                modifier = Modifier.padding(horizontal = 24.dp, vertical = 4.dp)
+            )
+        }
+
+        if (state.passwordChangeSuccess) {
+            LaunchedEffect(Unit) {
+                kotlinx.coroutines.delay(3000)
+                settingsViewModel.clearPasswordState()
+            }
+            Text(
+                "Contrasena actualizada correctamente",
+                color = Primary,
+                fontSize = 13.sp,
+                fontWeight = FontWeight.SemiBold,
+                modifier = Modifier.padding(horizontal = 24.dp, vertical = 4.dp)
+            )
+        }
+
+        OutlinedButton(
+            onClick = settingsViewModel::changePassword,
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 24.dp, vertical = 4.dp)
+                .height(50.dp),
+            shape = RoundedCornerShape(14.dp),
+            colors = ButtonDefaults.outlinedButtonColors(contentColor = Primary),
+            enabled = !state.isChangingPassword
+        ) {
+            if (state.isChangingPassword) {
+                CircularProgressIndicator(
+                    modifier = Modifier.size(18.dp),
+                    color = Primary,
+                    strokeWidth = 2.dp,
+                )
+                Spacer(Modifier.width(8.dp))
+            } else {
+                Icon(Icons.Default.Lock, null, Modifier.size(18.dp))
+                Spacer(Modifier.width(8.dp))
+            }
+            Text("Actualizar contraseña", fontWeight = FontWeight.SemiBold)
+        }
+
+        Spacer(modifier = Modifier.height(12.dp))
 
         SectionTitle("PREFERENCIAS")
 
@@ -566,4 +655,29 @@ private fun HcStatPill(value: String, label: String, modifier: Modifier = Modifi
         Text(value, fontSize = 14.sp, fontWeight = FontWeight.Bold, color = OnSurface)
         Text(label, fontSize = 9.sp, color = OnSurfaceVariant, letterSpacing = 0.5.sp)
     }
+}
+
+@Composable
+private fun SettingsPasswordField(
+    label: String,
+    value: String,
+    onValueChange: (String) -> Unit,
+) {
+    Text(label, fontSize = 12.sp, fontWeight = FontWeight.Medium, color = OnSurfaceVariant)
+    Spacer(modifier = Modifier.height(4.dp))
+    OutlinedTextField(
+        value = value,
+        onValueChange = onValueChange,
+        placeholder = { Text("........", color = OnSurfaceVariant) },
+        visualTransformation = PasswordVisualTransformation(),
+        singleLine = true,
+        shape = RoundedCornerShape(10.dp),
+        colors = OutlinedTextFieldDefaults.colors(
+            unfocusedContainerColor = SurfaceContainerLow,
+            focusedContainerColor = SurfaceContainerLow,
+            unfocusedBorderColor = Color.Transparent,
+            focusedBorderColor = Primary
+        ),
+        modifier = Modifier.fillMaxWidth()
+    )
 }

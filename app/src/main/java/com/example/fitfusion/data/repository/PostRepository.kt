@@ -85,6 +85,7 @@ object PostRepository {
             "workoutDurationMinutes" to workoutDurationMinutes,
             "workoutKcal" to workoutKcal,
             "workoutVideoUri" to workoutVideoUri,
+            "workoutMediaUrls" to workoutMediaUrls,
             "workoutTotalWeightKg" to workoutTotalWeightKg,
             "workoutExercises" to workoutExercises.map { exercise ->
                 mapOf(
@@ -116,6 +117,7 @@ object PostRepository {
             workoutDurationMinutes = getLong("workoutDurationMinutes")?.toInt(),
             workoutKcal = getLong("workoutKcal")?.toInt(),
             workoutVideoUri = getString("workoutVideoUri"),
+            workoutMediaUrls = (get("workoutMediaUrls") as? List<*>)?.mapNotNull { it as? String }.orEmpty(),
             workoutTotalWeightKg = (get("workoutTotalWeightKg") as? Number)?.toFloat(),
             workoutExercises = emptyList(),
             nutritionPhotoUri = getString("nutritionPhotoUri"),

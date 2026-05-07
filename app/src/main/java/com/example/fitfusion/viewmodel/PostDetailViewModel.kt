@@ -158,7 +158,7 @@ class PostDetailViewModel : ViewModel() {
                 post.exercises.joinToString("\n") { "${it.name}: ${it.sets} series · ${it.reps} reps" }
             },
             hashtags = "#Workout  #FitFusion",
-            mediaUri = post.videoUri,
+            mediaUri = post.mediaUrls.firstOrNull() ?: post.videoUri,
             mediaLabel = "ENTRENO",
             statOneValue = post.exercises.size.toString(),
             statOneLabel = "EJERCICIOS",

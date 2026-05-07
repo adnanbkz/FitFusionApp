@@ -5,7 +5,7 @@ import java.util.UUID
 data class Recipe(
     val id: String = UUID.randomUUID().toString(),
     val name: String = "",
-    val emoji: String = "🍽️",
+    val emoji: String = "",
     val photoUrl: String? = null,
     val description: String = "",
     val ingredients: String = "",

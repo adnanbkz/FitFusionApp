@@ -7,7 +7,7 @@ import java.util.UUID
 data class RoutineExercise(
     val exerciseId: String,
     val exerciseName: String,
-    val emoji: String = "💪",
+    val emoji: String = "",
     val muscleGroup: String = "",
     val targetSets: Int = 3,
     val targetReps: Int = 10,
@@ -34,7 +34,7 @@ data class RoutineExercise(
             return RoutineExercise(
                 exerciseId     = id,
                 exerciseName   = name,
-                emoji          = map["emoji"]       as? String ?: "💪",
+                emoji          = map["emoji"]       as? String ?: "",
                 muscleGroup    = map["muscleGroup"] as? String ?: "",
                 targetSets     = (map["targetSets"]     as? Number)?.toInt()   ?: 3,
                 targetReps     = (map["targetReps"]     as? Number)?.toInt()   ?: 10,
@@ -49,7 +49,7 @@ data class RoutineExercise(
 data class Routine(
     val id: String = UUID.randomUUID().toString(),
     val name: String = "",
-    val emoji: String = "💪",
+    val emoji: String = "",
     val description: String = "",
     val exercises: List<RoutineExercise> = emptyList(),
     val estimatedDurationMin: Int? = null,
@@ -77,7 +77,7 @@ data class Routine(
 data class WeeklyRoutinePlan(
     val id: String = UUID.randomUUID().toString(),
     val name: String = "",
-    val emoji: String = "📅",
+    val emoji: String = "",
     val days: Map<DayOfWeek, String?> = emptyMap(),
     val dayRoutineNames: Map<DayOfWeek, String?> = emptyMap(),
     val isPublic: Boolean = false,
@@ -105,7 +105,7 @@ data class ScheduledRoutine(
     val date: LocalDate,
     val routineId: String,
     val routineName: String,
-    val emoji: String = "💪",
+    val emoji: String = "",
 ) {
     fun toMap(): Map<String, Any?> = mapOf(
         "date"         to date.toString(),

@@ -60,6 +60,7 @@ import com.example.fitfusion.data.models.WorkoutExercise
 import com.example.fitfusion.data.models.WorkoutSet
 import com.example.fitfusion.ui.components.*
 import com.example.fitfusion.ui.theme.*
+import com.example.fitfusion.viewmodel.FeedItem
 import com.example.fitfusion.viewmodel.ProfileViewModel
 
 private data class EditableWorkoutState(
@@ -238,7 +239,6 @@ fun PantallaProfile(
                     ProfileFitnessSummary(
                         heightCm = state.heightCm,
                         weightKg = state.weightKg,
-                        goalType = state.goalType,
                         activityLevel = state.activityLevel,
                     )
                     Box(
@@ -336,11 +336,15 @@ fun PantallaProfile(
                             workoutEditError = null
                         },
                     )
-                    2 -> LikesTab(onExplore = {
-                        navController.navigate(Screens.HomeScreen.name) {
-                            popUpTo(Screens.HomeScreen.name) { inclusive = true }
+                    2 -> LikesTab(
+                        likedPosts = state.likedFeedItems,
+                        isLoading = state.isLoadingLikedPosts,
+                        onExplore = {
+                            navController.navigate(Screens.HomeScreen.name) {
+                                popUpTo(Screens.HomeScreen.name) { inclusive = true }
+                            }
                         }
-                    })
+                    )
                 }
             }
         }
@@ -385,7 +389,6 @@ fun PantallaProfile(
 private fun ProfileFitnessSummary(
     heightCm: Int?,
     weightKg: Float?,
-    goalType: String?,
     activityLevel: String?,
 ) {
     val items = buildList {
@@ -394,7 +397,6 @@ private fun ProfileFitnessSummary(
             val formatted = if (weight % 1f == 0f) weight.toInt().toString() else "%.1f".format(java.util.Locale.US, weight)
             add("$formatted kg" to "PESO")
         }
-        goalType?.takeIf { it.isNotBlank() }?.let { add(it to "OBJETIVO") }
         activityLevel?.takeIf { it.isNotBlank() }?.let { add(it to "ACTIVIDAD") }
     }.take(3)
     if (items.isEmpty()) return
@@ -849,7 +851,9 @@ private fun WorkoutProfileCard(workout: LoggedWorkout) {
                     .clip(RoundedCornerShape(12.dp))
                     .background(Primary.copy(alpha = 0.1f)),
                 contentAlignment = Alignment.Center
-            ) { Text(workout.emoji, fontSize = 22.sp) }
+            ) {
+                Icon(Icons.Default.FitnessCenter, null, Modifier.size(22.dp), tint = Primary)
+            }
 
             Column(modifier = Modifier.weight(1f)) {
                 Text(
@@ -1019,7 +1023,7 @@ private fun WorkoutDayCard(
                     .background(Primary.copy(alpha = 0.1f)),
                 contentAlignment = Alignment.Center
             ) {
-                Text(workout.emoji, fontSize = 20.sp)
+                Icon(Icons.Default.FitnessCenter, null, Modifier.size(20.dp), tint = Primary)
             }
             Column(modifier = Modifier.weight(1f)) {
                 Text(
@@ -1482,29 +1486,110 @@ private fun <T> List<T>.updateAt(index: Int, transform: (T) -> T): List<T> {
 
 
 @Composable
-private fun LikesTab(onExplore: () -> Unit) {
-    Box(
-        modifier = Modifier.fillMaxWidth().padding(horizontal = 24.dp, vertical = 48.dp),
-        contentAlignment = Alignment.Center
+private fun LikesTab(likedPosts: List<FeedItem>, isLoading: Boolean, onExplore: () -> Unit) {
+    Column(
+        modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 12.dp),
+        verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
-        Column(
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.spacedBy(12.dp)
-        ) {
-            Text("Sin likes aún", fontWeight = FontWeight.SemiBold, fontSize = 16.sp, color = OnSurface)
-            Text(
-                "Las publicaciones que te gusten aparecerán aquí",
-                fontSize = 13.sp, color = OnSurfaceVariant, textAlign = TextAlign.Center
-            )
+        if (isLoading) {
             Box(
-                modifier = Modifier
-                    .padding(top = 4.dp)
-                    .clip(RoundedCornerShape(20.dp))
-                    .background(GreenGradientBrush)
-                    .clickable(onClick = onExplore)
-                    .padding(horizontal = 24.dp, vertical = 10.dp)
+                modifier = Modifier.fillMaxWidth().padding(vertical = 48.dp),
+                contentAlignment = Alignment.Center
             ) {
-                Text("Explorar Feed", fontWeight = FontWeight.Bold, color = Color.White, fontSize = 14.sp)
+                CircularProgressIndicator(color = Primary, modifier = Modifier.size(32.dp))
+            }
+        } else if (likedPosts.isEmpty()) {
+            Box(
+                modifier = Modifier.fillMaxWidth().padding(vertical = 48.dp),
+                contentAlignment = Alignment.Center
+            ) {
+                Column(
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    Text("Sin likes aun", fontWeight = FontWeight.SemiBold, fontSize = 16.sp, color = OnSurface)
+                    Text(
+                        "Las publicaciones que te gusten apareceran aqui",
+                        fontSize = 13.sp, color = OnSurfaceVariant, textAlign = TextAlign.Center
+                    )
+                    Box(
+                        modifier = Modifier
+                            .padding(top = 4.dp)
+                            .clip(RoundedCornerShape(20.dp))
+                            .background(GreenGradientBrush)
+                            .clickable(onClick = onExplore)
+                            .padding(horizontal = 24.dp, vertical = 10.dp)
+                    ) {
+                        Text("Explorar Feed", fontWeight = FontWeight.Bold, color = Color.White, fontSize = 14.sp)
+                    }
+                }
+            }
+        } else {
+            likedPosts.forEach { item ->
+                when (item) {
+                    is FeedItem.Workout -> LikedPostCard(
+                        title = item.post.workoutName,
+                        subtitle = "${item.post.durationMin} min",
+                        likes = item.post.likes,
+                        comments = item.post.comments,
+                    )
+                    is FeedItem.Nutrition -> LikedPostCard(
+                        title = item.post.title,
+                        subtitle = "${item.post.kcal} kcal",
+                        likes = item.post.likes,
+                        comments = item.post.comments,
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun LikedPostCard(
+    title: String,
+    subtitle: String,
+    likes: Int,
+    comments: Int,
+) {
+    Card(
+        shape = RoundedCornerShape(16.dp),
+        colors = CardDefaults.cardColors(containerColor = SurfaceContainerLowest),
+        elevation = CardDefaults.cardElevation(0.dp),
+        modifier = Modifier.fillMaxWidth()
+    ) {
+        Row(
+            modifier = Modifier.padding(16.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.SpaceBetween
+        ) {
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    title,
+                    fontSize = 14.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    color = OnSurface,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+                Text(subtitle, fontSize = 12.sp, color = OnSurfaceVariant)
+            }
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(4.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Icon(
+                        Icons.Default.Favorite,
+                        null,
+                        Modifier.size(14.dp),
+                        tint = Primary
+                    )
+                    Text("$likes", fontSize = 12.sp, color = OnSurfaceVariant)
+                }
             }
         }
     }

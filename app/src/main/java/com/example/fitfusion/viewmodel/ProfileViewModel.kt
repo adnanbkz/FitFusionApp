@@ -12,6 +12,7 @@ import com.example.fitfusion.data.repository.PostRepository
 import com.example.fitfusion.data.repository.UserProfileStore
 import com.example.fitfusion.data.repository.UserRepository
 import com.example.fitfusion.data.repository.WorkoutRepository
+import com.example.fitfusion.data.repository.FeedRepository
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.ListenerRegistration
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -62,6 +63,8 @@ data class ProfileUiState(
     val recentWorkouts: List<LoggedWorkout> = emptyList(),
     val showSearchBar: Boolean = false,
     val searchQuery: String = "",
+    val likedFeedItems: List<FeedItem> = emptyList(),
+    val isLoadingLikedPosts: Boolean = false,
 ) {
     val postCount: String get() = userPosts.size.toString()
 
@@ -102,12 +105,27 @@ private const val KEY_PHOTO_URI = "profile_photo_uri"
 
 class ProfileViewModel(application: Application) : AndroidViewModel(application) {
 
+    companion object {
+        private var pendingPostWorkoutId: String? = null
+
+        fun queueWorkoutPost(workoutId: String) {
+            pendingPostWorkoutId = workoutId
+        }
+
+        fun consumePendingWorkoutPostId(): String? {
+            val workoutId = pendingPostWorkoutId
+            pendingPostWorkoutId = null
+            return workoutId
+        }
+    }
+
     private val prefs = application.getSharedPreferences(PREFS_NAME, android.content.Context.MODE_PRIVATE)
     private val auth = FirebaseAuth.getInstance()
     private val userRepository = UserRepository()
     private var profileListenerRegistration: ListenerRegistration? = null
 
     private var workoutsByDay: Map<LocalDate, List<LoggedWorkout>> = emptyMap()
+    private var pendingWorkoutPostId: String? = null
 
     init {
         UserProfileStore.ensureInitialized(application)
@@ -197,6 +215,7 @@ class ProfileViewModel(application: Application) : AndroidViewModel(application)
                         selectedDayWorkouts   = workoutMap[s.selectedWorkoutDay] ?: emptyList(),
                     )
                 }
+                pendingWorkoutPostId?.let { tryOpenWorkoutPost(it) }
             }
         }
         viewModelScope.launch {
@@ -204,6 +223,14 @@ class ProfileViewModel(application: Application) : AndroidViewModel(application)
                 _uiState.update { it.copy(userPosts = posts) }
             }
         }
+        viewModelScope.launch {
+            FeedRepository.ensureInitialized()
+            FeedRepository.likedPosts.collect { liked ->
+                _uiState.update { it.copy(likedFeedItems = liked, isLoadingLikedPosts = false) }
+            }
+        }
+        _uiState.update { it.copy(isLoadingLikedPosts = true) }
+        FeedRepository.refreshLikedPosts()
     }
 
     fun updateFromUser(userName: String?) {
@@ -256,6 +283,26 @@ class ProfileViewModel(application: Application) : AndroidViewModel(application)
 
     fun showCreatePost() {
         _uiState.update { it.copy(showCreatePostSheet = true) }
+    }
+
+    fun openWorkoutPostWhenAvailable(workoutId: String) {
+        pendingWorkoutPostId = workoutId
+        tryOpenWorkoutPost(workoutId)
+    }
+
+    private fun tryOpenWorkoutPost(workoutId: String) {
+        val workout = workoutsByDay.values.flatten().firstOrNull { it.id == workoutId }
+            ?: WorkoutRepository.workouts.value.values.flatten().firstOrNull { it.id == workoutId }
+            ?: return
+        pendingWorkoutPostId = null
+        _uiState.update {
+            it.copy(
+                showCreatePostSheet = true,
+                createPostType = UserPostType.WORKOUT,
+                selectedWorkout = workout,
+                createPostErrorMessage = null,
+            )
+        }
     }
 
     fun showCreatePostWithMedia(uri: Uri, isVideo: Boolean) {
@@ -362,6 +409,7 @@ class ProfileViewModel(application: Application) : AndroidViewModel(application)
                     workoutDurationMinutes = w.durationMinutes,
                     workoutKcal            = w.kcalBurned,
                     workoutVideoUri        = state.capturedVideoUri?.toString(),
+                    workoutMediaUrls       = w.mediaUrls,
                     workoutTotalWeightKg   = w.totalVolumeKg,
                     workoutExercises        = w.exercises,
                 )

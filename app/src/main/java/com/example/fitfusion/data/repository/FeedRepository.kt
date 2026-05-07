@@ -7,9 +7,13 @@ import com.example.fitfusion.viewmodel.WorkoutPost
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.ListenerRegistration
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.tasks.await
 
 object FeedRepository {
 
@@ -19,6 +23,9 @@ object FeedRepository {
     private val firestore: FirebaseFirestore = FirebaseFirestore.getInstance()
     private val _items = MutableStateFlow<List<FeedItem>>(emptyList())
     val items: StateFlow<List<FeedItem>> = _items.asStateFlow()
+
+    private val _likedPosts = MutableStateFlow<List<FeedItem>>(emptyList())
+    val likedPosts: StateFlow<List<FeedItem>> = _likedPosts.asStateFlow()
 
     private var baseItems: List<FeedItem> = emptyList()
     private val likedPostIds = mutableSetOf<String>()
@@ -67,6 +74,7 @@ object FeedRepository {
         task.addOnFailureListener {
             setOptimisticLikeState(itemId, liked = wasLiked, previousCount = previousCount)
         }
+        task.addOnCompleteListener { refreshLikedPosts() }
     }
 
     private fun attachFeedListener(uid: String?) {
@@ -76,6 +84,7 @@ object FeedRepository {
         feedListenerRegistration = null
         clearInteractionListeners()
         currentUid = uid
+        _likedPosts.value = emptyList()
 
         if (uid.isNullOrBlank()) {
             baseItems = emptyList()
@@ -94,6 +103,41 @@ object FeedRepository {
                 syncCommentCountListeners(postIds)
                 emitItems()
             }
+        refreshLikedPosts()
+    }
+
+    fun refreshLikedPosts() {
+        val uid = auth.currentUser?.uid ?: return
+        CoroutineScope(Dispatchers.IO).launch {
+            try {
+                val queryUid = uid
+                val likedDocs = firestore.collectionGroup("likes")
+                    .whereEqualTo("userId", uid)
+                    .get()
+                    .await()
+                if (currentUid != queryUid) return@launch
+                val likedPostIds = likedDocs.documents
+                    .mapNotNull { it.reference.parent.parent?.id }
+                    .distinct()
+                if (likedPostIds.isEmpty()) {
+                    _likedPosts.value = emptyList()
+                    return@launch
+                }
+                val posts = likedPostIds.chunked(10).flatMap { batch ->
+                    firestore.collection(POSTS_COLLECTION)
+                        .whereIn(com.google.firebase.firestore.FieldPath.documentId(), batch)
+                        .get()
+                        .await()
+                        .documents
+                        .mapNotNull { it.toFeedItemOrNull() }
+                }
+                if (currentUid == queryUid) {
+                    _likedPosts.value = posts
+                        .sortedByDescending { it.timestamp }
+                        .map { it.withPersistedInteractionState() }
+                }
+            } catch (_: Exception) { }
+        }
     }
 
     private fun com.google.firebase.firestore.DocumentSnapshot.toFeedItemOrNull(): FeedItem? {
@@ -119,6 +163,7 @@ object FeedRepository {
                     totalWeightKg = (get("workoutTotalWeightKg") as? Number)?.toDouble() ?: 0.0,
                     exercises = readExerciseItems(),
                     videoUri = getString("workoutVideoUri"),
+                    mediaUrls = (get("workoutMediaUrls") as? List<*>)?.mapNotNull { it as? String }.orEmpty(),
                     likes = likes,
                     comments = comments,
                     timestamp = timestamp,

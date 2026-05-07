@@ -22,8 +22,7 @@ data class AccountUiState(
     val bio: String = "",
     val heightCm: String = "",
     val weightKg: String = "",
-    val goalType: String = "",
-    val activityLevel: String = "",
+    val activityLevel: String = "Sedentario",
     val currentPassword: String = "",
     val newPassword: String = "",
     val confirmNewPassword: String = "",
@@ -40,6 +39,7 @@ class AccountViewModel(
 
     private val _uiState = MutableStateFlow(AccountUiState())
     val uiState: StateFlow<AccountUiState> = _uiState.asStateFlow()
+    private var existingGoalType: String? = null
 
     init {
         loadProfile()
@@ -58,7 +58,6 @@ class AccountViewModel(
             _uiState.update { it.copy(weightKg = value, saveSuccess = false) }
         }
     }
-    fun onGoalTypeChange(value: String) = _uiState.update { it.copy(goalType = value, saveSuccess = false) }
     fun onActivityLevelChange(value: String) = _uiState.update { it.copy(activityLevel = value, saveSuccess = false) }
     fun onCurrentPasswordChange(value: String) = _uiState.update { it.copy(currentPassword = value) }
     fun onNewPasswordChange(value: String) = _uiState.update { it.copy(newPassword = value) }
@@ -90,7 +89,7 @@ class AccountViewModel(
                     photoUrl = user.photoUrl?.toString(),
                     heightCm = state.heightCm.toIntOrNull(),
                     weightKg = state.weightKg.toFloatOrNull(),
-                    goalType = state.goalType.trim().ifBlank { null },
+                    goalType = existingGoalType,
                     activityLevel = state.activityLevel.trim().ifBlank { null },
                 )
                 userRepository.updateUserProfile(profile)
@@ -181,6 +180,7 @@ class AccountViewModel(
         viewModelScope.launch {
             try {
                 val profile = userRepository.getUserProfile(user.uid, user.email.orEmpty())
+                existingGoalType = profile.goalType
                 _uiState.update {
                     it.copy(
                         displayName = profile.displayName,
@@ -191,7 +191,6 @@ class AccountViewModel(
                         weightKg = profile.weightKg?.let { weight ->
                             if (weight % 1f == 0f) weight.toInt().toString() else "%.1f".format(Locale.US, weight)
                         }.orEmpty(),
-                        goalType = profile.goalType.orEmpty(),
                         activityLevel = profile.activityLevel.orEmpty(),
                         isLoading = false,
                         errorMessage = null,

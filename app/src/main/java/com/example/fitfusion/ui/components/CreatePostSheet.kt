@@ -18,12 +18,15 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.CameraAlt
+import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.FitnessCenter
 import androidx.compose.material.icons.filled.PlayArrow
@@ -264,7 +267,15 @@ private fun WorkoutPostForm(
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
-                    Text(workout.emoji, fontSize = 22.sp)
+                    Box(
+                        modifier = Modifier
+                            .size(40.dp)
+                            .clip(RoundedCornerShape(10.dp))
+                            .background(Primary.copy(alpha = 0.1f)),
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        Icon(Icons.Default.FitnessCenter, null, Modifier.size(20.dp), tint = Primary)
+                    }
                     Column(modifier = Modifier.weight(1f)) {
                         Text(
                             workout.name,
@@ -278,8 +289,31 @@ private fun WorkoutPostForm(
                         )
                     }
                     if (isSelected) {
-                        Text("✓", fontSize = 18.sp, color = Primary, fontWeight = FontWeight.Bold)
+                        Icon(Icons.Default.Check, null, Modifier.size(18.dp), tint = Primary)
                     }
+                }
+            }
+        }
+
+        state.selectedWorkout?.mediaUrls?.takeIf { it.isNotEmpty() }?.let { mediaUrls ->
+            Text(
+                "FOTOS DEL ENTRENO",
+                fontSize = 11.sp,
+                fontWeight = FontWeight.Bold,
+                letterSpacing = 1.5.sp,
+                color = Primary,
+            )
+            LazyRow(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                items(mediaUrls) { url ->
+                    AsyncImage(
+                        model = url,
+                        contentDescription = null,
+                        contentScale = ContentScale.Crop,
+                        modifier = Modifier
+                            .size(88.dp)
+                            .clip(RoundedCornerShape(14.dp))
+                            .background(SurfaceContainerLow),
+                    )
                 }
             }
         }

@@ -9,7 +9,8 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.KeyboardArrowRight
+import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
+import androidx.compose.material.icons.filled.FitnessCenter
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -87,15 +88,6 @@ fun PantallaCreateWeeklyPlan(
                     Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
                         SectionLabel("INFORMACIÓN")
                         Row(horizontalArrangement = Arrangement.spacedBy(12.dp), verticalAlignment = Alignment.CenterVertically) {
-                            OutlinedTextField(
-                                value         = state.emoji,
-                                onValueChange = viewModel::onEmojiChange,
-                                modifier      = Modifier.width(72.dp),
-                                textStyle     = LocalTextStyle.current.copy(fontSize = 24.sp, textAlign = TextAlign.Center),
-                                singleLine    = true,
-                                shape         = RoundedCornerShape(12.dp),
-                                colors        = fieldColors(),
-                            )
                             OutlinedTextField(
                                 value         = state.name,
                                 onValueChange = viewModel::onNameChange,
@@ -177,7 +169,7 @@ private fun DayRow(
                 contentAlignment = Alignment.Center,
             ) {
                 Text(
-                    day.getDisplayName(TextStyle.SHORT, Locale("es")).take(3).uppercase(),
+                    day.getDisplayName(TextStyle.SHORT, Locale.forLanguageTag("es")).take(3).uppercase(),
                     fontWeight = FontWeight.Bold,
                     fontSize   = 13.sp,
                     color      = if (routineId != null) Primary else OnSurfaceVariant,
@@ -185,14 +177,14 @@ private fun DayRow(
             }
             Column(modifier = Modifier.weight(1f)) {
                 Text(
-                    day.getDisplayName(TextStyle.FULL, Locale("es")).replaceFirstChar { it.uppercase() },
+                    day.getDisplayName(TextStyle.FULL, Locale.forLanguageTag("es")).replaceFirstChar { it.uppercase() },
                     fontWeight = FontWeight.SemiBold,
                     fontSize   = 15.sp,
                     color      = OnSurface,
                 )
                 if (routineName != null) {
                     Text(
-                        "${emoji ?: "💪"}  $routineName",
+                        routineName,
                         fontSize = 13.sp,
                         color    = Primary,
                         maxLines = 1,
@@ -202,7 +194,7 @@ private fun DayRow(
                     Text("Descanso", fontSize = 13.sp, color = OnSurfaceVariant)
                 }
             }
-            Icon(Icons.Default.KeyboardArrowRight, null, tint = OnSurfaceVariant, modifier = Modifier.size(20.dp))
+            Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, null, tint = OnSurfaceVariant, modifier = Modifier.size(20.dp))
         }
     }
 }
@@ -229,7 +221,7 @@ private fun RoutinePickerSheet(
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
             Text(
-                day.getDisplayName(TextStyle.FULL, Locale("es")).replaceFirstChar { it.uppercase() },
+                day.getDisplayName(TextStyle.FULL, Locale.forLanguageTag("es")).replaceFirstChar { it.uppercase() },
                 fontWeight = FontWeight.Bold, fontSize = 18.sp, color = OnSurface,
             )
             RestRow(onClick = onRest)
@@ -265,7 +257,7 @@ private fun RestRow(onClick: () -> Unit) {
         Box(
             modifier = Modifier.size(40.dp).clip(CircleShape).background(SurfaceContainerHigh),
             contentAlignment = Alignment.Center,
-        ) { Text("🛌", fontSize = 20.sp) }
+        ) { Text("REST", fontSize = 10.sp, fontWeight = FontWeight.Bold, color = OnSurfaceVariant) }
         Text("Descanso", fontWeight = FontWeight.SemiBold, fontSize = 14.sp, color = OnSurface)
     }
 }
@@ -285,7 +277,7 @@ private fun RoutineOptionRow(routine: Routine, onClick: () -> Unit) {
         Box(
             modifier = Modifier.size(40.dp).clip(CircleShape).background(SurfaceContainerHigh),
             contentAlignment = Alignment.Center,
-        ) { Text(routine.emoji, fontSize = 20.sp) }
+        ) { Icon(Icons.Default.FitnessCenter, null, Modifier.size(20.dp), tint = Primary) }
         Column(modifier = Modifier.weight(1f)) {
             Text(routine.name, fontWeight = FontWeight.SemiBold, fontSize = 14.sp, color = OnSurface, maxLines = 1, overflow = TextOverflow.Ellipsis)
             Text(

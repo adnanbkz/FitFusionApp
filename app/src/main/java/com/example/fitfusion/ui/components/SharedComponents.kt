@@ -166,7 +166,7 @@ fun MomentumRing(progress: Float, size: Int) {
         contentAlignment = Alignment.Center
     ) {
         if (size <= 100) {
-            Text("⚡", fontSize = 24.sp)
+            Text("", fontSize = 24.sp)
         }
     }
 }
@@ -214,7 +214,7 @@ fun RecentLogItem(emoji: String, title: String, subtitle: String, calories: Stri
                 Box(
                     modifier = Modifier.size(40.dp).clip(RoundedCornerShape(10.dp)).background(SurfaceContainerLow),
                     contentAlignment = Alignment.Center
-                ) { Text(emoji, fontSize = 18.sp) }
+                ) { Icon(Icons.Default.Person, null, Modifier.size(18.dp), tint = OnSurfaceVariant) }
                 Column {
                     Text(title, fontWeight = FontWeight.SemiBold, fontSize = 15.sp, color = OnSurface, maxLines = 1, overflow = TextOverflow.Ellipsis)
                     Text(subtitle, fontSize = 12.sp, color = OnSurfaceVariant)
@@ -429,7 +429,6 @@ fun StatCard(label: String, value: String, unit: String, emoji: String, modifier
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.spacedBy(4.dp)
         ) {
-            Text(emoji, fontSize = 20.sp)
             Text(label, fontSize = 10.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.sp, color = OnSurfaceVariant, textAlign = TextAlign.Center)
             Row(verticalAlignment = Alignment.Bottom) {
                 Text(value, fontSize = 28.sp, fontWeight = FontWeight.Bold, color = OnSurface)

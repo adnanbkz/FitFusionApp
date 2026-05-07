@@ -696,7 +696,7 @@ private fun FavoriteChip(food: Food, onClick: () -> Unit) {
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.spacedBy(4.dp)
         ) {
-            Text(food.emoji, fontSize = 24.sp)
+            Icon(Icons.Default.Restaurant, null, Modifier.size(24.dp), tint = Primary)
             Text(
                 food.name,
                 fontSize   = 11.sp,
@@ -726,7 +726,7 @@ private fun FoodRow(food: Food, onTap: () -> Unit, onQuickAdd: () -> Unit) {
                 .clip(RoundedCornerShape(12.dp))
                 .background(SurfaceContainerHigh),
             contentAlignment = Alignment.Center
-        ) { Text(food.emoji, fontSize = 22.sp) }
+        ) { Icon(Icons.Default.Restaurant, null, Modifier.size(22.dp), tint = Primary) }
 
         Column(modifier = Modifier.weight(1f)) {
             Text(
@@ -798,7 +798,7 @@ private fun RecipeCard(
                         modifier           = Modifier.fillMaxSize(),
                     )
                 } else {
-                    Text(recipe.emoji, fontSize = 24.sp)
+                    Icon(Icons.Default.Restaurant, null, Modifier.size(24.dp), tint = Primary)
                 }
             }
 
@@ -874,7 +874,7 @@ internal fun FoodDetailSheet(
                     .clip(RoundedCornerShape(14.dp))
                     .background(SurfaceContainerHigh),
                 contentAlignment = Alignment.Center
-            ) { Text(food.emoji, fontSize = 28.sp) }
+            ) { Icon(Icons.Default.Restaurant, null, Modifier.size(28.dp), tint = Primary) }
             Column {
                 Text(food.name, fontWeight = FontWeight.Bold, fontSize = 18.sp, color = OnSurface)
                 food.brand?.let { Text(it, fontSize = 13.sp, color = OnSurfaceVariant) }
@@ -1035,7 +1035,7 @@ private fun RecipeDetailSheet(recipe: Recipe) {
                     .clip(RoundedCornerShape(14.dp))
                     .background(SurfaceContainerHigh),
                 contentAlignment = Alignment.Center,
-            ) { Text(recipe.emoji, fontSize = 28.sp) }
+            ) { Icon(Icons.Default.Restaurant, null, Modifier.size(28.dp), tint = Primary) }
             Column(modifier = Modifier.weight(1f)) {
                 Text(recipe.name, fontWeight = FontWeight.Bold, fontSize = 18.sp, color = OnSurface)
                 recipe.authorName?.let {
@@ -1075,9 +1075,9 @@ private fun RecipeDetailSheet(recipe: Recipe) {
 @Composable
 private fun RecipeDetailMeta(recipe: Recipe) {
     val items = buildList {
-        recipe.cookTimeMin?.let { add("⏱ $it min") }
-        recipe.bestMoment?.let  { add("🍽 $it") }
-        if (recipe.isPublic) add("🌍 Pública")
+        recipe.cookTimeMin?.let { add("$it min") }
+        recipe.bestMoment?.let { add(it) }
+        if (recipe.isPublic) add("Pública")
     }
     if (items.isEmpty()) return
     Row(

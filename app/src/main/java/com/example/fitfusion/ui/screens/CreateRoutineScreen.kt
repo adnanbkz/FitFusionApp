@@ -165,15 +165,6 @@ private fun HeaderCard(state: com.example.fitfusion.viewmodel.CreateRoutineUiSta
             SectionLabel("INFORMACIÓN")
             Row(horizontalArrangement = Arrangement.spacedBy(12.dp), verticalAlignment = Alignment.CenterVertically) {
                 OutlinedTextField(
-                    value         = state.emoji,
-                    onValueChange = viewModel::onEmojiChange,
-                    modifier      = Modifier.width(72.dp),
-                    textStyle     = LocalTextStyle.current.copy(fontSize = 24.sp, textAlign = TextAlign.Center),
-                    singleLine    = true,
-                    shape         = RoundedCornerShape(12.dp),
-                    colors        = fieldColors(),
-                )
-                OutlinedTextField(
                     value         = state.name,
                     onValueChange = viewModel::onNameChange,
                     placeholder   = { Text("Nombre de la rutina *", color = OnSurfaceVariant, fontSize = 15.sp) },
@@ -248,7 +239,7 @@ private fun ExerciseSearchRow(item: ExerciseCatalogItem, onAdd: () -> Unit) {
         Box(
             modifier = Modifier.size(44.dp).clip(RoundedCornerShape(12.dp)).background(SurfaceContainerHigh),
             contentAlignment = Alignment.Center,
-        ) { Text("💪", fontSize = 20.sp) }
+        ) { Icon(Icons.Default.Search, null, Modifier.size(20.dp), tint = OnSurfaceVariant) }
         Column(modifier = Modifier.weight(1f)) {
             Text(
                 item.name,
@@ -288,7 +279,7 @@ private fun AddedExerciseRow(
             Box(
                 modifier = Modifier.size(44.dp).clip(RoundedCornerShape(12.dp)).background(SurfaceContainerHigh),
                 contentAlignment = Alignment.Center,
-            ) { Text(exercise.emoji, fontSize = 20.sp) }
+            ) { Icon(Icons.Default.Search, null, Modifier.size(20.dp), tint = OnSurfaceVariant) }
             Column(modifier = Modifier.weight(1f)) {
                 Text(exercise.exerciseName, fontWeight = FontWeight.SemiBold, fontSize = 14.sp, color = OnSurface, maxLines = 1, overflow = TextOverflow.Ellipsis)
                 val weightStr = if (exercise.targetWeightKg > 0f) " · ${exercise.targetWeightKg.toInt()} kg" else ""
@@ -456,4 +447,3 @@ private fun fieldColors() = OutlinedTextFieldDefaults.colors(
     unfocusedBorderColor    = Color.Transparent,
     focusedBorderColor      = Primary,
 )
-

@@ -64,6 +64,11 @@ object WorkoutRepository {
     suspend fun updateWorkoutMedia(workoutId: String, mediaUrls: List<String>) {
         ensureInitialized()
         val uid = auth.currentUser?.uid ?: return
+        _workouts.value = _workouts.value.mapValues { (_, workouts) ->
+            workouts.map { workout ->
+                if (workout.id == workoutId) workout.copy(mediaUrls = mediaUrls) else workout
+            }
+        }
         firestore.collection(USERS_COLLECTION)
             .document(uid)
             .collection(WORKOUTS_COLLECTION)
@@ -77,12 +82,32 @@ object WorkoutRepository {
         val uid = auth.currentUser?.uid
             ?: throw IllegalStateException("Inicia sesion para guardar entrenamientos.")
 
-        firestore.collection(USERS_COLLECTION)
-            .document(uid)
-            .collection(WORKOUTS_COLLECTION)
-            .document(workout.id)
-            .set(workout.toFirestoreMap())
-            .await()
+        val previousMap = _workouts.value
+        val currentMap = previousMap.toMutableMap()
+        val dateWorkouts = currentMap[workout.date]?.toMutableList() ?: mutableListOf()
+        val existingIdx = dateWorkouts.indexOfFirst { it.id == workout.id }
+        if (existingIdx >= 0) {
+            dateWorkouts[existingIdx] = workout
+        } else {
+            dateWorkouts.add(0, workout)
+        }
+        currentMap[workout.date] = dateWorkouts.sortedWith(
+            compareByDescending<LoggedWorkout> { it.date }
+                .thenByDescending { it.createdAtMs ?: 0L }
+        )
+        _workouts.value = currentMap
+
+        try {
+            firestore.collection(USERS_COLLECTION)
+                .document(uid)
+                .collection(WORKOUTS_COLLECTION)
+                .document(workout.id)
+                .set(workout.toFirestoreMap())
+                .await()
+        } catch (exception: Exception) {
+            _workouts.value = previousMap
+            throw exception
+        }
 
         pushWorkoutSummary(workout.date)
     }
@@ -90,12 +115,25 @@ object WorkoutRepository {
     fun removeWorkout(id: String, date: LocalDate) {
         ensureInitialized()
         val uid = auth.currentUser?.uid ?: return
+
+        val previousMap = _workouts.value
+        val currentMap = previousMap.toMutableMap()
+        val dateWorkouts = currentMap[date]?.toMutableList() ?: mutableListOf()
+        dateWorkouts.removeAll { it.id == id }
+        if (dateWorkouts.isEmpty()) {
+            currentMap.remove(date)
+        } else {
+            currentMap[date] = dateWorkouts
+        }
+        _workouts.value = currentMap
+
         firestore.collection(USERS_COLLECTION)
             .document(uid)
             .collection(WORKOUTS_COLLECTION)
             .document(id)
             .delete()
-        pushWorkoutSummary(date)
+            .addOnSuccessListener { pushWorkoutSummary(date) }
+            .addOnFailureListener { _workouts.value = previousMap }
     }
 
     private fun pushWorkoutSummary(date: LocalDate) {
@@ -183,7 +221,7 @@ object WorkoutRepository {
             id = id,
             date = date,
             name = getString("name").orEmpty().ifBlank { "Entrenamiento" },
-            emoji = getString("emoji").orEmpty().ifBlank { "🏋️" },
+            emoji = getString("emoji").orEmpty().ifBlank { "" },
             durationMinutes = getLong("durationMinutes")?.toInt() ?: 0,
             kcalBurned = getLong("kcalBurned")?.toInt() ?: 0,
             startedAtMs = getLong("startedAtMs"),

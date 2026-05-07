@@ -130,7 +130,7 @@ private fun DocumentSnapshot.toRecipe(): Recipe? {
     return Recipe(
         id           = id,
         name         = name,
-        emoji        = getString("emoji") ?: "🍽️",
+        emoji        = getString("emoji") ?: "",
         photoUrl     = getString("photoUrl"),
         description  = getString("description")  ?: "",
         ingredients  = getString("ingredients")  ?: "",

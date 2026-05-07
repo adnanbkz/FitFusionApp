@@ -129,7 +129,16 @@ fun PantallaActiveWorkout(
                     onRemoveExercise  = { activeWorkoutViewModel.removeExercise(exercise.exerciseDocumentId) },
                 )
             }
-
+            item {
+                OutlinedButton(
+                    onClick  = {  },
+                    modifier = Modifier.fillMaxWidth().height(48.dp),
+                    shape    = RoundedCornerShape(12.dp),
+                    colors   = ButtonDefaults.outlinedButtonColors(contentColor = MaterialTheme.colorScheme.onPrimary),
+                ) {
+                    Text("Añadir ejercicio", fontSize = 14.sp, fontWeight = FontWeight.SemiBold)
+                }
+            }
             item {
                 OutlinedButton(
                     onClick  = { showCancelDialog = true },

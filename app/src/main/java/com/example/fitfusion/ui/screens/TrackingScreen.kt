@@ -16,6 +16,7 @@ import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.KeyboardArrowUp
+import androidx.compose.material.icons.filled.Restaurant
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -499,7 +500,7 @@ private fun LoggedFoodRow(
                 .clip(RoundedCornerShape(10.dp))
                 .background(SurfaceContainerHigh),
             contentAlignment = Alignment.Center
-        ) { Text(logged.food.emoji, fontSize = 18.sp) }
+        ) { Icon(Icons.Default.Restaurant, null, Modifier.size(18.dp), tint = Primary) }
 
         Column(modifier = Modifier.weight(1f)) {
             Text(

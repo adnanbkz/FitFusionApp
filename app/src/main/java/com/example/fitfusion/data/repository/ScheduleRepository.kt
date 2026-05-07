@@ -96,7 +96,7 @@ class ScheduleRepository(
                     date        = date,
                     routineId   = routineId,
                     routineName = routine?.name ?: cachedName ?: "Rutina",
-                    emoji       = routine?.emoji ?: "💪",
+                    emoji       = routine?.emoji ?: "",
                 )
                 batch.set(docRef, scheduled.toMap())
             } else {
@@ -120,6 +120,6 @@ private fun DocumentSnapshot.toScheduledRoutine(): ScheduledRoutine? {
         date        = date,
         routineId   = routineId,
         routineName = routineName,
-        emoji       = getString("emoji") ?: "💪",
+        emoji       = getString("emoji") ?: "",
     )
 }

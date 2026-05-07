@@ -269,15 +269,6 @@ private fun RecipeInfoCard(
                 verticalAlignment     = Alignment.CenterVertically,
             ) {
                 OutlinedTextField(
-                    value         = state.emoji,
-                    onValueChange = viewModel::onEmojiChange,
-                    modifier      = Modifier.width(72.dp),
-                    textStyle     = LocalTextStyle.current.copy(fontSize = 24.sp, textAlign = TextAlign.Center),
-                    singleLine    = true,
-                    shape         = RoundedCornerShape(12.dp),
-                    colors        = filledFieldColors(),
-                )
-                OutlinedTextField(
                     value         = state.name,
                     onValueChange = viewModel::onNameChange,
                     placeholder   = { Text("Nombre de la receta *", color = OnSurfaceVariant, fontSize = 15.sp) },

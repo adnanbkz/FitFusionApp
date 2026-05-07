@@ -12,7 +12,7 @@ import kotlinx.coroutines.flow.update
 
 data class CreateRecipeUiState(
     val name: String         = "",
-    val emoji: String        = "🍽️",
+    val emoji: String        = "",
     val description: String  = "",
     val ingredients: String  = "",
     val instructions: String = "",
@@ -38,7 +38,7 @@ class CreateRecipeViewModel(
     val uiState: StateFlow<CreateRecipeUiState> = _uiState.asStateFlow()
 
     fun onNameChange(value: String)         = _uiState.update { it.copy(name = value, saveError = null) }
-    fun onEmojiChange(value: String)        = _uiState.update { it.copy(emoji = value.takeLast(2).ifBlank { "🍽️" }) }
+    fun onEmojiChange(value: String)        = _uiState.update { it.copy(emoji = value.takeLast(2).ifBlank { "" }) }
     fun onDescriptionChange(value: String)  = _uiState.update { it.copy(description = value) }
     fun onIngredientsChange(value: String)  = _uiState.update { it.copy(ingredients = value) }
     fun onInstructionsChange(value: String) = _uiState.update { it.copy(instructions = value) }

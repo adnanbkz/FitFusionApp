@@ -219,7 +219,7 @@ object FoodRepository {
             id             = getString("foodId") ?: id,
             name           = foodName,
             brand          = getString("foodBrand"),
-            emoji          = getString("emoji") ?: "🍽️",
+            emoji          = getString("emoji") ?: "",
             kcalPer100g    = (getDouble("kcalPer100g")    ?: 0.0).toFloat(),
             proteinPer100g = (getDouble("proteinPer100g") ?: 0.0).toFloat(),
             carbsPer100g   = (getDouble("carbsPer100g")   ?: 0.0).toFloat(),

@@ -7,6 +7,7 @@ import androidx.lifecycle.viewModelScope
 import com.example.fitfusion.data.repository.WorkoutRepository
 import com.example.fitfusion.data.workout.ActiveWorkoutManager
 import com.example.fitfusion.data.workout.ActiveWorkoutSession
+import com.example.fitfusion.viewmodel.ProfileViewModel
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.storage.FirebaseStorage
 import kotlinx.coroutines.Dispatchers
@@ -36,6 +37,8 @@ class WorkoutFinishViewModel(app: Application) : AndroidViewModel(app) {
 
     private val _uiState = MutableStateFlow(WorkoutFinishUiState())
     val uiState: StateFlow<WorkoutFinishUiState> = _uiState.asStateFlow()
+
+    private var publishMode = false
 
     init {
         val current = ActiveWorkoutManager.session.value
@@ -68,6 +71,16 @@ class WorkoutFinishViewModel(app: Application) : AndroidViewModel(app) {
     }
 
     fun save(onDone: () -> Unit) {
+        publishMode = false
+        performSave(onDone)
+    }
+
+    fun saveAndPublish(onDone: () -> Unit) {
+        publishMode = true
+        performSave(onDone)
+    }
+
+    private fun performSave(onDone: () -> Unit) {
         val state = _uiState.value
         if (state.isSaving || state.session == null) return
         val sessionId = state.session.id
@@ -89,6 +102,9 @@ class WorkoutFinishViewModel(app: Application) : AndroidViewModel(app) {
                             .onSuccess { urls ->
                                 runCatching { WorkoutRepository.updateWorkoutMedia(sessionId, urls) }
                             }
+                    }
+                    if (publishMode) {
+                        ProfileViewModel.queueWorkoutPost(sessionId)
                     }
                     _uiState.update { it.copy(isSaving = false, savedWorkoutId = sessionId) }
                     onDone()

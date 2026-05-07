@@ -163,7 +163,7 @@ fun PantallaWeeklyLog(
                         Icon(Icons.AutoMirrored.Filled.KeyboardArrowLeft, contentDescription = "Semana anterior", tint = OnSurface)
                     }
                     val endDate = state.weekStart.plusDays(6)
-                    val fmt     = DateTimeFormatter.ofPattern("d MMM", Locale("es"))
+                    val fmt     = DateTimeFormatter.ofPattern("d MMM", Locale.forLanguageTag("es"))
                     Text(
                         "${state.weekStart.format(fmt)} – ${endDate.format(fmt)}",
                         fontWeight = FontWeight.SemiBold,
@@ -431,7 +431,7 @@ private fun DayLogRow(
                                 }
                             }
                             if (dayLog.isOnTrack) {
-                                Text("✓", fontSize = 14.sp, color = Primary, fontWeight = FontWeight.Bold)
+                                Text("OK", fontSize = 11.sp, color = Primary, fontWeight = FontWeight.Bold)
                             }
                         }
                         if (dayLog.entries.isNotEmpty()) {
@@ -453,11 +453,11 @@ private fun DayLogRow(
                                 modifier = Modifier.padding(top = 4.dp)
                             ) {
                                 if (summary.workoutCount > 0) {
-                                    MacroTag("🏋 ${summary.workoutCount}", Primary)
-                                    MacroTag("🔥 ${summary.kcalBurned}", Tertiary)
+                                    MacroTag("Entrenos ${summary.workoutCount}", Primary)
+                                    MacroTag("Kcal ${summary.kcalBurned}", Tertiary)
                                 }
                                 if (summary.steps > 0) {
-                                    MacroTag("👟 ${summary.steps}", Secondary)
+                                    MacroTag("Pasos ${summary.steps}", Secondary)
                                 }
                             }
                         }
@@ -523,4 +523,3 @@ private fun DayLogRow(
 private fun MacroTag(text: String, color: Color) {
     Text(text, fontSize = 11.sp, color = color, fontWeight = FontWeight.Medium)
 }
-
