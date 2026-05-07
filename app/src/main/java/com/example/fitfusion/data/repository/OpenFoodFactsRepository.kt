@@ -3,6 +3,7 @@ package com.example.fitfusion.data.repository
 import android.util.Log
 import com.example.fitfusion.data.models.Food
 import com.example.fitfusion.data.models.Serving
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import org.json.JSONArray
@@ -19,65 +20,82 @@ import java.util.UUID
 object OpenFoodFactsRepository {
 
     private const val TAG = "OpenFoodFacts"
-    private const val BASE_URL = "https://es.openfoodfacts.org/cgi/search.pl"
+    private const val BASE_URL = "https://world.openfoodfacts.org/cgi/search.pl"
     private const val FIELDS   = "code,product_name,product_name_es,brands,nutriments,serving_size,serving_quantity,countries_tags"
     private const val USER_AGENT = "FitFusion/1.0 (https://github.com/adnanbkz/FitFusionApp)"
     private const val MIN_QUERY_LENGTH = 3
     private const val CACHE_TTL_MS = 10 * 60 * 1_000L
-    private const val MIN_SEARCH_INTERVAL_MS = 6_000L
+    private const val MIN_SEARCH_INTERVAL_MS = 1_500L
+
+    data class SearchResult(
+        val foods: List<Food> = emptyList(),
+        val hasMore: Boolean = false,
+        val failed: Boolean = false,
+    )
 
     private data class CacheEntry(
         val createdAtMs: Long,
-        val results: List<Food>,
+        val result: SearchResult,
     )
 
     private val cache = mutableMapOf<String, CacheEntry>()
     private var lastNetworkSearchAtMs = 0L
 
-    suspend fun search(query: String, pageSize: Int = 20): List<Food> = withContext(Dispatchers.IO) {
+    suspend fun search(query: String, pageSize: Int = 20, page: Int = 1): SearchResult = withContext(Dispatchers.IO) {
         val normalizedQuery = query.trim().lowercase(Locale.ROOT)
-        if (normalizedQuery.length < MIN_QUERY_LENGTH) return@withContext emptyList()
+        if (normalizedQuery.length < MIN_QUERY_LENGTH) return@withContext SearchResult()
+
+        val safePageSize = pageSize.coerceIn(1, 50)
+        val safePage = page.coerceAtLeast(1)
+        val cacheKey = "$normalizedQuery|$safePageSize|$safePage"
 
         val now = System.currentTimeMillis()
-        cache[normalizedQuery]
+        cache[cacheKey]
             ?.takeIf { now - it.createdAtMs <= CACHE_TTL_MS }
-            ?.let { return@withContext it.results }
+            ?.let { return@withContext it.result }
 
         synchronized(this@OpenFoodFactsRepository) {
             val elapsedMs = now - lastNetworkSearchAtMs
             if (elapsedMs < MIN_SEARCH_INTERVAL_MS) {
                 Log.d(TAG, "skipping query='$normalizedQuery': rate limited locally")
-                return@withContext emptyList()
+                return@withContext SearchResult(failed = true)
             }
             lastNetworkSearchAtMs = now
         }
 
-        val url = buildSearchUrl(normalizedQuery, pageSize.coerceIn(1, 20))
+        val url = buildSearchUrl(normalizedQuery, safePageSize, safePage)
         val connection = (url.openConnection() as HttpURLConnection).apply {
             requestMethod = "GET"
-            connectTimeout = 10_000
-            readTimeout    = 10_000
+            connectTimeout = 4_000
+            readTimeout    = 4_000
             setRequestProperty("User-Agent", USER_AGENT)
         }
         try {
             val responseCode = connection.responseCode
             if (responseCode !in 200..299) {
                 Log.w(TAG, "search failed for query='$normalizedQuery': HTTP $responseCode")
-                return@withContext emptyList()
+                return@withContext SearchResult(failed = true)
             }
             val body = BufferedReader(InputStreamReader(connection.inputStream, StandardCharsets.UTF_8)).use { it.readText() }
-            parseProducts(JSONObject(body)).also { results ->
-                cache[normalizedQuery] = CacheEntry(System.currentTimeMillis(), results)
+            val json = JSONObject(body)
+            val foods = parseProducts(json)
+            SearchResult(
+                foods = foods,
+                hasMore = json.hasMoreProducts(safePageSize, safePage, foods.size),
+            ).also { result ->
+                cache[cacheKey] = CacheEntry(System.currentTimeMillis(), result)
             }
+        } catch (e: CancellationException) {
+            throw e
         } catch (e: Exception) {
             Log.w(TAG, "search failed for query='$normalizedQuery'", e)
-            emptyList()
+            SearchResult(failed = true)
         } finally {
             connection.disconnect()
         }
     }
 
-    private fun buildSearchUrl(query: String, pageSize: Int): URL {
+    private fun buildSearchUrl(query: String, pageSize: Int, page: Int): URL {
         val params = linkedMapOf(
             "search_terms" to query,
             "search_simple" to "1",
@@ -85,6 +103,7 @@ object OpenFoodFactsRepository {
             "json" to "1",
             "lc" to "es",
             "sort_by" to "unique_scans_n",
+            "page" to page.toString(),
             "page_size" to pageSize.toString(),
             "fields" to FIELDS,
         )
@@ -92,6 +111,16 @@ object OpenFoodFactsRepository {
             "$key=${URLEncoder.encode(value, StandardCharsets.UTF_8.name())}"
         }
         return URL("$BASE_URL?$encodedParams")
+    }
+
+    private fun JSONObject.hasMoreProducts(pageSize: Int, requestedPage: Int, returnedCount: Int): Boolean {
+        val totalCount = optInt("count", 0)
+        val currentPage = optInt("page", requestedPage).coerceAtLeast(1)
+        return if (totalCount > 0) {
+            currentPage * pageSize < totalCount
+        } else {
+            returnedCount >= pageSize
+        }
     }
 
     private fun parseProducts(json: JSONObject): List<Food> {
@@ -122,6 +151,42 @@ object OpenFoodFactsRepository {
         }
         return false
     }
+
+    suspend fun lookupByBarcode(barcode: String): Food? = withContext(Dispatchers.IO) {
+        val normalizedBarcode = barcode.toProductBarcodeOrNull() ?: return@withContext null
+        var connection: HttpURLConnection? = null
+        try {
+            val url = URL(
+                "https://world.openfoodfacts.org/api/v2/product/$normalizedBarcode.json" +
+                "?fields=code,product_name,product_name_es,brands,nutriments,serving_size,serving_quantity"
+            )
+            connection = (url.openConnection() as HttpURLConnection).apply {
+                requestMethod = "GET"
+                connectTimeout = 10_000
+                readTimeout    = 10_000
+                setRequestProperty("User-Agent", USER_AGENT)
+            }
+            val responseCode = connection.responseCode
+            if (responseCode !in 200..299) {
+                Log.w(TAG, "barcode lookup failed for '$normalizedBarcode': HTTP $responseCode")
+                return@withContext null
+            }
+            val body = BufferedReader(InputStreamReader(connection.inputStream, StandardCharsets.UTF_8)).use { it.readText() }
+            val json = JSONObject(body)
+            if (json.optInt("status", 0) != 1) return@withContext null
+            json.optJSONObject("product")?.toFood()
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            Log.w(TAG, "barcode lookup failed for '$normalizedBarcode'", e)
+            null
+        } finally {
+            connection?.disconnect()
+        }
+    }
+
+    private fun String.toProductBarcodeOrNull(): String? =
+        filter(Char::isDigit).takeIf { it.length in 8..14 }
 
     private fun JSONObject.toFood(): Food? {
         val name = optString("product_name_es").trim()

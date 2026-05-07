@@ -5,6 +5,8 @@ import com.example.fitfusion.data.models.Serving
 import com.google.firebase.firestore.DocumentSnapshot
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.Query
+import kotlinx.coroutines.tasks.await
+import java.text.Normalizer
 import java.util.Locale
 
 data class IngredientPage(
@@ -16,6 +18,20 @@ data class IngredientPage(
 class IngredientRepository(
     private val firestore: FirebaseFirestore = FirebaseFirestore.getInstance(),
 ) {
+    suspend fun fetchPage(
+        searchQuery: String,
+        pageSize: Int,
+        lastDocument: DocumentSnapshot? = null,
+    ): IngredientPage {
+        val snapshot = buildPageQuery(searchQuery, pageSize, lastDocument).get().await()
+        val items = snapshot.documents.mapNotNull { it.toFood() }
+        return IngredientPage(
+            ingredients  = items,
+            lastDocument = snapshot.documents.lastOrNull(),
+            hasMore      = snapshot.size() >= pageSize,
+        )
+    }
+
     fun fetchPage(
         searchQuery: String,
         pageSize: Int,
@@ -23,7 +39,26 @@ class IngredientRepository(
         onSuccess: (IngredientPage) -> Unit,
         onError: (Exception) -> Unit,
     ) {
-        val normalized = searchQuery.trim().lowercase(Locale.getDefault())
+        buildPageQuery(searchQuery, pageSize, lastDocument).get()
+            .addOnSuccessListener { snapshot ->
+                val items = snapshot.documents.mapNotNull { it.toFood() }
+                onSuccess(
+                    IngredientPage(
+                        ingredients  = items,
+                        lastDocument = snapshot.documents.lastOrNull(),
+                        hasMore      = snapshot.size() >= pageSize,
+                    )
+                )
+            }
+            .addOnFailureListener(onError)
+    }
+
+    private fun buildPageQuery(
+        searchQuery: String,
+        pageSize: Int,
+        lastDocument: DocumentSnapshot?,
+    ): Query {
+        val normalized = searchQuery.toIngredientSearchText()
 
         var query: Query = if (normalized.isBlank()) {
             firestore.collection("ingredients")
@@ -38,21 +73,13 @@ class IngredientRepository(
         }
 
         lastDocument?.let { query = query.startAfter(it) }
-
-        query.get()
-            .addOnSuccessListener { snapshot ->
-                val items = snapshot.documents.mapNotNull { it.toFood() }
-                onSuccess(
-                    IngredientPage(
-                        ingredients  = items,
-                        lastDocument = snapshot.documents.lastOrNull(),
-                        hasMore      = snapshot.size() >= pageSize,
-                    )
-                )
-            }
-            .addOnFailureListener(onError)
+        return query
     }
 }
+
+private fun String.toIngredientSearchText(): String =
+    Normalizer.normalize(trim().lowercase(Locale.getDefault()), Normalizer.Form.NFD)
+        .replace("\\p{Mn}+".toRegex(), "")
 
 internal fun DocumentSnapshot.toFood(): Food? {
     val name = getString("name")?.takeIf { it.isNotBlank() } ?: return null

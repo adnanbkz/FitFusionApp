@@ -12,6 +12,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Clear
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Public
 import androidx.compose.material.icons.filled.Restaurant
 import androidx.compose.material.icons.filled.Search
@@ -44,7 +45,27 @@ import com.example.fitfusion.ui.theme.*
 import com.example.fitfusion.viewmodel.AddFoodViewModel
 import com.example.fitfusion.viewmodel.FoodTab
 import com.example.fitfusion.viewmodel.RecipeSubTab
+import android.Manifest
+import android.content.pm.PackageManager
 import android.widget.Toast
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.camera.core.ImageAnalysis
+import androidx.camera.view.CameraController
+import androidx.camera.view.LifecycleCameraController
+import androidx.camera.view.PreviewView
+import androidx.compose.foundation.Canvas
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.viewinterop.AndroidView
+import androidx.core.content.ContextCompat
+import androidx.lifecycle.compose.LocalLifecycleOwner
+import com.google.mlkit.vision.barcode.BarcodeScanning
+import com.google.mlkit.vision.barcode.BarcodeScannerOptions
+import com.google.mlkit.vision.barcode.common.Barcode
+import com.google.mlkit.vision.common.InputImage
+import java.util.concurrent.atomic.AtomicBoolean
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -82,8 +103,17 @@ fun PantallaAddFood(
         }
     }
 
+    val snackbarHostState = remember { SnackbarHostState() }
+    LaunchedEffect(state.barcodeNotFound) {
+        if (state.barcodeNotFound) {
+            snackbarHostState.showSnackbar("Producto no encontrado en Open Food Facts")
+            addFoodViewModel.clearBarcodeNotFound()
+        }
+    }
+
     Scaffold(
         containerColor = Surface,
+        snackbarHost = { SnackbarHost(snackbarHostState) },
         topBar = {
             TopAppBar(
                 title = {
@@ -100,13 +130,26 @@ fun PantallaAddFood(
                 },
                 actions = {
                     if (state.activeTab == FoodTab.ALIMENTOS) {
-                        IconButton(onClick = { }) {
-                            Icon(
-                                painterResource(R.drawable.ic_tracking),
-                                contentDescription = "Escanear código",
-                                tint = Primary,
-                                modifier = Modifier.size(22.dp)
-                            )
+                        if (state.barcodeLoading) {
+                            Box(
+                                modifier = Modifier.size(48.dp),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                CircularProgressIndicator(
+                                    modifier = Modifier.size(22.dp),
+                                    strokeWidth = 2.dp,
+                                    color = Primary
+                                )
+                            }
+                        } else {
+                            IconButton(onClick = { addFoodViewModel.openScanner() }) {
+                                Icon(
+                                    painterResource(R.drawable.ic_tracking),
+                                    contentDescription = "Escanear código",
+                                    tint = Primary,
+                                    modifier = Modifier.size(22.dp)
+                                )
+                            }
                         }
                     }
                 },
@@ -209,6 +252,13 @@ fun PantallaAddFood(
             RecipeDetailSheet(recipe = state.selectedRecipe!!)
         }
     }
+
+    if (state.scannerOpen) {
+        BarcodeScannerOverlay(
+            onBarcodeDetected = addFoodViewModel::lookupBarcode,
+            onClose           = addFoodViewModel::closeScanner,
+        )
+    }
 }
 
 
@@ -303,6 +353,8 @@ private fun AlimentosContent(
                         CircularProgressIndicator(color = Primary, modifier = Modifier.size(32.dp))
                     }
                 }
+            } else if (state.searchResults.isEmpty() && state.isLoadingExternalSearch) {
+                item { SearchLoadingBox("Buscando más productos en Open Food Facts...") }
             } else if (state.searchResults.isEmpty()) {
                 item {
                     Box(
@@ -310,13 +362,29 @@ private fun AlimentosContent(
                         contentAlignment = Alignment.Center
                     ) {
                         Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                            Text("Sin resultados", fontWeight = FontWeight.Bold, color = OnSurface)
                             Text(
-                                "Prueba con otro nombre o marca",
+                                if (state.externalSearchFailed) "Búsqueda externa no disponible" else "Sin resultados locales",
+                                fontWeight = FontWeight.Bold,
+                                color = OnSurface,
+                            )
+                            Text(
+                                if (state.externalSearchFailed) {
+                                    "Prueba otra marca o escanea el código de barras"
+                                } else {
+                                    "Prueba otra marca o un nombre más corto"
+                                },
                                 fontSize = 13.sp, color = OnSurfaceVariant,
                                 modifier = Modifier.padding(top = 4.dp)
                             )
                         }
+                    }
+                }
+                if (state.canLoadMoreSearch && !state.isLoadingExternalSearch) {
+                    item {
+                        LoadMoreSearchButton(
+                            loading = state.isLoadingMoreSearch,
+                            onClick = viewModel::loadMoreSearchResults,
+                        )
                     }
                 }
             } else {
@@ -333,7 +401,78 @@ private fun AlimentosContent(
                         onQuickAdd = { viewModel.openSheet(food, state.activeMealSlot) }
                     )
                 }
+                if (state.isLoadingExternalSearch) {
+                    item { SearchLoadingBox("Buscando más productos en Open Food Facts...") }
+                }
+                if (state.externalSearchFailed) {
+                    item {
+                        SearchNotice("Mostrando resultados locales. Open Food Facts no responde ahora.")
+                    }
+                }
+                if (state.canLoadMoreSearch && !state.isLoadingExternalSearch) {
+                    item {
+                        LoadMoreSearchButton(
+                            loading = state.isLoadingMoreSearch,
+                            onClick = viewModel::loadMoreSearchResults,
+                        )
+                    }
+                }
             }
+        }
+    }
+}
+
+@Composable
+private fun SearchLoadingBox(message: String) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp, vertical = 18.dp),
+        horizontalArrangement = Arrangement.Center,
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        CircularProgressIndicator(color = Primary, modifier = Modifier.size(18.dp), strokeWidth = 2.dp)
+        Text(message, color = OnSurfaceVariant, fontSize = 13.sp, modifier = Modifier.padding(start = 10.dp))
+    }
+}
+
+@Composable
+private fun SearchNotice(message: String) {
+    Surface(
+        color = SurfaceContainerLowest,
+        shape = RoundedCornerShape(14.dp),
+        modifier = Modifier.padding(horizontal = 16.dp, vertical = 10.dp),
+    ) {
+        Text(
+            text = message,
+            color = OnSurfaceVariant,
+            fontSize = 13.sp,
+            modifier = Modifier.padding(horizontal = 14.dp, vertical = 12.dp),
+        )
+    }
+}
+
+@Composable
+private fun LoadMoreSearchButton(
+    loading: Boolean,
+    onClick: () -> Unit,
+) {
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp, vertical = 16.dp),
+        contentAlignment = Alignment.Center,
+    ) {
+        OutlinedButton(
+            onClick = onClick,
+            enabled = !loading,
+            shape = RoundedCornerShape(14.dp),
+        ) {
+            if (loading) {
+                CircularProgressIndicator(color = Primary, modifier = Modifier.size(16.dp), strokeWidth = 2.dp)
+                Spacer(Modifier.width(8.dp))
+            }
+            Text(if (loading) "Cargando..." else "Cargar más")
         }
     }
 }
@@ -955,3 +1094,178 @@ private fun RecipeDetailMeta(recipe: Recipe) {
         }
     }
 }
+
+@Composable
+private fun BarcodeScannerOverlay(
+    onBarcodeDetected: (String) -> Unit,
+    onClose: () -> Unit,
+) {
+    val context = LocalContext.current
+    val lifecycleOwner = LocalLifecycleOwner.current
+
+    var hasPermission by remember {
+        mutableStateOf(
+            ContextCompat.checkSelfPermission(context, Manifest.permission.CAMERA) == PackageManager.PERMISSION_GRANTED
+        )
+    }
+    val permissionLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.RequestPermission()
+    ) { granted -> hasPermission = granted }
+
+    LaunchedEffect(Unit) {
+        if (!hasPermission) permissionLauncher.launch(Manifest.permission.CAMERA)
+    }
+
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(Color.Black)
+    ) {
+        if (hasPermission) {
+            val barcodeScanner = remember {
+                BarcodeScanning.getClient(productBarcodeScannerOptions())
+            }
+            val controller = remember {
+                LifecycleCameraController(context).apply {
+                    setEnabledUseCases(CameraController.IMAGE_ANALYSIS)
+                }
+            }
+
+            DisposableEffect(Unit) {
+                controller.bindToLifecycle(lifecycleOwner)
+                controller.setImageAnalysisAnalyzer(
+                    ContextCompat.getMainExecutor(context),
+                    createBarcodeAnalyzer(barcodeScanner) { code ->
+                        controller.clearImageAnalysisAnalyzer()
+                        onBarcodeDetected(code)
+                    }
+                )
+                onDispose {
+                    controller.clearImageAnalysisAnalyzer()
+                    controller.unbind()
+                    barcodeScanner.close()
+                }
+            }
+
+            AndroidView(
+                factory = { ctx ->
+                    PreviewView(ctx).apply {
+                        scaleType = PreviewView.ScaleType.FILL_CENTER
+                        this.controller = controller
+                    }
+                },
+                modifier = Modifier.fillMaxSize()
+            )
+
+            ScanGuideFrame()
+
+            Text(
+                text = "Apunta al código de barras del producto",
+                color = Color.White,
+                fontSize = 14.sp,
+                textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+                modifier = Modifier
+                    .align(Alignment.BottomCenter)
+                    .padding(bottom = 80.dp)
+                    .padding(horizontal = 32.dp)
+            )
+        } else {
+            Column(
+                modifier = Modifier
+                    .align(Alignment.Center)
+                    .padding(32.dp),
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.spacedBy(12.dp),
+            ) {
+                Text("Permiso de cámara requerido", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 16.sp)
+                Text(
+                    "Activa el permiso de cámara en Ajustes para usar el escáner",
+                    color = Color.White.copy(alpha = 0.7f),
+                    fontSize = 13.sp,
+                    textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+                )
+            }
+        }
+
+        IconButton(
+            onClick = onClose,
+            modifier = Modifier
+                .align(Alignment.TopEnd)
+                .padding(8.dp)
+        ) {
+            Icon(
+                imageVector = Icons.Default.Close,
+                contentDescription = "Cerrar escáner",
+                tint = Color.White
+            )
+        }
+    }
+}
+
+@Composable
+private fun ScanGuideFrame() {
+    Canvas(modifier = Modifier.fillMaxSize()) {
+        val frameWidth  = size.width * 0.72f
+        val frameHeight = frameWidth * 0.48f
+        val left   = (size.width  - frameWidth)  / 2f
+        val top    = (size.height - frameHeight) / 2f
+        val right  = left + frameWidth
+        val bottom = top  + frameHeight
+        val overlay = Color.Black.copy(alpha = 0.55f)
+
+        drawRect(overlay, topLeft = Offset(0f,    0f),    size = Size(size.width, top))
+        drawRect(overlay, topLeft = Offset(0f,    bottom), size = Size(size.width, size.height - bottom))
+        drawRect(overlay, topLeft = Offset(0f,    top),   size = Size(left, frameHeight))
+        drawRect(overlay, topLeft = Offset(right, top),   size = Size(size.width - right, frameHeight))
+
+        val cornerLen = 28.dp.toPx()
+        val sw = 3.dp.toPx()
+
+        // Top-left
+        drawLine(Color.White, Offset(left, top + cornerLen), Offset(left, top), sw, StrokeCap.Square)
+        drawLine(Color.White, Offset(left, top), Offset(left + cornerLen, top), sw, StrokeCap.Square)
+        // Top-right
+        drawLine(Color.White, Offset(right - cornerLen, top), Offset(right, top), sw, StrokeCap.Square)
+        drawLine(Color.White, Offset(right, top), Offset(right, top + cornerLen), sw, StrokeCap.Square)
+        // Bottom-left
+        drawLine(Color.White, Offset(left, bottom - cornerLen), Offset(left, bottom), sw, StrokeCap.Square)
+        drawLine(Color.White, Offset(left, bottom), Offset(left + cornerLen, bottom), sw, StrokeCap.Square)
+        // Bottom-right
+        drawLine(Color.White, Offset(right - cornerLen, bottom), Offset(right, bottom), sw, StrokeCap.Square)
+        drawLine(Color.White, Offset(right, bottom), Offset(right, bottom - cornerLen), sw, StrokeCap.Square)
+    }
+}
+
+private fun createBarcodeAnalyzer(
+    scanner: com.google.mlkit.vision.barcode.BarcodeScanner,
+    onDetected: (String) -> Unit,
+): ImageAnalysis.Analyzer {
+    val fired = AtomicBoolean(false)
+    return ImageAnalysis.Analyzer { imageProxy ->
+        if (fired.get()) { imageProxy.close(); return@Analyzer }
+        val mediaImage = imageProxy.image
+        if (mediaImage == null) { imageProxy.close(); return@Analyzer }
+        val inputImage = InputImage.fromMediaImage(mediaImage, imageProxy.imageInfo.rotationDegrees)
+        scanner.process(inputImage)
+            .addOnSuccessListener { barcodes ->
+                barcodes.firstNotNullOfOrNull { it.rawValue?.toProductBarcodeOrNull() }?.let { code ->
+                    if (fired.compareAndSet(false, true)) onDetected(code)
+                }
+            }
+            .addOnCompleteListener { imageProxy.close() }
+    }
+}
+
+private fun productBarcodeScannerOptions(): BarcodeScannerOptions =
+    BarcodeScannerOptions.Builder()
+        .setBarcodeFormats(
+            Barcode.FORMAT_EAN_13,
+            Barcode.FORMAT_EAN_8,
+            Barcode.FORMAT_UPC_A,
+            Barcode.FORMAT_UPC_E,
+            Barcode.FORMAT_ITF,
+        )
+        .build()
+
+private fun String.toProductBarcodeOrNull(): String? =
+    filter(Char::isDigit).takeIf { it.length in 8..14 }

@@ -16,5 +16,6 @@ local.properties
 
 functions/.env
 functions/node_modules/
+scripts/node_modules/
 *.md
 !DEVLOG.md
