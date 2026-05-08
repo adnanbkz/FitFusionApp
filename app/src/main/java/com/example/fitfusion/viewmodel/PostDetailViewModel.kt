@@ -35,6 +35,7 @@ data class PostDetailUiState(
     val statTwoLabel: String = "TIEMPO",
     val statThreeValue: String = "—",
     val statThreeLabel: String = "TOTAL",
+    val isLiked: Boolean = false,
     val likeCount: String = "0",
     val commentCount: String = "0",
     val energyCount: String = "0",
@@ -109,6 +110,11 @@ class PostDetailViewModel : ViewModel() {
         )
     }
 
+    fun toggleLike() {
+        val id = loadedPostId ?: return
+        FeedRepository.toggleLike(id)
+    }
+
     fun sendComment() {
         val text = _uiState.value.commentText.trim()
         val postId = loadedPostId
@@ -166,6 +172,7 @@ class PostDetailViewModel : ViewModel() {
             statTwoLabel = "TIEMPO",
             statThreeValue = if (post.totalWeightKg > 0.0) "${post.totalWeightKg.toInt()}kg" else post.exercises.sumOf { it.sets }.toString(),
             statThreeLabel = if (post.totalWeightKg > 0.0) "VOLUMEN" else "SERIES",
+            isLiked = post.isLiked,
             likeCount = post.likes.toString(),
             commentCount = maxOf(post.comments, comments.size).toString(),
             energyCount = post.exercises.sumOf { it.sets }.toString(),
@@ -193,6 +200,7 @@ class PostDetailViewModel : ViewModel() {
             statTwoLabel = "COCINA",
             statThreeValue = "${post.proteinG}g",
             statThreeLabel = "PROT",
+            isLiked = post.isLiked,
             likeCount = post.likes.toString(),
             commentCount = maxOf(post.comments, comments.size).toString(),
             energyCount = post.carbsG.toString(),

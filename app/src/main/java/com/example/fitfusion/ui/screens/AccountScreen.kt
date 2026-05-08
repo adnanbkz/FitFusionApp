@@ -13,23 +13,22 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.*
-import androidx.compose.material.icons.filled.KeyboardArrowDown
-import androidx.compose.material.icons.filled.KeyboardArrowUp
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavHostController
 import coil3.compose.AsyncImage
-import com.example.fitfusion.data.repository.UserProfileStore
 import com.example.fitfusion.ui.theme.*
 import com.example.fitfusion.viewmodel.AccountViewModel
 
@@ -40,22 +39,11 @@ fun PantallaAccount(
     accountViewModel: AccountViewModel = viewModel()
 ) {
     val state by accountViewModel.uiState.collectAsState()
-    val context = LocalContext.current
-    val profilePhotoUri by UserProfileStore.photoUri.collectAsState()
     val snackbarHostState = remember { SnackbarHostState() }
     val photoLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.PickVisualMedia()
     ) { uri ->
-        uri?.let {
-            try {
-                context.contentResolver.takePersistableUriPermission(
-                    it,
-                    android.content.Intent.FLAG_GRANT_READ_URI_PERMISSION
-                )
-            } catch (_: Exception) {
-            }
-            UserProfileStore.updatePhotoUri(context, it)
-        }
+        uri?.let { accountViewModel.onPhotoChange(it) }
     }
 
     LaunchedEffect(state.saveSuccess) {
@@ -126,9 +114,9 @@ fun PantallaAccount(
                             .background(SurfaceContainerHigh),
                         contentAlignment = Alignment.Center
                     ) {
-                        if (profilePhotoUri != null) {
+                        if (state.photoUrl.isNotBlank()) {
                             AsyncImage(
-                                model = profilePhotoUri,
+                                model = state.photoUrl,
                                 contentDescription = "Foto de perfil",
                                 contentScale = ContentScale.Crop,
                                 modifier = Modifier.fillMaxSize()
@@ -231,7 +219,8 @@ fun PantallaAccount(
                         label = "Altura (cm)",
                         value = state.heightCm,
                         onValueChange = accountViewModel::onHeightCmChange,
-                        placeholder = "175"
+                        placeholder = "175",
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number)
                     )
                     HorizontalDivider(
                         modifier = Modifier.padding(vertical = 12.dp),
@@ -241,15 +230,28 @@ fun PantallaAccount(
                         label = "Peso (kg)",
                         value = state.weightKg,
                         onValueChange = accountViewModel::onWeightKgChange,
-                        placeholder = "72.5"
+                        placeholder = "72.5",
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal)
                     )
                     HorizontalDivider(
                         modifier = Modifier.padding(vertical = 12.dp),
                         color = OutlineVariant.copy(alpha = 0.3f)
                     )
-                    ActivityLevelDropdown(
-                        selected = state.activityLevel,
-                        onSelected = accountViewModel::onActivityLevelChange,
+                    AccountField(
+                        label = "Objetivo",
+                        value = state.goalType,
+                        onValueChange = accountViewModel::onGoalTypeChange,
+                        placeholder = "Perder grasa, ganar músculo..."
+                    )
+                    HorizontalDivider(
+                        modifier = Modifier.padding(vertical = 12.dp),
+                        color = OutlineVariant.copy(alpha = 0.3f)
+                    )
+                    AccountField(
+                        label = "Nivel de actividad",
+                        value = state.activityLevel,
+                        onValueChange = accountViewModel::onActivityLevelChange,
+                        placeholder = "Sedentario, moderado, alto..."
                     )
                 }
             }
@@ -275,6 +277,61 @@ fun PantallaAccount(
                 } else {
                     Text("Guardar cambios", fontWeight = FontWeight.Bold)
                 }
+            }
+
+            Spacer(modifier = Modifier.height(32.dp))
+
+            SettingsSectionHeader("CAMBIAR CONTRASEÑA")
+            Card(
+                shape = RoundedCornerShape(20.dp),
+                colors = CardDefaults.cardColors(containerColor = SurfaceContainerLowest),
+                elevation = CardDefaults.cardElevation(0.dp),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 24.dp)
+            ) {
+                Column(modifier = Modifier.padding(20.dp)) {
+                    AccountPasswordField(
+                        label = "Contraseña actual",
+                        value = state.currentPassword,
+                        onValueChange = accountViewModel::onCurrentPasswordChange
+                    )
+                    HorizontalDivider(
+                        modifier = Modifier.padding(vertical = 12.dp),
+                        color = OutlineVariant.copy(alpha = 0.3f)
+                    )
+                    AccountPasswordField(
+                        label = "Nueva contraseña",
+                        value = state.newPassword,
+                        onValueChange = accountViewModel::onNewPasswordChange
+                    )
+                    HorizontalDivider(
+                        modifier = Modifier.padding(vertical = 12.dp),
+                        color = OutlineVariant.copy(alpha = 0.3f)
+                    )
+                    AccountPasswordField(
+                        label = "Confirmar nueva contraseña",
+                        value = state.confirmNewPassword,
+                        onValueChange = accountViewModel::onConfirmNewPasswordChange
+                    )
+                }
+            }
+
+            Spacer(modifier = Modifier.height(12.dp))
+
+            OutlinedButton(
+                onClick = accountViewModel::changePassword,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 24.dp)
+                    .height(50.dp),
+                shape = RoundedCornerShape(14.dp),
+                colors = ButtonDefaults.outlinedButtonColors(contentColor = Primary),
+                enabled = !state.isSaving
+            ) {
+                Icon(Icons.Default.Lock, null, Modifier.size(18.dp))
+                Spacer(modifier = Modifier.width(8.dp))
+                Text("Actualizar contraseña", fontWeight = FontWeight.SemiBold)
             }
 
             Spacer(modifier = Modifier.height(32.dp))
@@ -325,53 +382,6 @@ fun PantallaAccount(
     }
 }
 
-private val activityLevelOptions = listOf("Sedentario", "Ligero", "Medio", "Alto", "Atleta")
-
-@Composable
-private fun ActivityLevelDropdown(
-    selected: String,
-    onSelected: (String) -> Unit,
-) {
-    var expanded by remember { mutableStateOf(false) }
-    Text("Nivel de actividad", fontSize = 12.sp, fontWeight = FontWeight.Medium, color = OnSurfaceVariant)
-    Spacer(modifier = Modifier.height(4.dp))
-    Box {
-        OutlinedTextField(
-            value = selected,
-            onValueChange = {},
-            readOnly = true,
-            trailingIcon = {
-                Icon(
-                    if (expanded) Icons.Default.KeyboardArrowUp else Icons.Default.KeyboardArrowDown,
-                    null,
-                    Modifier.size(20.dp),
-                    tint = OnSurfaceVariant
-                )
-            },
-            singleLine = true,
-            shape = RoundedCornerShape(10.dp),
-            colors = OutlinedTextFieldDefaults.colors(
-                unfocusedContainerColor = SurfaceContainerLow,
-                focusedContainerColor = SurfaceContainerLow,
-                unfocusedBorderColor = Color.Transparent,
-                focusedBorderColor = Primary,
-            ),
-            modifier = Modifier.fillMaxWidth().clickable { expanded = true },
-        )
-        DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
-            activityLevelOptions.forEach { option ->
-                DropdownMenuItem(
-                    text = { Text(option) },
-                    onClick = {
-                        onSelected(option)
-                        expanded = false
-                    },
-                )
-            }
-        }
-    }
-}
-
 @Composable
 private fun SettingsSectionHeader(text: String) {
     Text(
@@ -392,6 +402,7 @@ private fun AccountField(
     placeholder: String,
     singleLine: Boolean = true,
     enabled: Boolean = true,
+    keyboardOptions: KeyboardOptions = KeyboardOptions.Default,
 ) {
     Text(label, fontSize = 12.sp, fontWeight = FontWeight.Medium, color = OnSurfaceVariant)
     Spacer(modifier = Modifier.height(4.dp))
@@ -401,6 +412,7 @@ private fun AccountField(
         placeholder = { Text(placeholder, color = OnSurfaceVariant, fontSize = 14.sp) },
         singleLine = singleLine,
         enabled = enabled,
+        keyboardOptions = keyboardOptions,
         shape = RoundedCornerShape(10.dp),
         colors = OutlinedTextFieldDefaults.colors(
             unfocusedContainerColor = SurfaceContainerLow,
@@ -412,3 +424,27 @@ private fun AccountField(
     )
 }
 
+@Composable
+private fun AccountPasswordField(
+    label: String,
+    value: String,
+    onValueChange: (String) -> Unit
+) {
+    Text(label, fontSize = 12.sp, fontWeight = FontWeight.Medium, color = OnSurfaceVariant)
+    Spacer(modifier = Modifier.height(4.dp))
+    OutlinedTextField(
+        value = value,
+        onValueChange = onValueChange,
+        placeholder = { Text("••••••••", color = OnSurfaceVariant) },
+        visualTransformation = PasswordVisualTransformation(),
+        singleLine = true,
+        shape = RoundedCornerShape(10.dp),
+        colors = OutlinedTextFieldDefaults.colors(
+            unfocusedContainerColor = SurfaceContainerLow,
+            focusedContainerColor = SurfaceContainerLow,
+            unfocusedBorderColor = Color.Transparent,
+            focusedBorderColor = Primary
+        ),
+        modifier = Modifier.fillMaxWidth()
+    )
+}

@@ -1,12 +1,12 @@
 package com.example.fitfusion.ui.screens
 
-import androidx.activity.compose.BackHandler
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -19,44 +19,46 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.pager.HorizontalPager
-import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Bookmark
 import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.FavoriteBorder
+import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Restaurant
 import androidx.compose.material.icons.filled.Share
+import androidx.compose.material.icons.outlined.BookmarkBorder
 import androidx.compose.material.icons.outlined.ChatBubbleOutline
 import androidx.compose.material.icons.outlined.FitnessCenter
+import androidx.compose.material.icons.outlined.Home
 import androidx.compose.material.icons.outlined.Person
+import androidx.compose.material.icons.outlined.Restaurant
 import androidx.compose.material.icons.outlined.Schedule
-import androidx.compose.material3.BottomSheetScaffold
-import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.ElevatedCard
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.FloatingActionButtonDefaults
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
-import androidx.compose.material3.SheetValue
+import androidx.compose.material3.NavigationBar
+import androidx.compose.material3.NavigationBarItem
+import androidx.compose.material3.NavigationBarItemDefaults
+import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
-import androidx.compose.material3.rememberBottomSheetScaffoldState
-import androidx.compose.material3.rememberStandardBottomSheetState
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -70,9 +72,6 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
-import androidx.lifecycle.Lifecycle
-import androidx.lifecycle.LifecycleEventObserver
-import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.navigation.NavHostController
 import coil3.compose.AsyncImage
 import com.example.fitfusion.data.repository.UserProfileStore
@@ -93,7 +92,6 @@ import com.example.fitfusion.viewmodel.HomeViewModel
 import com.example.fitfusion.viewmodel.NutritionPost
 import com.example.fitfusion.viewmodel.ProfileViewModel
 import com.example.fitfusion.viewmodel.WorkoutPost
-import kotlinx.coroutines.launch
 import java.time.LocalTime
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -106,85 +104,61 @@ fun PantallaHome(
 ) {
     val state by homeViewModel.uiState.collectAsState()
     val photoUri by UserProfileStore.photoUri.collectAsState()
+    var selectedTab by rememberSaveable { mutableStateOf(0) }
 
-    val sheetState = rememberStandardBottomSheetState(
-        initialValue = SheetValue.PartiallyExpanded,
-        skipHiddenState = true,
-    )
-    val scaffoldState = rememberBottomSheetScaffoldState(bottomSheetState = sheetState)
-    val pagerState = rememberPagerState(initialPage = 1, pageCount = { 3 })
-    val scope = rememberCoroutineScope()
-    val lifecycle = LocalLifecycleOwner.current.lifecycle
-
-    fun consumePendingWorkoutPost() {
-        val workoutId = ProfileViewModel.consumePendingWorkoutPostId() ?: return
-        profileViewModel.openWorkoutPostWhenAvailable(workoutId)
-        scope.launch { pagerState.animateScrollToPage(2) }
-    }
-
-    DisposableEffect(lifecycle) {
-        consumePendingWorkoutPost()
-        val observer = LifecycleEventObserver { _, event ->
-            if (event == Lifecycle.Event.ON_RESUME) consumePendingWorkoutPost()
-        }
-        lifecycle.addObserver(observer)
-        onDispose { lifecycle.removeObserver(observer) }
-    }
-
-    BackHandler(
-        enabled = sheetState.currentValue == SheetValue.Expanded || pagerState.currentPage != 1
-    ) {
-        scope.launch {
-            when {
-                sheetState.currentValue == SheetValue.Expanded -> sheetState.partialExpand()
-                pagerState.currentPage != 1                    -> pagerState.animateScrollToPage(1)
+    Scaffold(
+        containerColor = Surface,
+        bottomBar = {
+            NavigationBar(containerColor = SurfaceContainerLowest) {
+                NavigationBarItem(
+                    selected = selectedTab == 0,
+                    onClick = { selectedTab = 0 },
+                    icon = { Icon(if (selectedTab == 0) Icons.Default.Home else Icons.Outlined.Home, "Inicio") },
+                    label = { Text("Inicio") },
+                    colors = navBarItemColors(),
+                )
+                NavigationBarItem(
+                    selected = selectedTab == 1,
+                    onClick = { selectedTab = 1 },
+                    icon = { Icon(if (selectedTab == 1) Icons.Default.Restaurant else Icons.Outlined.Restaurant, "Dieta") },
+                    label = { Text("Dieta") },
+                    colors = navBarItemColors(),
+                )
+                NavigationBarItem(
+                    selected = selectedTab == 2,
+                    onClick = { selectedTab = 2 },
+                    icon = { Icon(Icons.Outlined.FitnessCenter, "Ejercicio") },
+                    label = { Text("Ejercicio") },
+                    colors = navBarItemColors(),
+                )
+                NavigationBarItem(
+                    selected = selectedTab == 3,
+                    onClick = { selectedTab = 3 },
+                    icon = { Icon(Icons.Outlined.Person, "Perfil") },
+                    label = { Text("Perfil") },
+                    colors = navBarItemColors(),
+                )
             }
         }
-    }
-
-    BottomSheetScaffold(
-        scaffoldState = scaffoldState,
-        sheetPeekHeight = 72.dp,
-        sheetContainerColor = Surface,
-        sheetContentColor = OnSurface,
-        sheetShape = RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp),
-        sheetDragHandle = { TrackingSheetHandle() },
-        sheetContent = {
-            PantallaTracking(navController = navController)
-        },
-        containerColor = SurfaceContainerLow,
     ) { innerPadding ->
-        HorizontalPager(
-            state = pagerState,
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(innerPadding),
-        ) { page ->
-            when (page) {
-                0 -> PantallaCamera(
-                    onClose = {
-                        scope.launch { pagerState.animateScrollToPage(1) }
-                    },
-                    onMediaCaptured = { uri, isVideo ->
-                        profileViewModel.showCreatePostWithMedia(uri, isVideo)
-                        scope.launch { pagerState.animateScrollToPage(1) }
-                    },
-                )
-                1 -> HomeFeedPage(
+        Box(modifier = Modifier.fillMaxSize().padding(innerPadding)) {
+            when (selectedTab) {
+                0 -> HomeFeedPage(
                     state = state,
                     userName = userName,
                     photoUri = photoUri?.toString(),
-                    onAvatarClick = {
-                        scope.launch { pagerState.animateScrollToPage(2) }
-                    },
+                    onAvatarClick = { selectedTab = 3 },
                     onFabClick = profileViewModel::showCreatePost,
                     onPostClick = { postId ->
                         navController.navigate("${Screens.PostDetailScreen.name}/$postId")
                     },
                     onLikeClick = homeViewModel::toggleLike,
                     onFilterSelect = homeViewModel::setFilter,
+                    onSaveClick = homeViewModel::toggleSave,
                 )
-                2 -> PantallaProfile(
+                1 -> PantallaTracking(navController = navController)
+                2 -> PantallaWorkout(navController = navController)
+                3 -> PantallaProfile(
                     navController = navController,
                     userName = userName,
                     profileViewModel = profileViewModel,
@@ -202,6 +176,15 @@ fun PantallaHome(
 }
 
 @Composable
+private fun navBarItemColors() = NavigationBarItemDefaults.colors(
+    selectedIconColor = Primary,
+    selectedTextColor = Primary,
+    indicatorColor = Primary.copy(alpha = 0.12f),
+    unselectedIconColor = OnSurfaceVariant,
+    unselectedTextColor = OnSurfaceVariant,
+)
+
+@Composable
 private fun HomeFeedPage(
     state: com.example.fitfusion.viewmodel.FeedUiState,
     userName: String?,
@@ -211,11 +194,12 @@ private fun HomeFeedPage(
     onPostClick: (String) -> Unit,
     onLikeClick: (String) -> Unit,
     onFilterSelect: (FeedFilter) -> Unit,
+    onSaveClick: (String) -> Unit,
 ) {
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(SurfaceContainerLow)
+            .background(SurfaceContainerLowest)
     ) {
         LazyColumn(
             modifier = Modifier.fillMaxSize(),
@@ -259,9 +243,9 @@ private fun HomeFeedPage(
                     modifier = Modifier
                         .background(Surface)
                         .fillMaxWidth()
-                        .padding(horizontal = 16.dp)
                         .padding(bottom = 12.dp)
                 )
+                HorizontalDivider(color = SurfaceContainerHigh)
             }
 
             val filtered = state.filteredItems
@@ -279,14 +263,16 @@ private fun HomeFeedPage(
                             post        = item.post,
                             onLikeClick = { onLikeClick(item.post.id) },
                             onCardClick = { onPostClick(item.post.id) },
+                            onSaveClick = { onSaveClick(item.post.id) },
                         )
                         is FeedItem.Nutrition -> NutritionPostCard(
                             post        = item.post,
                             onLikeClick = { onLikeClick(item.post.id) },
                             onCardClick = { onPostClick(item.post.id) },
+                            onSaveClick = { onSaveClick(item.post.id) },
                         )
                     }
-                    Spacer(modifier = Modifier.height(12.dp))
+                    HorizontalDivider(color = SurfaceContainerHigh)
                 }
             }
         }
@@ -319,32 +305,6 @@ private fun HomeFeedPage(
     }
 }
 
-@Composable
-private fun TrackingSheetHandle() {
-    Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(top = 10.dp, bottom = 8.dp),
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.spacedBy(6.dp),
-    ) {
-        Box(
-            modifier = Modifier
-                .size(width = 36.dp, height = 4.dp)
-                .clip(RoundedCornerShape(2.dp))
-                .background(OnSurfaceVariant.copy(alpha = 0.35f))
-        )
-        Text(
-            "TRACKING",
-            fontSize = 11.sp,
-            fontWeight = FontWeight.Black,
-            letterSpacing = 2.sp,
-            color = Primary,
-        )
-    }
-}
-
-
 private fun greetingForNow(userName: String?): String {
     val hour = LocalTime.now().hour
     val greeting = when (hour) {
@@ -367,24 +327,30 @@ private fun FeedFilterRow(
         FeedFilter.WORKOUTS to "Entrenos",
         FeedFilter.NUTRITION to "Recetas",
     )
-    Row(
+    LazyRow(
         modifier = modifier,
-        horizontalArrangement = Arrangement.spacedBy(8.dp)
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+        contentPadding = PaddingValues(horizontal = 16.dp),
     ) {
-        items.forEach { (filter, label) ->
+        items(items) { (filter, label) ->
             val selected = current == filter
             Box(
                 modifier = Modifier
-                    .clip(RoundedCornerShape(20.dp))
+                    .clip(CircleShape)
                     .background(if (selected) Primary else SurfaceContainerLow)
+                    .border(
+                        width = 1.dp,
+                        color = if (selected) Primary else SurfaceContainerHigh,
+                        shape = CircleShape,
+                    )
                     .clickable { onSelect(filter) }
-                    .padding(horizontal = 14.dp, vertical = 8.dp),
+                    .padding(horizontal = 18.dp, vertical = 8.dp),
             ) {
                 Text(
                     label,
                     fontSize = 13.sp,
-                    fontWeight = FontWeight.Bold,
-                    color = if (selected) Color.White else OnSurfaceVariant
+                    fontWeight = FontWeight.SemiBold,
+                    color = if (selected) Color.White else OnSurfaceVariant,
                 )
             }
         }
@@ -426,26 +392,29 @@ private fun FeedTopBar(
     Box(
         modifier = Modifier
             .fillMaxWidth()
-            .background(Surface.copy(alpha = 0.95f))
+            .background(Surface.copy(alpha = 0.97f))
             .padding(horizontal = 16.dp)
     ) {
-        Row(
+        // Brand text centered
+        Text(
+            "FitFusion",
+            fontSize = 22.sp,
+            fontWeight = FontWeight.Black,
+            color = Primary,
+            letterSpacing = (-0.5).sp,
             modifier = Modifier
-                .fillMaxWidth()
-                .height(56.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.SpaceBetween,
+                .height(56.dp)
+                .align(Alignment.Center)
+                .padding(top = 16.dp),
+        )
+
+        // Profile avatar on the far right
+        Box(
+            modifier = Modifier
+                .height(56.dp)
+                .align(Alignment.CenterEnd),
+            contentAlignment = Alignment.Center,
         ) {
-            Spacer(modifier = Modifier.size(40.dp))
-
-            Text(
-                "FitFusion",
-                fontSize = 22.sp,
-                fontWeight = FontWeight.Black,
-                color = Primary,
-                letterSpacing = (-0.5).sp,
-            )
-
             ProfileAvatarButton(
                 photoUri = photoUri,
                 userName = userName,
@@ -510,40 +479,31 @@ private fun WorkoutPostCard(
     post: WorkoutPost,
     onLikeClick: () -> Unit,
     onCardClick: () -> Unit,
+    onSaveClick: () -> Unit,
 ) {
-    ElevatedCard(
-        onClick = onCardClick,
+    Column(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = 16.dp),
-        shape = RoundedCornerShape(24.dp),
-        colors = CardDefaults.elevatedCardColors(containerColor = SurfaceContainerLowest),
-        elevation = CardDefaults.elevatedCardElevation(defaultElevation = 1.dp, pressedElevation = 0.dp),
+            .background(SurfaceContainerLowest)
+            .clickable(onClick = onCardClick)
     ) {
-        Column(modifier = Modifier.padding(20.dp)) {
-
+        // Author row
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp, vertical = 12.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
             PostAuthorRow(
                 initials = post.authorInitials,
                 author = post.author,
                 meta = "${post.timeAgo} · ${post.workoutType}",
                 initialsColor = Primary,
             )
+        }
 
-            Spacer(modifier = Modifier.height(14.dp))
-
-            (post.mediaUrls.firstOrNull() ?: post.videoUri)?.let { mediaUrl ->
-                AsyncImage(
-                    model = mediaUrl,
-                    contentDescription = null,
-                    contentScale = ContentScale.Crop,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(180.dp)
-                        .clip(RoundedCornerShape(18.dp))
-                        .background(SurfaceContainerLow),
-                )
-                Spacer(modifier = Modifier.height(14.dp))
-            }
+        // Inner content with horizontal padding
+        Column(modifier = Modifier.padding(horizontal = 16.dp)) {
 
             Text(
                 post.workoutName,
@@ -597,9 +557,13 @@ private fun WorkoutPostCard(
                 likes = post.likes,
                 comments = post.comments,
                 isLiked = post.isLiked,
+                isSaved = post.isSaved,
                 onLikeClick = onLikeClick,
+                onSaveClick = onSaveClick,
             )
         }
+
+        Spacer(modifier = Modifier.height(4.dp))
     }
 }
 
@@ -610,122 +574,124 @@ private fun NutritionPostCard(
     post: NutritionPost,
     onLikeClick: () -> Unit,
     onCardClick: () -> Unit,
+    onSaveClick: () -> Unit,
 ) {
-    ElevatedCard(
-        onClick = onCardClick,
+    Column(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = 16.dp),
-        shape = RoundedCornerShape(24.dp),
-        colors = CardDefaults.elevatedCardColors(containerColor = SurfaceContainerLowest),
-        elevation = CardDefaults.elevatedCardElevation(defaultElevation = 1.dp, pressedElevation = 0.dp),
+            .background(SurfaceContainerLowest)
+            .clickable(onClick = onCardClick)
     ) {
-        Column {
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(200.dp)
-                    .clip(RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp))
-                    .background(
-                        Brush.linearGradient(
-                            colors = listOf(
-                                Color(0xFF2D5016),
-                                Color(0xFF4A7C28),
-                                Color(0xFFA8C97B),
-                            )
+        // Header image / gradient
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(200.dp)
+                .background(
+                    Brush.linearGradient(
+                        colors = listOf(
+                            Color(0xFF2D5016),
+                            Color(0xFF4A7C28),
+                            Color(0xFFA8C97B),
                         )
-                    ),
-                contentAlignment = Alignment.Center,
-            ) {
-                if (post.imageUrl != null) {
-                    AsyncImage(
-                        model = post.imageUrl,
-                        contentDescription = null,
-                        contentScale = androidx.compose.ui.layout.ContentScale.Crop,
-                        modifier = Modifier.fillMaxWidth().height(200.dp)
                     )
-                }
-
-                Box(
-                    modifier = Modifier
-                        .align(Alignment.TopStart)
-                        .padding(14.dp)
-                        .clip(CircleShape)
-                        .background(Color.White.copy(alpha = 0.92f))
-                        .padding(horizontal = 12.dp, vertical = 5.dp),
-                ) {
-                    Text(
-                        "NUTRITION",
-                        fontSize = 9.sp,
-                        fontWeight = FontWeight.Black,
-                        color = Primary,
-                        letterSpacing = 1.5.sp,
-                    )
-                }
+                ),
+            contentAlignment = Alignment.Center,
+        ) {
+            if (post.imageUrl != null) {
+                AsyncImage(
+                    model = post.imageUrl,
+                    contentDescription = null,
+                    contentScale = androidx.compose.ui.layout.ContentScale.Crop,
+                    modifier = Modifier.fillMaxWidth().height(200.dp)
+                )
             }
 
-            Column(modifier = Modifier.padding(20.dp)) {
-
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(10.dp),
-                ) {
-                    AuthorAvatar(initials = post.authorInitials, size = 32, color = Secondary)
-                    Text(
-                        post.author,
-                        fontSize = 14.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = OnSurface,
-                    )
-                    Spacer(modifier = Modifier.weight(1f))
-                    Text(
-                        post.timeAgo,
-                        fontSize = 11.sp,
-                        color = OnSurfaceVariant,
-                    )
-                }
-
-                Spacer(modifier = Modifier.height(14.dp))
-
+            Box(
+                modifier = Modifier
+                    .align(Alignment.TopStart)
+                    .padding(14.dp)
+                    .clip(CircleShape)
+                    .background(Color.White.copy(alpha = 0.92f))
+                    .padding(horizontal = 12.dp, vertical = 5.dp),
+            ) {
                 Text(
-                    post.title,
-                    fontSize = 22.sp,
+                    "NUTRITION",
+                    fontSize = 9.sp,
                     fontWeight = FontWeight.Black,
-                    color = OnSurface,
-                    letterSpacing = (-0.5).sp,
-                )
-                Spacer(modifier = Modifier.height(6.dp))
-                Text(
-                    post.description,
-                    fontSize = 14.sp,
-                    color = OnSurfaceVariant,
-                    lineHeight = 21.sp,
-                    maxLines = 3,
-                    overflow = TextOverflow.Ellipsis,
-                )
-
-                Spacer(modifier = Modifier.height(16.dp))
-
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                ) {
-                    MacroPill(value = "${post.kcal}", label = "Kcal", color = Primary, modifier = Modifier.weight(1f))
-                    MacroPill(value = "${post.proteinG}g", label = "Prot", color = Secondary, modifier = Modifier.weight(1f))
-                    MacroPill(value = "${post.carbsG}g", label = "Carbs", color = Tertiary, modifier = Modifier.weight(1f))
-                }
-
-                Spacer(modifier = Modifier.height(16.dp))
-
-                InteractionBar(
-                    likes = post.likes,
-                    comments = post.comments,
-                    isLiked = post.isLiked,
-                    onLikeClick = onLikeClick,
+                    color = Primary,
+                    letterSpacing = 1.5.sp,
                 )
             }
         }
+
+        // Author row
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp, vertical = 12.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(10.dp),
+        ) {
+            AuthorAvatar(initials = post.authorInitials, size = 32, color = Secondary)
+            Text(
+                post.author,
+                fontSize = 14.sp,
+                fontWeight = FontWeight.Bold,
+                color = OnSurface,
+            )
+            Spacer(modifier = Modifier.weight(1f))
+            Text(
+                post.timeAgo,
+                fontSize = 11.sp,
+                color = OnSurfaceVariant,
+            )
+        }
+
+        // Inner content
+        Column(modifier = Modifier.padding(horizontal = 16.dp)) {
+
+            Text(
+                post.title,
+                fontSize = 22.sp,
+                fontWeight = FontWeight.Black,
+                color = OnSurface,
+                letterSpacing = (-0.5).sp,
+            )
+            Spacer(modifier = Modifier.height(6.dp))
+            Text(
+                post.description,
+                fontSize = 14.sp,
+                color = OnSurfaceVariant,
+                lineHeight = 21.sp,
+                maxLines = 3,
+                overflow = TextOverflow.Ellipsis,
+            )
+
+            Spacer(modifier = Modifier.height(16.dp))
+
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                MacroPill(value = "${post.kcal}", label = "Kcal", color = Primary, modifier = Modifier.weight(1f))
+                MacroPill(value = "${post.proteinG}g", label = "Prot", color = Secondary, modifier = Modifier.weight(1f))
+                MacroPill(value = "${post.carbsG}g", label = "Carbs", color = Tertiary, modifier = Modifier.weight(1f))
+            }
+
+            Spacer(modifier = Modifier.height(16.dp))
+
+            InteractionBar(
+                likes = post.likes,
+                comments = post.comments,
+                isLiked = post.isLiked,
+                isSaved = post.isSaved,
+                onLikeClick = onLikeClick,
+                onSaveClick = onSaveClick,
+            )
+        }
+
+        Spacer(modifier = Modifier.height(4.dp))
     }
 }
 
@@ -832,7 +798,9 @@ private fun InteractionBar(
     likes: Int,
     comments: Int,
     isLiked: Boolean,
+    isSaved: Boolean,
     onLikeClick: () -> Unit,
+    onSaveClick: () -> Unit,
 ) {
     val likeColor by animateColorAsState(
         targetValue = if (isLiked) Tertiary else OnSurfaceVariant,
@@ -844,6 +812,11 @@ private fun InteractionBar(
         animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy),
         label = "likeScale",
     )
+    val saveColor by animateColorAsState(
+        targetValue = if (isSaved) Primary else OnSurfaceVariant,
+        animationSpec = spring(stiffness = Spring.StiffnessMedium),
+        label = "saveColor",
+    )
 
     HorizontalDivider(
         color = SurfaceContainerHigh,
@@ -854,6 +827,7 @@ private fun InteractionBar(
         modifier = Modifier.fillMaxWidth(),
         verticalAlignment = Alignment.CenterVertically,
     ) {
+        // Left group: like + comment
         Row(
             horizontalArrangement = Arrangement.spacedBy(20.dp),
             modifier = Modifier.weight(1f),
@@ -881,25 +855,48 @@ private fun InteractionBar(
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(5.dp),
             ) {
-                Icon(
-                    Icons.Outlined.ChatBubbleOutline,
-                    contentDescription = "Comentarios",
-                    tint = OnSurfaceVariant,
-                    modifier = Modifier.size(20.dp),
-                )
+                IconButton(
+                    onClick = { },
+                    modifier = Modifier.size(28.dp),
+                ) {
+                    Icon(
+                        Icons.Outlined.ChatBubbleOutline,
+                        contentDescription = "Comentarios",
+                        tint = OnSurfaceVariant,
+                        modifier = Modifier.size(20.dp),
+                    )
+                }
                 Text("$comments", fontSize = 13.sp, fontWeight = FontWeight.Bold, color = OnSurface)
             }
         }
-        IconButton(
-            onClick = { },
-            modifier = Modifier.size(28.dp),
+
+        // Right group: share + bookmark
+        Row(
+            horizontalArrangement = Arrangement.spacedBy(4.dp),
+            verticalAlignment = Alignment.CenterVertically,
         ) {
-            Icon(
-                Icons.Default.Share,
-                contentDescription = "Compartir",
-                tint = OnSurfaceVariant,
-                modifier = Modifier.size(20.dp),
-            )
+            IconButton(
+                onClick = { },
+                modifier = Modifier.size(28.dp),
+            ) {
+                Icon(
+                    Icons.Default.Share,
+                    contentDescription = "Compartir",
+                    tint = OnSurfaceVariant,
+                    modifier = Modifier.size(20.dp),
+                )
+            }
+            IconButton(
+                onClick = onSaveClick,
+                modifier = Modifier.size(28.dp),
+            ) {
+                Icon(
+                    if (isSaved) Icons.Default.Bookmark else Icons.Outlined.BookmarkBorder,
+                    contentDescription = if (isSaved) "Guardado" else "Guardar",
+                    tint = saveColor,
+                    modifier = Modifier.size(22.dp),
+                )
+            }
         }
     }
 }

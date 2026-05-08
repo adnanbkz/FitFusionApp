@@ -1,9 +1,13 @@
 package com.example.fitfusion.ui.screens
 
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.tween
 import androidx.compose.animation.expandVertically
 import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -22,31 +26,44 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavHostController
-import com.example.fitfusion.R
 import com.example.fitfusion.data.models.DayLog
 import com.example.fitfusion.data.models.LoggedFood
 import com.example.fitfusion.data.models.MealSlot
 import androidx.compose.material3.BottomSheetDefaults
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.rememberModalBottomSheetState
-import com.example.fitfusion.ui.components.MacroRow
-import com.example.fitfusion.ui.components.MomentumRing
-import com.example.fitfusion.ui.components.StatColumn
-import com.example.fitfusion.ui.theme.*
+import com.example.fitfusion.ui.theme.OutlineVariant
+import com.example.fitfusion.ui.theme.Primary
 import com.example.fitfusion.viewmodel.TrackingViewModel
 import java.time.DayOfWeek
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 import java.time.temporal.TemporalAdjusters
 import java.util.Locale
+
+// ── Neon dark palette ────────────────────────────────────────────────────────
+private val DarkBg        = Color(0xFF080D18)
+private val DarkCard      = Color(0xFF0F1629)
+private val DarkCardBorder = Color(0xFF1E293B)
+private val NeonGreen     = Color(0xFF00FF7F)
+private val NeonCyan      = Color(0xFF00D4FF)
+private val NeonOrange    = Color(0xFFFF6B35)
+private val NeonText      = Color(0xFFE2E8F0)
+private val NeonMuted     = Color(0xFF64748B)
+private val NeonDim       = Color(0xFF94A3B8)
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -59,63 +76,81 @@ fun PantallaTracking(
     LazyColumn(
         modifier = Modifier
             .fillMaxSize()
-            .background(Surface)
-            .padding(horizontal = 16.dp),
-        verticalArrangement = Arrangement.spacedBy(16.dp),
-        contentPadding = PaddingValues(top = 16.dp, bottom = 24.dp)
+            .background(DarkBg),
+        verticalArrangement = Arrangement.spacedBy(12.dp),
+        contentPadding = PaddingValues(bottom = 24.dp)
     ) {
+        // ── Header ──────────────────────────────────────────────────────────
         item {
             Row(
-                modifier = Modifier.fillMaxWidth(),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .background(
+                        Brush.verticalGradient(listOf(Color(0xFF0D1729), DarkBg))
+                    )
+                    .padding(horizontal = 20.dp, vertical = 20.dp),
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Text("FitFusion", fontSize = 22.sp, fontWeight = FontWeight.Black, color = OnSurface)
-                Text(
-                    state.selectedDate.format(DateTimeFormatter.ofPattern("EEE d MMM", Locale.forLanguageTag("es"))),
-                    fontSize = 14.sp,
-                    color = OnSurfaceVariant,
-                    fontWeight = FontWeight.Medium
-                )
+                Column {
+                    Text(
+                        "DIETA",
+                        fontSize = 11.sp, fontWeight = FontWeight.Bold,
+                        letterSpacing = 3.sp, color = NeonGreen
+                    )
+                    Text(
+                        "Seguimiento",
+                        fontSize = 22.sp, fontWeight = FontWeight.Black, color = NeonText
+                    )
+                }
+                Box(
+                    modifier = Modifier
+                        .clip(RoundedCornerShape(12.dp))
+                        .background(DarkCard)
+                        .border(1.dp, DarkCardBorder, RoundedCornerShape(12.dp))
+                        .padding(horizontal = 14.dp, vertical = 8.dp)
+                ) {
+                    Text(
+                        state.selectedDate.format(DateTimeFormatter.ofPattern("EEE d MMM", Locale.forLanguageTag("es"))),
+                        fontSize = 13.sp, fontWeight = FontWeight.SemiBold, color = NeonDim
+                    )
+                }
             }
         }
 
+        // ── Week strip ──────────────────────────────────────────────────────
         item {
-            WeekStrip(
-                selectedDate = state.selectedDate,
+            NeonWeekStrip(
+                selectedDate    = state.selectedDate,
                 weekSummaryDays = state.weekSummary.days,
-                onDaySelected = trackingViewModel::selectDate
+                onDaySelected   = trackingViewModel::selectDate
             )
         }
 
+        // ── Calorie ring ────────────────────────────────────────────────────
         item {
-            Card(
-                shape  = RoundedCornerShape(20.dp),
-                colors = CardDefaults.cardColors(containerColor = SurfaceContainerLowest),
-                elevation = CardDefaults.cardElevation(0.dp),
-                modifier = Modifier.fillMaxWidth()
-            ) {
+            NeonDarkCard(modifier = Modifier.padding(horizontal = 16.dp)) {
                 Column(
                     modifier = Modifier.padding(24.dp).fillMaxWidth(),
                     horizontalAlignment = Alignment.CenterHorizontally,
-                    verticalArrangement = Arrangement.spacedBy(16.dp)
+                    verticalArrangement = Arrangement.spacedBy(20.dp)
                 ) {
                     Text(
                         "RESUMEN DIARIO",
-                        fontSize = 11.sp, fontWeight = FontWeight.Bold,
-                        letterSpacing = 2.sp, color = Primary
+                        fontSize = 10.sp, fontWeight = FontWeight.Bold,
+                        letterSpacing = 3.sp, color = NeonGreen
                     )
                     Box(contentAlignment = Alignment.Center) {
-                        MomentumRing(progress = state.netProgress, size = 140)
+                        NeonRing(progress = state.netProgress, size = 160)
                         Column(horizontalAlignment = Alignment.CenterHorizontally) {
                             Text(
                                 "${state.kcalLeft}",
-                                fontSize = 40.sp, fontWeight = FontWeight.Bold, color = OnSurface
+                                fontSize = 44.sp, fontWeight = FontWeight.Black, color = NeonText
                             )
                             Text(
-                                "KCAL RESTANTES",
-                                fontSize = 11.sp, fontWeight = FontWeight.Medium,
-                                color = OnSurfaceVariant, letterSpacing = 1.sp
+                                "KCAL REST.",
+                                fontSize = 10.sp, fontWeight = FontWeight.Bold,
+                                letterSpacing = 2.sp, color = NeonGreen
                             )
                         }
                     }
@@ -123,140 +158,143 @@ fun PantallaTracking(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.SpaceEvenly
                     ) {
-                        StatColumn("INGERIDAS", "${state.kcalEaten}")
-                        StatColumn("QUEMADAS",  "${state.kcalBurned}")
-                        StatColumn("OBJETIVO",  "${state.kcalGoal}")
+                        NeonStatColumn("INGERIDAS", "${state.kcalEaten}", NeonCyan)
+                        NeonDividerV()
+                        NeonStatColumn("QUEMADAS",  "${state.kcalBurned}", NeonOrange)
+                        NeonDividerV()
+                        NeonStatColumn("OBJETIVO",  "${state.kcalGoal}", NeonGreen)
                     }
                 }
             }
         }
 
+        // ── Workout today ───────────────────────────────────────────────────
         state.dailySummary?.takeIf { it.workoutCount > 0 }?.let { ds ->
             item {
-                Card(
-                    shape  = RoundedCornerShape(20.dp),
-                    colors = CardDefaults.cardColors(containerColor = SurfaceContainerLowest),
-                    elevation = CardDefaults.cardElevation(0.dp),
-                    modifier = Modifier.fillMaxWidth()
-                ) {
+                NeonDarkCard(modifier = Modifier.padding(horizontal = 16.dp)) {
                     Column(
                         modifier = Modifier.padding(20.dp),
-                        verticalArrangement = Arrangement.spacedBy(14.dp)
+                        verticalArrangement = Arrangement.spacedBy(16.dp)
                     ) {
-                        Text(
-                            "ENTRENAMIENTO DE HOY",
-                            fontSize = 11.sp,
-                            fontWeight = FontWeight.Bold,
-                            letterSpacing = 1.5.sp,
-                            color = Primary
-                        )
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.SpaceEvenly
-                        ) {
-                            StatColumn("SESIONES", "${ds.workoutCount}")
-                            StatColumn("KCAL",     "${ds.kcalBurned}")
-                            StatColumn("VOLUMEN",  "${ds.totalVolumeKg.toInt()} kg")
+                        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            Box(
+                                modifier = Modifier.size(8.dp).clip(CircleShape).background(NeonOrange)
+                            )
+                            Text(
+                                "ENTRENAMIENTO HOY",
+                                fontSize = 10.sp, fontWeight = FontWeight.Bold,
+                                letterSpacing = 2.sp, color = NeonOrange
+                            )
+                        }
+                        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly) {
+                            NeonStatColumn("SESIONES", "${ds.workoutCount}", NeonText)
+                            NeonDividerV()
+                            NeonStatColumn("KCAL",     "${ds.kcalBurned}", NeonOrange)
+                            NeonDividerV()
+                            NeonStatColumn("VOLUMEN",  "${ds.totalVolumeKg.toInt()} kg", NeonCyan)
                         }
                     }
                 }
             }
         }
 
+        // ── Health Connect ──────────────────────────────────────────────────
         state.healthData?.let { healthData ->
             item {
-                Card(
-                    shape = RoundedCornerShape(20.dp),
-                    colors = CardDefaults.cardColors(containerColor = SurfaceContainerLowest),
-                    elevation = CardDefaults.cardElevation(0.dp),
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    Column(
-                        modifier = Modifier.padding(20.dp),
-                        verticalArrangement = Arrangement.spacedBy(14.dp)
-                    ) {
+                NeonDarkCard(modifier = Modifier.padding(horizontal = 16.dp)) {
+                    Column(modifier = Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
                         Row(
                             modifier = Modifier.fillMaxWidth(),
                             horizontalArrangement = Arrangement.SpaceBetween,
                             verticalAlignment = Alignment.CenterVertically
                         ) {
-                            Text(
-                                "ACTIVIDAD HEALTH CONNECT",
-                                fontSize = 11.sp,
-                                fontWeight = FontWeight.Bold,
-                                letterSpacing = 1.5.sp,
-                                color = Primary
-                            )
-                            Text("Sincronizado", fontSize = 12.sp, color = OnSurfaceVariant)
+                            Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
+                                Box(modifier = Modifier.size(8.dp).clip(CircleShape).background(NeonCyan))
+                                Text("HEALTH CONNECT", fontSize = 10.sp, fontWeight = FontWeight.Bold, letterSpacing = 2.sp, color = NeonCyan)
+                            }
+                            Text("Sync", fontSize = 11.sp, color = NeonGreen, fontWeight = FontWeight.SemiBold)
                         }
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.SpaceEvenly
-                        ) {
-                            StatColumn("PASOS", "${healthData.steps}")
-                            StatColumn("KCAL PASOS", "${healthData.stepCaloriesEstimated}")
-                            StatColumn("FC MEDIA", healthData.averageHeartRate?.let { "$it" } ?: "—")
+                        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly) {
+                            NeonStatColumn("PASOS",      "${healthData.steps}", NeonText)
+                            NeonDividerV()
+                            NeonStatColumn("KCAL PASOS", "${healthData.stepCaloriesEstimated}", NeonOrange)
+                            NeonDividerV()
+                            NeonStatColumn("FC MEDIA",   healthData.averageHeartRate?.let { "$it" } ?: "—", NeonCyan)
                         }
                     }
                 }
             }
         }
 
+        // ── Macros ──────────────────────────────────────────────────────────
         item {
-            Card(
-                shape  = RoundedCornerShape(20.dp),
-                colors = CardDefaults.cardColors(containerColor = SurfaceContainerLowest),
-                elevation = CardDefaults.cardElevation(0.dp),
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                Column(modifier = Modifier.padding(20.dp)) {
+            NeonDarkCard(modifier = Modifier.padding(horizontal = 16.dp)) {
+                Column(modifier = Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
                     Row(
-                        modifier = Modifier.fillMaxWidth().padding(bottom = 16.dp),
+                        modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.SpaceBetween,
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Text("BALANCE DE MACROS", fontSize = 11.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.5.sp, color = Primary)
+                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
+                            Box(modifier = Modifier.size(8.dp).clip(CircleShape).background(NeonGreen))
+                            Text("MACROS", fontSize = 10.sp, fontWeight = FontWeight.Bold, letterSpacing = 2.sp, color = NeonGreen)
+                        }
                         TextButton(onClick = { navController.navigate(Screens.WeeklyLogScreen.name) }) {
-                            Text("Ver semana →", fontSize = 13.sp, color = Primary, fontWeight = FontWeight.SemiBold)
+                            Text("Ver semana →", fontSize = 12.sp, color = NeonCyan, fontWeight = FontWeight.SemiBold)
                         }
                     }
-                    Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                        MacroRow("PROTEÍNAS",     state.dayLog.totalProtein, state.proteinGoal, Primary)
-                        MacroRow("CARBOHIDRATOS", state.dayLog.totalCarbs,   state.carbsGoal,   Secondary)
-                        MacroRow("GRASAS",        state.dayLog.totalFat,     state.fatsGoal,    Tertiary)
-                    }
-                    Card(
-                        shape  = RoundedCornerShape(12.dp),
-                        colors = CardDefaults.cardColors(containerColor = SurfaceContainerLow),
-                        modifier = Modifier.fillMaxWidth().padding(top = 16.dp)
-                    ) {
-                        Row(
-                            modifier = Modifier.padding(12.dp),
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    NeonMacroRow("PROTEÍNAS",     state.dayLog.totalProtein, state.proteinGoal, NeonGreen)
+                    NeonMacroRow("CARBOHIDRATOS", state.dayLog.totalCarbs,   state.carbsGoal,   NeonCyan)
+                    NeonMacroRow("GRASAS",        state.dayLog.totalFat,     state.fatsGoal,    NeonOrange)
+
+                    // AI tip
+                    if (state.aiTip.isNotBlank()) {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clip(RoundedCornerShape(12.dp))
+                                .background(Color(0xFF0A1628))
+                                .border(1.dp, NeonGreen.copy(alpha = 0.15f), RoundedCornerShape(12.dp))
+                                .padding(12.dp)
                         ) {
-                            Text(state.aiTip, fontSize = 13.sp, color = OnSurfaceVariant, lineHeight = 18.sp)
+                            Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                                Text("⚡", fontSize = 14.sp)
+                                Text(state.aiTip, fontSize = 12.sp, color = NeonDim, lineHeight = 18.sp)
+                            }
                         }
                     }
                 }
             }
         }
 
+        // ── Meals header ─────────────────────────────────────────────────────
         item {
             Row(
-                modifier = Modifier.fillMaxWidth(),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 20.dp, vertical = 4.dp),
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Text("MIS COMIDAS HOY", fontSize = 11.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.5.sp, color = Primary)
-                TextButton(onClick = trackingViewModel::showAddMealDialog) {
-                    Text("+ Comida", fontSize = 13.sp, color = Primary, fontWeight = FontWeight.SemiBold)
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
+                    Box(modifier = Modifier.size(8.dp).clip(CircleShape).background(NeonCyan))
+                    Text("MIS COMIDAS HOY", fontSize = 10.sp, fontWeight = FontWeight.Bold, letterSpacing = 2.sp, color = NeonCyan)
+                }
+                Box(
+                    modifier = Modifier
+                        .clip(RoundedCornerShape(20.dp))
+                        .background(NeonGreen.copy(alpha = 0.12f))
+                        .clickable(onClick = trackingViewModel::showAddMealDialog)
+                        .padding(horizontal = 14.dp, vertical = 6.dp)
+                ) {
+                    Text("+ Comida", fontSize = 12.sp, color = NeonGreen, fontWeight = FontWeight.Bold)
                 }
             }
         }
 
+        // ── Meal sections ────────────────────────────────────────────────────
         items(state.dayLog.meals, key = { it.id }) { slot ->
-            MealSection(
+            NeonMealSection(
                 slot       = slot,
                 entries    = state.dayLog.byMeal[slot] ?: emptyList(),
                 isExpanded = slot.id in state.expandedMeals,
@@ -266,10 +304,12 @@ fun PantallaTracking(
                 onEdit     = trackingViewModel::openEditSheet,
                 onRename   = { trackingViewModel.showRenameMealDialog(slot.id, slot.name) },
                 onDelete   = { trackingViewModel.removeMeal(slot.id) },
+                modifier   = Modifier.padding(horizontal = 16.dp)
             )
         }
     }
 
+    // ── Dialogs ───────────────────────────────────────────────────────────────
     if (state.showAddMealDialog) {
         AddMealDialog(
             name         = state.addMealName,
@@ -294,8 +334,8 @@ fun PantallaTracking(
         ModalBottomSheet(
             onDismissRequest = trackingViewModel::dismissEditSheet,
             sheetState       = sheetState,
-            containerColor   = SurfaceContainerLowest,
-            dragHandle       = { BottomSheetDefaults.DragHandle(color = OutlineVariant) }
+            containerColor   = DarkCard,
+            dragHandle       = { BottomSheetDefaults.DragHandle(color = NeonMuted) }
         ) {
             FoodDetailSheet(
                 food            = ef.loggedFood.food,
@@ -314,9 +354,117 @@ fun PantallaTracking(
     }
 }
 
+// ── Neon components ───────────────────────────────────────────────────────────
 
 @Composable
-private fun WeekStrip(
+private fun NeonDarkCard(modifier: Modifier = Modifier, content: @Composable () -> Unit) {
+    Box(
+        modifier = modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(20.dp))
+            .background(DarkCard)
+            .border(1.dp, DarkCardBorder, RoundedCornerShape(20.dp))
+    ) { content() }
+}
+
+@Composable
+private fun NeonRing(progress: Float, size: Int) {
+    val animatedProgress by animateFloatAsState(
+        targetValue = progress.coerceIn(0f, 1f),
+        animationSpec = tween(1000),
+        label = "neonRingProgress"
+    )
+    val sw = if (size > 120) 16f else 10f
+    Box(
+        modifier = Modifier
+            .size(size.dp)
+            .drawBehind {
+                val inset = sw * 3.5f
+                val arcSize = Size(this.size.width - inset, this.size.height - inset)
+                val topLeft = Offset(inset / 2, inset / 2)
+
+                // Track
+                drawArc(
+                    color = NeonGreen.copy(alpha = 0.08f),
+                    startAngle = -90f, sweepAngle = 360f, useCenter = false,
+                    style = Stroke(width = sw, cap = StrokeCap.Round),
+                    topLeft = topLeft, size = arcSize,
+                )
+                if (animatedProgress > 0f) {
+                    val sweep = 360f * animatedProgress
+                    // Glow layers
+                    drawArc(color = NeonGreen.copy(alpha = 0.04f), startAngle = -90f, sweepAngle = sweep, useCenter = false,
+                        style = Stroke(width = sw * 5f, cap = StrokeCap.Round), topLeft = topLeft, size = arcSize)
+                    drawArc(color = NeonGreen.copy(alpha = 0.10f), startAngle = -90f, sweepAngle = sweep, useCenter = false,
+                        style = Stroke(width = sw * 3f, cap = StrokeCap.Round), topLeft = topLeft, size = arcSize)
+                    drawArc(color = NeonGreen.copy(alpha = 0.25f), startAngle = -90f, sweepAngle = sweep, useCenter = false,
+                        style = Stroke(width = sw * 1.8f, cap = StrokeCap.Round), topLeft = topLeft, size = arcSize)
+                    // Solid arc
+                    drawArc(color = NeonGreen, startAngle = -90f, sweepAngle = sweep, useCenter = false,
+                        style = Stroke(width = sw, cap = StrokeCap.Round), topLeft = topLeft, size = arcSize)
+                }
+            },
+        contentAlignment = Alignment.Center
+    ) {}
+}
+
+@Composable
+private fun NeonStatColumn(label: String, value: String, color: Color = NeonText) {
+    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+        Text(label, fontSize = 9.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.5.sp, color = NeonMuted)
+        Text(value, fontSize = 22.sp, fontWeight = FontWeight.Black, color = color)
+    }
+}
+
+@Composable
+private fun NeonDividerV() {
+    Box(
+        modifier = Modifier
+            .width(1.dp)
+            .height(36.dp)
+            .background(DarkCardBorder)
+    )
+}
+
+@Composable
+private fun NeonMacroRow(label: String, current: Int, goal: Int, color: Color) {
+    val animatedProgress by animateFloatAsState(
+        targetValue = (current.toFloat() / goal).coerceIn(0f, 1f),
+        animationSpec = tween(800),
+        label = "macroProgress"
+    )
+    Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+            Text(label, fontSize = 10.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.sp, color = color)
+            Row {
+                Text("$current", fontSize = 13.sp, fontWeight = FontWeight.Bold, color = NeonText)
+                Text(" / ${goal}g", fontSize = 12.sp, color = NeonMuted)
+            }
+        }
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(6.dp)
+                .clip(RoundedCornerShape(3.dp))
+                .background(color.copy(alpha = 0.12f))
+        ) {
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth(animatedProgress)
+                    .fillMaxHeight()
+                    .clip(RoundedCornerShape(3.dp))
+                    .background(
+                        Brush.horizontalGradient(listOf(color.copy(alpha = 0.7f), color))
+                    )
+            )
+        }
+    }
+}
+
+// ── Week strip ────────────────────────────────────────────────────────────────
+
+@Composable
+private fun NeonWeekStrip(
     selectedDate: LocalDate,
     weekSummaryDays: List<DayLog>,
     onDaySelected: (LocalDate) -> Unit,
@@ -325,78 +473,85 @@ private fun WeekStrip(
     val weekStart = today.with(TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY))
     val dayLabels = listOf("L", "M", "X", "J", "V", "S", "D")
 
-    Card(
-        shape  = RoundedCornerShape(16.dp),
-        colors = CardDefaults.cardColors(containerColor = SurfaceContainerLowest),
-        elevation = CardDefaults.cardElevation(0.dp),
-        modifier = Modifier.fillMaxWidth()
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .background(DarkCard)
+            .border(width = 0.dp, color = Color.Transparent)
+            .padding(horizontal = 12.dp, vertical = 14.dp),
+        horizontalArrangement = Arrangement.SpaceBetween
     ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 12.dp, vertical = 14.dp),
-            horizontalArrangement = Arrangement.SpaceBetween
-        ) {
-            (0..6).forEach { offset ->
-                val date    = weekStart.plusDays(offset.toLong())
-                val dayLog  = weekSummaryDays.getOrNull(offset)
-                val isToday    = date == today
-                val isSelected = date == selectedDate
-                val hasData    = (dayLog?.entries?.isNotEmpty()) == true
-                val isFuture   = date.isAfter(today)
+        (0..6).forEach { offset ->
+            val date       = weekStart.plusDays(offset.toLong())
+            val dayLog     = weekSummaryDays.getOrNull(offset)
+            val isToday    = date == today
+            val isSelected = date == selectedDate
+            val hasData    = (dayLog?.entries?.isNotEmpty()) == true
+            val isFuture   = date.isAfter(today)
 
-                Column(
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                    modifier = Modifier
-                        .clip(RoundedCornerShape(10.dp))
-                        .clickable(enabled = !isFuture) { onDaySelected(date) }
-                        .background(
-                            if (isSelected) Primary.copy(alpha = 0.1f) else Color.Transparent
-                        )
-                        .padding(horizontal = 6.dp, vertical = 6.dp),
-                    verticalArrangement = Arrangement.spacedBy(6.dp)
-                ) {
-                    Text(
-                        dayLabels[offset],
-                        fontSize   = 12.sp,
-                        fontWeight = if (isToday || isSelected) FontWeight.Bold else FontWeight.Normal,
-                        color      = when {
-                            isSelected -> Primary
-                            isFuture   -> OnSurfaceVariant.copy(alpha = 0.4f)
-                            else       -> OnSurfaceVariant
-                        }
+            val bgColor by animateColorAsState(
+                targetValue = when {
+                    isSelected -> NeonGreen.copy(alpha = 0.15f)
+                    else       -> Color.Transparent
+                },
+                label = "dayBg"
+            )
+
+            Column(
+                horizontalAlignment = Alignment.CenterHorizontally,
+                modifier = Modifier
+                    .clip(RoundedCornerShape(12.dp))
+                    .background(bgColor)
+                    .then(
+                        if (isSelected) Modifier.border(1.dp, NeonGreen.copy(alpha = 0.4f), RoundedCornerShape(12.dp))
+                        else Modifier
                     )
-                    Box(
-                        modifier = Modifier
-                            .size(8.dp)
-                            .clip(CircleShape)
-                            .background(
-                                when {
-                                    isToday  -> Primary
-                                    hasData  -> PrimaryContainer.copy(alpha = 0.6f)
-                                    isFuture -> Color.Transparent
-                                    else     -> SurfaceContainerHigh
-                                }
-                            )
-                    )
-                    if (hasData && !isFuture) {
-                        Text(
-                            "${dayLog.totalKcal}",
-                            fontSize = 9.sp,
-                            color    = if (isSelected) Primary else OnSurfaceVariant,
-                            fontWeight = FontWeight.Medium
-                        )
-                    } else {
-                        Spacer(Modifier.height(12.dp))
+                    .clickable(enabled = !isFuture) { onDaySelected(date) }
+                    .padding(horizontal = 8.dp, vertical = 8.dp),
+                verticalArrangement = Arrangement.spacedBy(6.dp)
+            ) {
+                Text(
+                    dayLabels[offset],
+                    fontSize   = 11.sp,
+                    fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
+                    color      = when {
+                        isSelected -> NeonGreen
+                        isFuture   -> NeonMuted.copy(alpha = 0.4f)
+                        else       -> NeonDim
                     }
+                )
+                Box(
+                    modifier = Modifier
+                        .size(6.dp)
+                        .clip(CircleShape)
+                        .background(
+                            when {
+                                isToday  -> NeonGreen
+                                hasData  -> NeonCyan.copy(alpha = 0.6f)
+                                isFuture -> Color.Transparent
+                                else     -> NeonMuted.copy(alpha = 0.3f)
+                            }
+                        )
+                )
+                if (hasData && !isFuture) {
+                    Text(
+                        "${dayLog.totalKcal}",
+                        fontSize   = 8.sp,
+                        color      = if (isSelected) NeonGreen else NeonMuted,
+                        fontWeight = FontWeight.SemiBold
+                    )
+                } else {
+                    Spacer(Modifier.height(11.dp))
                 }
             }
         }
     }
 }
 
+// ── Meal section ──────────────────────────────────────────────────────────────
+
 @Composable
-private fun MealSection(
+private fun NeonMealSection(
     slot: MealSlot,
     entries: List<LoggedFood>,
     isExpanded: Boolean,
@@ -406,74 +561,58 @@ private fun MealSection(
     onEdit: (LoggedFood) -> Unit,
     onRename: () -> Unit,
     onDelete: () -> Unit,
+    modifier: Modifier = Modifier,
 ) {
     val totalKcal = entries.sumOf { it.kcal }
 
-    Card(
-        shape  = RoundedCornerShape(16.dp),
-        colors = CardDefaults.cardColors(containerColor = SurfaceContainerLowest),
-        elevation = CardDefaults.cardElevation(0.dp),
-        modifier = Modifier.fillMaxWidth()
+    Column(
+        modifier = modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(16.dp))
+            .background(DarkCard)
+            .border(1.dp, DarkCardBorder, RoundedCornerShape(16.dp))
     ) {
-        Column {
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .clickable(onClick = onToggle)
-                    .padding(horizontal = 16.dp, vertical = 14.dp),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.SpaceBetween
-            ) {
-                Column(modifier = Modifier.weight(1f)) {
-                    Text(slot.name, fontWeight = FontWeight.SemiBold, fontSize = 15.sp, color = OnSurface)
-                    if (entries.isNotEmpty()) {
-                        Text(
-                            "$totalKcal kcal · ${entries.size} alimento${if (entries.size > 1) "s" else ""}",
-                            fontSize = 12.sp, color = OnSurfaceVariant
-                        )
-                    } else {
-                        Text("Sin registros", fontSize = 12.sp, color = OnSurfaceVariant)
-                    }
-                }
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(4.dp)
-                ) {
-                    IconButton(onClick = onRename, modifier = Modifier.size(32.dp)) {
-                        Icon(Icons.Default.Edit, contentDescription = "Renombrar", tint = OnSurfaceVariant, modifier = Modifier.size(15.dp))
-                    }
-                    IconButton(onClick = onDelete, modifier = Modifier.size(32.dp)) {
-                        Icon(Icons.Default.Close, contentDescription = "Eliminar comida", tint = OnSurfaceVariant, modifier = Modifier.size(16.dp))
-                    }
-                    IconButton(onClick = onAdd, modifier = Modifier.size(32.dp)) {
-                        Icon(Icons.Default.Add, contentDescription = "Añadir", tint = Primary, modifier = Modifier.size(20.dp))
-                    }
-                    Icon(
-                        if (isExpanded) Icons.Default.KeyboardArrowUp else Icons.Default.KeyboardArrowDown,
-                        contentDescription = null,
-                        tint = OnSurfaceVariant,
-                        modifier = Modifier.size(20.dp)
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .clickable(onClick = onToggle)
+                .padding(horizontal = 16.dp, vertical = 14.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.SpaceBetween
+        ) {
+            Column(modifier = Modifier.weight(1f)) {
+                Text(slot.name, fontWeight = FontWeight.SemiBold, fontSize = 15.sp, color = NeonText)
+                if (entries.isNotEmpty()) {
+                    Text(
+                        "$totalKcal kcal · ${entries.size} alimento${if (entries.size > 1) "s" else ""}",
+                        fontSize = 12.sp, color = NeonCyan
                     )
+                } else {
+                    Text("Sin registros", fontSize = 12.sp, color = NeonMuted)
                 }
             }
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(2.dp)) {
+                IconButton(onClick = onRename, modifier = Modifier.size(32.dp)) {
+                    Icon(Icons.Default.Edit, null, tint = NeonMuted, modifier = Modifier.size(15.dp))
+                }
+                IconButton(onClick = onDelete, modifier = Modifier.size(32.dp)) {
+                    Icon(Icons.Default.Close, null, tint = NeonMuted, modifier = Modifier.size(16.dp))
+                }
+                IconButton(onClick = onAdd, modifier = Modifier.size(32.dp)) {
+                    Icon(Icons.Default.Add, null, tint = NeonGreen, modifier = Modifier.size(20.dp))
+                }
+                Icon(
+                    if (isExpanded) Icons.Default.KeyboardArrowUp else Icons.Default.KeyboardArrowDown,
+                    contentDescription = null, tint = NeonMuted, modifier = Modifier.size(20.dp)
+                )
+            }
+        }
 
-            AnimatedVisibility(
-                visible = isExpanded && entries.isNotEmpty(),
-                enter   = expandVertically(),
-                exit    = shrinkVertically()
-            ) {
-                Column {
-                    HorizontalDivider(
-                        color = OutlineVariant.copy(alpha = 0.3f),
-                        modifier = Modifier.padding(horizontal = 16.dp)
-                    )
-                    entries.forEach { logged ->
-                        LoggedFoodRow(
-                            logged   = logged,
-                            onEdit   = { onEdit(logged) },
-                            onRemove = { onRemove(logged.id) },
-                        )
-                    }
+        AnimatedVisibility(visible = isExpanded && entries.isNotEmpty(), enter = expandVertically(), exit = shrinkVertically()) {
+            Column {
+                HorizontalDivider(color = DarkCardBorder)
+                entries.forEach { logged ->
+                    NeonLoggedFoodRow(logged = logged, onEdit = { onEdit(logged) }, onRemove = { onRemove(logged.id) })
                 }
             }
         }
@@ -481,7 +620,7 @@ private fun MealSection(
 }
 
 @Composable
-private fun LoggedFoodRow(
+private fun NeonLoggedFoodRow(
     logged: LoggedFood,
     onEdit: () -> Unit,
     onRemove: () -> Unit,
@@ -490,139 +629,115 @@ private fun LoggedFoodRow(
         modifier = Modifier
             .fillMaxWidth()
             .clickable(onClick = onEdit)
-            .padding(horizontal = 16.dp, vertical = 10.dp),
+            .padding(horizontal = 16.dp, vertical = 12.dp),
         verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(10.dp)
+        horizontalArrangement = Arrangement.spacedBy(12.dp)
     ) {
         Box(
             modifier = Modifier
                 .size(40.dp)
                 .clip(RoundedCornerShape(10.dp))
-                .background(SurfaceContainerHigh),
+                .background(Color(0xFF1A2540))
+                .border(1.dp, DarkCardBorder, RoundedCornerShape(10.dp)),
             contentAlignment = Alignment.Center
         ) { Icon(Icons.Default.Restaurant, null, Modifier.size(18.dp), tint = Primary) }
 
         Column(modifier = Modifier.weight(1f)) {
             Text(
                 logged.food.name,
-                fontWeight = FontWeight.SemiBold,
-                fontSize   = 14.sp,
-                color      = OnSurface,
-                maxLines   = 1,
-                overflow   = TextOverflow.Ellipsis
+                fontWeight = FontWeight.SemiBold, fontSize = 14.sp, color = NeonText,
+                maxLines = 1, overflow = TextOverflow.Ellipsis
             )
             Text(
                 "${logged.serving.label} × ${logged.quantity}",
-                fontSize = 12.sp,
-                color    = OnSurfaceVariant
+                fontSize = 12.sp, color = NeonMuted
             )
         }
 
-        Text(
-            "${logged.kcal} kcal",
-            fontSize   = 14.sp,
-            fontWeight = FontWeight.Bold,
-            color      = OnSurface
-        )
+        Text("${logged.kcal}", fontSize = 14.sp, fontWeight = FontWeight.Bold, color = NeonCyan)
 
         Box(
             modifier = Modifier
                 .size(28.dp)
                 .clip(CircleShape)
-                .background(SurfaceContainerHigh)
+                .background(NeonOrange.copy(alpha = 0.12f))
                 .clickable(onClick = onRemove),
             contentAlignment = Alignment.Center
         ) {
-            Text("×", fontSize = 16.sp, color = OnSurfaceVariant, fontWeight = FontWeight.Bold)
+            Text("×", fontSize = 16.sp, color = NeonOrange, fontWeight = FontWeight.Bold)
         }
     }
 }
 
+// ── Dialogs (dark-themed) ─────────────────────────────────────────────────────
+
 @Composable
-private fun AddMealDialog(
-    name: String,
-    onNameChange: (String) -> Unit,
-    onConfirm: () -> Unit,
-    onDismiss: () -> Unit,
-) {
+private fun AddMealDialog(name: String, onNameChange: (String) -> Unit, onConfirm: () -> Unit, onDismiss: () -> Unit) {
     AlertDialog(
         onDismissRequest = onDismiss,
-        containerColor   = SurfaceContainerLowest,
-        title = { Text("Nueva comida", fontWeight = FontWeight.Bold, fontSize = 18.sp) },
+        containerColor   = DarkCard,
+        title = { Text("Nueva comida", fontWeight = FontWeight.Bold, fontSize = 18.sp, color = NeonText) },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                Text(
-                    "Ponle un nombre a esta comida.",
-                    fontSize = 14.sp, color = OnSurfaceVariant
-                )
+                Text("Ponle un nombre a esta comida.", fontSize = 14.sp, color = NeonDim)
                 OutlinedTextField(
-                    value         = name,
-                    onValueChange = onNameChange,
-                    placeholder   = { Text("Ej: Post-entreno, Snack...", color = OnSurfaceVariant, fontSize = 14.sp) },
-                    singleLine    = true,
-                    shape         = RoundedCornerShape(12.dp),
-                    colors        = OutlinedTextFieldDefaults.colors(
-                        unfocusedContainerColor = SurfaceContainerLow,
-                        focusedContainerColor   = SurfaceContainerLow,
-                        unfocusedBorderColor    = Color.Transparent,
-                        focusedBorderColor      = Primary,
+                    value = name, onValueChange = onNameChange,
+                    placeholder = { Text("Ej: Post-entreno, Snack...", color = NeonMuted, fontSize = 14.sp) },
+                    singleLine = true,
+                    shape = RoundedCornerShape(12.dp),
+                    colors = OutlinedTextFieldDefaults.colors(
+                        unfocusedContainerColor = Color(0xFF0A1628),
+                        focusedContainerColor   = Color(0xFF0A1628),
+                        unfocusedBorderColor    = DarkCardBorder,
+                        focusedBorderColor      = NeonGreen,
+                        focusedTextColor        = NeonText,
+                        unfocusedTextColor      = NeonText,
                     ),
                     modifier = Modifier.fillMaxWidth()
                 )
             }
         },
         confirmButton = {
-            TextButton(
-                onClick  = onConfirm,
-                enabled  = name.isNotBlank()
-            ) {
-                Text("Añadir", color = Primary, fontWeight = FontWeight.Bold)
+            TextButton(onClick = onConfirm, enabled = name.isNotBlank()) {
+                Text("Añadir", color = NeonGreen, fontWeight = FontWeight.Bold)
             }
         },
         dismissButton = {
-            TextButton(onClick = onDismiss) {
-                Text("Cancelar", color = OnSurfaceVariant)
-            }
+            TextButton(onClick = onDismiss) { Text("Cancelar", color = NeonMuted) }
         }
     )
 }
 
 @Composable
-private fun RenameMealDialog(
-    name: String,
-    onNameChange: (String) -> Unit,
-    onConfirm: () -> Unit,
-    onDismiss: () -> Unit,
-) {
+private fun RenameMealDialog(name: String, onNameChange: (String) -> Unit, onConfirm: () -> Unit, onDismiss: () -> Unit) {
     AlertDialog(
         onDismissRequest = onDismiss,
-        containerColor   = SurfaceContainerLowest,
-        title = { Text("Renombrar comida", fontWeight = FontWeight.Bold, fontSize = 18.sp) },
+        containerColor   = DarkCard,
+        title = { Text("Renombrar comida", fontWeight = FontWeight.Bold, fontSize = 18.sp, color = NeonText) },
         text = {
             OutlinedTextField(
-                value         = name,
-                onValueChange = onNameChange,
-                placeholder   = { Text("Nombre de la comida", color = OnSurfaceVariant, fontSize = 14.sp) },
-                singleLine    = true,
-                shape         = RoundedCornerShape(12.dp),
-                colors        = OutlinedTextFieldDefaults.colors(
-                    unfocusedContainerColor = SurfaceContainerLow,
-                    focusedContainerColor   = SurfaceContainerLow,
-                    unfocusedBorderColor    = Color.Transparent,
-                    focusedBorderColor      = Primary,
+                value = name, onValueChange = onNameChange,
+                placeholder = { Text("Nombre de la comida", color = NeonMuted, fontSize = 14.sp) },
+                singleLine = true,
+                shape = RoundedCornerShape(12.dp),
+                colors = OutlinedTextFieldDefaults.colors(
+                    unfocusedContainerColor = Color(0xFF0A1628),
+                    focusedContainerColor   = Color(0xFF0A1628),
+                    unfocusedBorderColor    = DarkCardBorder,
+                    focusedBorderColor      = NeonGreen,
+                    focusedTextColor        = NeonText,
+                    unfocusedTextColor      = NeonText,
                 ),
                 modifier = Modifier.fillMaxWidth()
             )
         },
         confirmButton = {
             TextButton(onClick = onConfirm, enabled = name.isNotBlank()) {
-                Text("Guardar", color = Primary, fontWeight = FontWeight.Bold)
+                Text("Guardar", color = NeonGreen, fontWeight = FontWeight.Bold)
             }
         },
         dismissButton = {
-            TextButton(onClick = onDismiss) {
-                Text("Cancelar", color = OnSurfaceVariant)
-            }
+            TextButton(onClick = onDismiss) { Text("Cancelar", color = NeonMuted) }
         }
     )
 }

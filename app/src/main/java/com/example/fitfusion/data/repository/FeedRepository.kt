@@ -29,6 +29,7 @@ object FeedRepository {
 
     private var baseItems: List<FeedItem> = emptyList()
     private val likedPostIds = mutableSetOf<String>()
+    private val savedPostIds = mutableSetOf<String>()
     private val likeCountsByPostId = mutableMapOf<String, Int>()
     private val likeListenerRegistrations = mutableMapOf<String, ListenerRegistration>()
     private val commentCountsByPostId = mutableMapOf<String, Int>()
@@ -48,6 +49,11 @@ object FeedRepository {
         }
         authListenerRegistered = true
         attachFeedListener(auth.currentUser?.uid)
+    }
+
+    fun toggleSave(itemId: String) {
+        if (itemId in savedPostIds) savedPostIds.remove(itemId) else savedPostIds.add(itemId)
+        emitItems()
     }
 
     fun toggleLike(itemId: String) {
@@ -298,25 +304,21 @@ object FeedRepository {
         }
 
     private fun FeedItem.withPersistedInteractionState(): FeedItem = when (this) {
-        is FeedItem.Workout -> {
-            val liked = post.id in likedPostIds
-            copy(
-                post = post.copy(
-                    isLiked = liked,
-                    likes = likeCountsByPostId[post.id] ?: post.likes,
-                    comments = commentCountsByPostId[post.id] ?: post.comments,
-                )
+        is FeedItem.Workout -> copy(
+            post = post.copy(
+                isLiked = post.id in likedPostIds,
+                isSaved = post.id in savedPostIds,
+                likes = likeCountsByPostId[post.id] ?: post.likes,
+                comments = commentCountsByPostId[post.id] ?: post.comments,
             )
-        }
-        is FeedItem.Nutrition -> {
-            val liked = post.id in likedPostIds
-            copy(
-                post = post.copy(
-                    isLiked = liked,
-                    likes = likeCountsByPostId[post.id] ?: post.likes,
-                    comments = commentCountsByPostId[post.id] ?: post.comments,
-                )
+        )
+        is FeedItem.Nutrition -> copy(
+            post = post.copy(
+                isLiked = post.id in likedPostIds,
+                isSaved = post.id in savedPostIds,
+                likes = likeCountsByPostId[post.id] ?: post.likes,
+                comments = commentCountsByPostId[post.id] ?: post.comments,
             )
-        }
+        )
     }
 }

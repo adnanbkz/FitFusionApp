@@ -23,4 +23,5 @@ enum class Screens {
     PlannerScreen,
     CreateRoutineScreen,
     CreateWeeklyPlanScreen,
+    WorkoutScreen,
 }

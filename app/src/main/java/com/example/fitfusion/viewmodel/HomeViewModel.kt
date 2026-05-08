@@ -32,6 +32,7 @@ data class WorkoutPost(
     val likes: Int,
     val comments: Int,
     val isLiked: Boolean = false,
+    val isSaved: Boolean = false,
     val timestamp: Long,
 ) {
     val timeAgo: String get() = formatTimeAgo(timestamp)
@@ -51,6 +52,7 @@ data class NutritionPost(
     val likes: Int,
     val comments: Int,
     val isLiked: Boolean = false,
+    val isSaved: Boolean = false,
     val timestamp: Long,
 ) {
     val timeAgo: String get() = formatTimeAgo(timestamp)
@@ -153,9 +155,8 @@ class HomeViewModel : ViewModel() {
         }
     }
 
-    fun toggleLike(itemId: String) {
-        FeedRepository.toggleLike(itemId)
-    }
+    fun toggleLike(itemId: String) { FeedRepository.toggleLike(itemId) }
+    fun toggleSave(itemId: String) { FeedRepository.toggleSave(itemId) }
 
     fun setFilter(filter: FeedFilter) {
         _uiState.update { it.copy(filter = filter) }

@@ -10,8 +10,10 @@ import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.statusBars
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Scaffold
 import androidx.compose.runtime.LaunchedEffect
@@ -25,6 +27,7 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
+import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import com.example.fitfusion.data.repository.UserProfileStore
@@ -54,6 +57,13 @@ class MainActivity : ComponentActivity() {
             }
             var loggedUser by remember { mutableStateOf(initialLoggedUser) }
 
+            val currentEntry by navController.currentBackStackEntryAsState()
+            LaunchedEffect(currentEntry?.destination?.route) {
+                if (currentEntry?.destination?.route == Screens.HomeScreen.name) {
+                    authViewModel.getSignedInDisplayName()?.let { loggedUser = it }
+                }
+            }
+
             val notificationLauncher = rememberLauncherForActivityResult(
                 contract = ActivityResultContracts.RequestPermission()
             ) { /* result ignored — service still works without notification */ }
@@ -67,6 +77,7 @@ class MainActivity : ComponentActivity() {
             Scaffold(
                 modifier = Modifier.fillMaxSize(),
                 containerColor = Color(0xFFFBF8FE),
+                contentWindowInsets = WindowInsets.statusBars,
             ) { innerPadding ->
                 Column(modifier = Modifier.fillMaxSize().padding(innerPadding)) {
                     ActiveWorkoutBanner(navController = navController)
