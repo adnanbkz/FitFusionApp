@@ -1,7 +1,12 @@
 package com.example.fitfusion.ui.screens
 
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.spring
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
@@ -11,11 +16,13 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.Send
 import androidx.compose.material.icons.filled.*
+import androidx.compose.material.icons.outlined.ChatBubbleOutline
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
@@ -113,19 +120,43 @@ fun PantallaPostDetail(
                 }
             }
 
+            val likeColor by animateColorAsState(
+                targetValue = if (state.isLiked) Tertiary else OnSurfaceVariant,
+                animationSpec = spring(stiffness = Spring.StiffnessMedium),
+                label = "likeColor",
+            )
+            val likeScale by animateFloatAsState(
+                targetValue = if (state.isLiked) 1.25f else 1f,
+                animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy),
+                label = "likeScale",
+            )
             Row(
                 modifier = Modifier.padding(horizontal = 24.dp),
                 horizontalArrangement = Arrangement.spacedBy(16.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-                    Icon(Icons.Default.Favorite, null, Modifier.size(20.dp), tint = Tertiary)
-                    Text(state.likeCount, fontWeight = FontWeight.SemiBold, fontSize = 14.sp)
+                Row(
+                    modifier = Modifier
+                        .clip(RoundedCornerShape(20.dp))
+                        .clickable { postDetailViewModel.toggleLike() }
+                        .padding(horizontal = 6.dp, vertical = 4.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(4.dp)
+                ) {
+                    Icon(
+                        if (state.isLiked) Icons.Default.Favorite else Icons.Default.FavoriteBorder,
+                        null,
+                        Modifier.size(18.dp).scale(likeScale),
+                        tint = likeColor,
+                    )
+                    Text(state.likeCount, fontWeight = FontWeight.SemiBold, fontSize = 14.sp, color = likeColor)
                 }
                 Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                    Icon(Icons.Outlined.ChatBubbleOutline, null, Modifier.size(18.dp), tint = OnSurfaceVariant)
                     Text(state.commentCount, fontWeight = FontWeight.SemiBold, fontSize = 14.sp, color = OnSurfaceVariant)
                 }
                 Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                    Icon(Icons.Default.LocalFireDepartment, null, Modifier.size(18.dp), tint = OnSurface)
                     Text(state.energyCount, fontWeight = FontWeight.SemiBold, fontSize = 14.sp)
                 }
             }
@@ -219,7 +250,7 @@ fun PantallaPostDetail(
                     value = state.commentText,
                     onValueChange = postDetailViewModel::onCommentTextChange,
                     placeholder = { Text("Añadir un comentario...", color = OnSurfaceVariant, fontSize = 14.sp) },
-                    modifier = Modifier.weight(1f).height(48.dp),
+                    modifier = Modifier.weight(1f),
                     shape = RoundedCornerShape(24.dp),
                     colors = OutlinedTextFieldDefaults.colors(
                         unfocusedContainerColor = SurfaceContainerLow, focusedContainerColor = SurfaceContainerLow,

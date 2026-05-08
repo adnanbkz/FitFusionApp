@@ -8,6 +8,7 @@ import androidx.lifecycle.viewModelScope
 import com.example.fitfusion.data.models.LoggedWorkout
 import com.example.fitfusion.data.models.UserPost
 import com.example.fitfusion.data.models.UserPostType
+import com.example.fitfusion.data.repository.FeedRepository
 import com.example.fitfusion.data.repository.PostRepository
 import com.example.fitfusion.data.repository.UserProfileStore
 import com.example.fitfusion.data.repository.UserRepository
@@ -40,6 +41,7 @@ data class ProfileUiState(
     val currentStreak: Int = 0,
     val selectedTab: Int = 0,
     val userPosts: List<UserPost> = emptyList(),
+    val savedFeedItems: List<FeedItem> = emptyList(),
     val showCreatePostSheet: Boolean = false,
     val isPublishingPost: Boolean = false,
     val createPostErrorMessage: String? = null,
@@ -112,6 +114,18 @@ class ProfileViewModel(application: Application) : AndroidViewModel(application)
     init {
         UserProfileStore.ensureInitialized(application)
         attachUserProfileListener()
+        viewModelScope.launch {
+            FeedRepository.items.collect { items ->
+                _uiState.update { state ->
+                    state.copy(savedFeedItems = items.filter { item ->
+                        when (item) {
+                            is FeedItem.Workout   -> item.post.isSaved
+                            is FeedItem.Nutrition -> item.post.isSaved
+                        }
+                    })
+                }
+            }
+        }
     }
 
     private val _uiState = MutableStateFlow(ProfileUiState(
@@ -208,10 +222,7 @@ class ProfileViewModel(application: Application) : AndroidViewModel(application)
 
     fun updateFromUser(userName: String?) {
         if (userName != null) {
-            _uiState.update { it.copy(
-                displayName = userName,
-                handle      = UserRepository.defaultUsername(userName)
-            ) }
+            _uiState.update { it.copy(displayName = userName) }
         }
     }
 

@@ -1,8 +1,12 @@
 package com.example.fitfusion.viewmodel
 
-import androidx.lifecycle.ViewModel
+import android.app.Application
+import android.content.Intent
+import android.net.Uri
+import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.fitfusion.data.repository.UserProfile
+import com.example.fitfusion.data.repository.UserProfileStore
 import com.example.fitfusion.data.repository.UserRepository
 import com.google.firebase.auth.EmailAuthProvider
 import com.google.firebase.auth.FirebaseAuth
@@ -24,6 +28,7 @@ data class AccountUiState(
     val weightKg: String = "",
     val goalType: String = "",
     val activityLevel: String = "",
+    val photoUrl: String = "",
     val currentPassword: String = "",
     val newPassword: String = "",
     val confirmNewPassword: String = "",
@@ -34,9 +39,10 @@ data class AccountUiState(
 )
 
 class AccountViewModel(
+    application: Application,
     private val auth: FirebaseAuth = FirebaseAuth.getInstance(),
     private val userRepository: UserRepository = UserRepository(),
-) : ViewModel() {
+) : AndroidViewModel(application) {
 
     private val _uiState = MutableStateFlow(AccountUiState())
     val uiState: StateFlow<AccountUiState> = _uiState.asStateFlow()
@@ -64,6 +70,16 @@ class AccountViewModel(
     fun onNewPasswordChange(value: String) = _uiState.update { it.copy(newPassword = value) }
     fun onConfirmNewPasswordChange(value: String) = _uiState.update { it.copy(confirmNewPassword = value) }
 
+    fun onPhotoChange(uri: Uri) {
+        try {
+            getApplication<Application>().contentResolver.takePersistableUriPermission(
+                uri, Intent.FLAG_GRANT_READ_URI_PERMISSION
+            )
+        } catch (_: Exception) { }
+        UserProfileStore.updatePhotoUri(getApplication(), uri)
+        _uiState.update { it.copy(photoUrl = uri.toString(), saveSuccess = false) }
+    }
+
     fun saveProfile() {
         val user = auth.currentUser
         if (user == null) {
@@ -81,13 +97,14 @@ class AccountViewModel(
         viewModelScope.launch {
             _uiState.update { it.copy(isSaving = true, saveSuccess = false, errorMessage = null) }
             try {
+                val photoUrl = state.photoUrl.ifBlank { user.photoUrl?.toString() }
                 val profile = UserProfile(
                     uid = user.uid,
                     email = user.email.orEmpty(),
                     displayName = displayName,
                     username = UserRepository.normalizeUsername(state.username, displayName),
                     bio = state.bio.trim(),
-                    photoUrl = user.photoUrl?.toString(),
+                    photoUrl = photoUrl,
                     heightCm = state.heightCm.toIntOrNull(),
                     weightKg = state.weightKg.toFloatOrNull(),
                     goalType = state.goalType.trim().ifBlank { null },
@@ -103,7 +120,16 @@ class AccountViewModel(
                     it.copy(
                         isSaving = false,
                         saveSuccess = true,
+                        displayName = profile.displayName,
                         username = profile.username,
+                        bio = profile.bio,
+                        heightCm = profile.heightCm?.toString().orEmpty(),
+                        weightKg = profile.weightKg?.let { w ->
+                            if (w % 1f == 0f) w.toInt().toString() else "%.1f".format(Locale.US, w)
+                        }.orEmpty(),
+                        goalType = profile.goalType.orEmpty(),
+                        activityLevel = profile.activityLevel.orEmpty(),
+                        photoUrl = profile.photoUrl.orEmpty(),
                         errorMessage = null,
                     )
                 }
@@ -181,6 +207,7 @@ class AccountViewModel(
         viewModelScope.launch {
             try {
                 val profile = userRepository.getUserProfile(user.uid, user.email.orEmpty())
+                val localPhotoUri = UserProfileStore.photoUri.value?.toString().orEmpty()
                 _uiState.update {
                     it.copy(
                         displayName = profile.displayName,
@@ -193,6 +220,7 @@ class AccountViewModel(
                         }.orEmpty(),
                         goalType = profile.goalType.orEmpty(),
                         activityLevel = profile.activityLevel.orEmpty(),
+                        photoUrl = localPhotoUri.ifBlank { profile.photoUrl.orEmpty() },
                         isLoading = false,
                         errorMessage = null,
                     )

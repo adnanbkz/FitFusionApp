@@ -18,17 +18,17 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavHostController
 import coil3.compose.AsyncImage
-import com.example.fitfusion.data.repository.UserProfileStore
 import com.example.fitfusion.ui.theme.*
 import com.example.fitfusion.viewmodel.AccountViewModel
 
@@ -39,22 +39,11 @@ fun PantallaAccount(
     accountViewModel: AccountViewModel = viewModel()
 ) {
     val state by accountViewModel.uiState.collectAsState()
-    val context = LocalContext.current
-    val profilePhotoUri by UserProfileStore.photoUri.collectAsState()
     val snackbarHostState = remember { SnackbarHostState() }
     val photoLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.PickVisualMedia()
     ) { uri ->
-        uri?.let {
-            try {
-                context.contentResolver.takePersistableUriPermission(
-                    it,
-                    android.content.Intent.FLAG_GRANT_READ_URI_PERMISSION
-                )
-            } catch (_: Exception) {
-            }
-            UserProfileStore.updatePhotoUri(context, it)
-        }
+        uri?.let { accountViewModel.onPhotoChange(it) }
     }
 
     LaunchedEffect(state.saveSuccess) {
@@ -125,9 +114,9 @@ fun PantallaAccount(
                             .background(SurfaceContainerHigh),
                         contentAlignment = Alignment.Center
                     ) {
-                        if (profilePhotoUri != null) {
+                        if (state.photoUrl.isNotBlank()) {
                             AsyncImage(
-                                model = profilePhotoUri,
+                                model = state.photoUrl,
                                 contentDescription = "Foto de perfil",
                                 contentScale = ContentScale.Crop,
                                 modifier = Modifier.fillMaxSize()
@@ -230,7 +219,8 @@ fun PantallaAccount(
                         label = "Altura (cm)",
                         value = state.heightCm,
                         onValueChange = accountViewModel::onHeightCmChange,
-                        placeholder = "175"
+                        placeholder = "175",
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number)
                     )
                     HorizontalDivider(
                         modifier = Modifier.padding(vertical = 12.dp),
@@ -240,7 +230,8 @@ fun PantallaAccount(
                         label = "Peso (kg)",
                         value = state.weightKg,
                         onValueChange = accountViewModel::onWeightKgChange,
-                        placeholder = "72.5"
+                        placeholder = "72.5",
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal)
                     )
                     HorizontalDivider(
                         modifier = Modifier.padding(vertical = 12.dp),
@@ -411,6 +402,7 @@ private fun AccountField(
     placeholder: String,
     singleLine: Boolean = true,
     enabled: Boolean = true,
+    keyboardOptions: KeyboardOptions = KeyboardOptions.Default,
 ) {
     Text(label, fontSize = 12.sp, fontWeight = FontWeight.Medium, color = OnSurfaceVariant)
     Spacer(modifier = Modifier.height(4.dp))
@@ -420,6 +412,7 @@ private fun AccountField(
         placeholder = { Text(placeholder, color = OnSurfaceVariant, fontSize = 14.sp) },
         singleLine = singleLine,
         enabled = enabled,
+        keyboardOptions = keyboardOptions,
         shape = RoundedCornerShape(10.dp),
         colors = OutlinedTextFieldDefaults.colors(
             unfocusedContainerColor = SurfaceContainerLow,

@@ -53,7 +53,7 @@ class AuthViewModel : ViewModel() {
 
         val email = state.email.trim()
         if (state.email.isBlank() || state.password.isBlank()) {
-            _loginState.value = state.copy(errorMessage = "Please enter email and password")
+            _loginState.value = state.copy(errorMessage = "Introduce tu correo y contraseña")
             return
         }
 
@@ -108,13 +108,13 @@ class AuthViewModel : ViewModel() {
         when {
             displayName.isBlank() || email.isBlank() ||
                     state.password.isBlank() || state.confirmPassword.isBlank() -> {
-                _signUpState.value = state.copy(errorMessage = "Please fill in all fields")
+                _signUpState.value = state.copy(errorMessage = "Por favor, rellena todos los campos")
             }
             state.password != state.confirmPassword -> {
-                _signUpState.value = state.copy(errorMessage = "Passwords do not match")
+                _signUpState.value = state.copy(errorMessage = "Las contraseñas no coinciden")
             }
             state.password.length < 6 -> {
-                _signUpState.value = state.copy(errorMessage = "Password must be at least 6 characters")
+                _signUpState.value = state.copy(errorMessage = "La contraseña debe tener al menos 6 caracteres")
             }
             else -> {
                 _signUpState.value = state.copy(
@@ -142,7 +142,7 @@ class AuthViewModel : ViewModel() {
                                 displayName = displayName,
                                 email = email,
                                 isLoading = false,
-                                errorMessage = "Account created, but the session could not be restored"
+                                errorMessage = "Cuenta creada, pero no se pudo restaurar la sesión"
                             )
                             return@addOnCompleteListener
                         }
@@ -205,13 +205,13 @@ class AuthViewModel : ViewModel() {
 
     private fun authErrorMessage(exception: Exception?): String {
         return when (exception) {
-            is FirebaseAuthInvalidCredentialsException -> "Invalid email or password"
-            is FirebaseAuthInvalidUserException -> "No account found with that email"
-            is FirebaseAuthUserCollisionException -> "An account with that email already exists"
-            is FirebaseAuthWeakPasswordException -> "Password must be at least 6 characters"
-            is FirebaseTooManyRequestsException -> "Too many attempts. Try again later"
-            is FirebaseNetworkException -> "Network error. Check your connection and try again"
-            else -> exception?.localizedMessage ?: "Authentication failed"
+            is FirebaseAuthInvalidCredentialsException -> "Correo o contraseña incorrectos"
+            is FirebaseAuthInvalidUserException -> "No existe ninguna cuenta con ese correo"
+            is FirebaseAuthUserCollisionException -> "Ya existe una cuenta con ese correo"
+            is FirebaseAuthWeakPasswordException -> "La contraseña debe tener al menos 6 caracteres"
+            is FirebaseTooManyRequestsException -> "Demasiados intentos. Inténtalo más tarde"
+            is FirebaseNetworkException -> "Error de red. Comprueba tu conexión e inténtalo de nuevo"
+            else -> exception?.localizedMessage ?: "Error de autenticación"
         }
     }
 
@@ -228,9 +228,9 @@ class AuthViewModel : ViewModel() {
                 email = email,
                 isLoading = false,
                 errorMessage = if (deleteTask.isSuccessful) {
-                    "We couldn't create your profile. Please try again."
+                    "No pudimos crear tu perfil. Por favor, inténtalo de nuevo."
                 } else {
-                    "Account created, but profile setup failed. Try logging in again."
+                    "Cuenta creada, pero la configuración del perfil falló. Intenta iniciar sesión de nuevo."
                 }
             )
         }
