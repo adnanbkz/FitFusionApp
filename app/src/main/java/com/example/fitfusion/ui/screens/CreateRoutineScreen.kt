@@ -6,11 +6,14 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.AutoAwesome
 import androidx.compose.material.icons.filled.Clear
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.*
@@ -51,6 +54,13 @@ fun PantallaCreateRoutine(
                     }
                 },
                 actions = {
+                    IconButton(onClick = viewModel::openAiSheet) {
+                        Icon(
+                            Icons.Default.AutoAwesome,
+                            contentDescription = "Sugerir rutina con IA",
+                            tint = Primary,
+                        )
+                    }
                     TextButton(
                         onClick = { viewModel.saveRoutine { navController.popBackStack() } },
                         enabled = state.isValid && !state.isSaving,
@@ -151,6 +161,229 @@ fun PantallaCreateRoutine(
             },
             onDone    = viewModel::closeEditExercise,
         )
+    }
+
+    if (state.showAiSheet) {
+        AiRoutineFormSheet(
+            state = state,
+            viewModel = viewModel,
+            onDismiss = viewModel::dismissAiSheet,
+        )
+    }
+
+    state.aiResult?.let { result ->
+        AlertDialog(
+            onDismissRequest = viewModel::dismissAiResult,
+            title = { Text(result.name, fontWeight = FontWeight.Bold) },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    if (result.description.isNotBlank()) {
+                        Text(result.description, fontSize = 13.sp, color = OnSurfaceVariant)
+                    }
+                    Text(
+                        "${result.exercises.size} ejercicios · ${result.estimatedDurationMin} min",
+                        fontSize = 12.sp, color = Primary, fontWeight = FontWeight.SemiBold,
+                    )
+                    Column(
+                        modifier = Modifier.heightIn(max = 220.dp).verticalScroll(rememberScrollState()),
+                        verticalArrangement = Arrangement.spacedBy(4.dp),
+                    ) {
+                        result.exercises.forEach { ex ->
+                            Text(
+                                "• ${ex.exerciseName} — ${ex.targetSets}×${ex.targetReps}",
+                                fontSize = 12.sp, color = OnSurface,
+                            )
+                        }
+                    }
+                }
+            },
+            confirmButton = {
+                Row {
+                    TextButton(onClick = { viewModel.applyAiRoutine(replace = false) }) {
+                        Text("Añadir", color = Primary, fontWeight = FontWeight.SemiBold)
+                    }
+                    TextButton(onClick = { viewModel.applyAiRoutine(replace = true) }) {
+                        Text("Reemplazar", color = Primary, fontWeight = FontWeight.Bold)
+                    }
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = viewModel::dismissAiResult) { Text("Descartar") }
+            },
+        )
+    }
+
+    state.aiError?.let { msg ->
+        AlertDialog(
+            onDismissRequest = viewModel::dismissAiError,
+            title = { Text("No se pudo consultar la IA") },
+            text = { Text(msg, fontSize = 13.sp) },
+            confirmButton = {
+                TextButton(onClick = viewModel::dismissAiError) { Text("OK") }
+            },
+        )
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
+@Composable
+private fun AiRoutineFormSheet(
+    state: com.example.fitfusion.viewmodel.CreateRoutineUiState,
+    viewModel: CreateRoutineViewModel,
+    onDismiss: () -> Unit,
+) {
+    val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+    ModalBottomSheet(
+        onDismissRequest = onDismiss,
+        sheetState       = sheetState,
+        containerColor   = SurfaceContainerLowest,
+        dragHandle       = { BottomSheetDefaults.DragHandle(color = OutlineVariant) },
+        modifier         = Modifier.imePadding(),
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 20.dp)
+                .padding(bottom = 32.dp)
+                .verticalScroll(rememberScrollState()),
+            verticalArrangement = Arrangement.spacedBy(14.dp),
+        ) {
+            Text("Sugerir rutina con IA", fontWeight = FontWeight.Bold, fontSize = 18.sp, color = OnSurface)
+            Text("La IA generará una rutina según tus preferencias.", fontSize = 12.sp, color = OnSurfaceVariant)
+
+            ChipsRow(
+                label    = "OBJETIVO",
+                options  = com.example.fitfusion.viewmodel.ROUTINE_GOAL_OPTIONS,
+                selected = setOf(state.aiGoal),
+                onSelect = viewModel::onAiGoalChange,
+                multi    = false,
+            )
+
+            ChipsRow(
+                label    = "NIVEL",
+                options  = com.example.fitfusion.viewmodel.ROUTINE_LEVEL_OPTIONS,
+                selected = setOf(state.aiLevel),
+                onSelect = viewModel::onAiLevelChange,
+                multi    = false,
+            )
+
+            Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                RoutineNumberStepper(
+                    label = "DÍAS / SEMANA",
+                    value = state.aiDaysPerWeek,
+                    onChange = viewModel::onAiDaysChange,
+                    min = 1, max = 7,
+                    modifier = Modifier.weight(1f),
+                )
+                RoutineNumberStepper(
+                    label = "MINUTOS / SESIÓN",
+                    value = state.aiSessionMinutes,
+                    onChange = viewModel::onAiSessionChange,
+                    min = 15, max = 180, step = 15,
+                    modifier = Modifier.weight(1f),
+                )
+            }
+
+            ChipsRow(
+                label    = "EQUIPO DISPONIBLE",
+                options  = com.example.fitfusion.viewmodel.ROUTINE_EQUIPMENT_OPTIONS,
+                selected = state.aiEquipment,
+                onSelectMulti = viewModel::toggleAiEquipment,
+                multi    = true,
+            )
+
+            Button(
+                onClick = viewModel::generateRoutineWithAi,
+                enabled = !state.isGeneratingAi,
+                modifier = Modifier.fillMaxWidth().height(50.dp),
+                shape    = RoundedCornerShape(14.dp),
+                colors   = ButtonDefaults.buttonColors(containerColor = Primary),
+            ) {
+                if (state.isGeneratingAi) {
+                    CircularProgressIndicator(
+                        modifier    = Modifier.size(20.dp),
+                        strokeWidth = 2.dp,
+                        color       = Color.White,
+                    )
+                } else {
+                    Icon(Icons.Default.AutoAwesome, null, tint = Color.White, modifier = Modifier.size(18.dp))
+                    Spacer(Modifier.width(8.dp))
+                    Text("Generar", fontWeight = FontWeight.Bold, fontSize = 15.sp)
+                }
+            }
+        }
+    }
+}
+
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+private fun ChipsRow(
+    label: String,
+    options: List<String>,
+    selected: Set<String>,
+    onSelect: ((String) -> Unit)? = null,
+    onSelectMulti: ((String) -> Unit)? = null,
+    multi: Boolean,
+) {
+    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        Text(label, fontSize = 11.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.5.sp, color = OnSurfaceVariant)
+        FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            options.forEach { option ->
+                val isSelected = option in selected
+                FilterChip(
+                    selected = isSelected,
+                    onClick  = {
+                        if (multi) onSelectMulti?.invoke(option) else onSelect?.invoke(option)
+                    },
+                    label    = { Text(option, fontSize = 12.sp) },
+                    shape    = RoundedCornerShape(20.dp),
+                    colors   = FilterChipDefaults.filterChipColors(
+                        selectedContainerColor = Primary.copy(alpha = 0.15f),
+                        selectedLabelColor     = Primary,
+                    ),
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun RoutineNumberStepper(
+    label: String,
+    value: Int,
+    onChange: (Int) -> Unit,
+    min: Int,
+    max: Int,
+    step: Int = 1,
+    modifier: Modifier = Modifier,
+) {
+    Column(verticalArrangement = Arrangement.spacedBy(6.dp), modifier = modifier) {
+        Text(label, fontSize = 10.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.sp, color = OnSurfaceVariant)
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .clip(RoundedCornerShape(12.dp))
+                .background(SurfaceContainerLow)
+                .padding(horizontal = 4.dp, vertical = 4.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.SpaceBetween,
+        ) {
+            IconButton(
+                onClick = { onChange(value - step) },
+                enabled = value - step >= min,
+                modifier = Modifier.size(36.dp),
+            ) {
+                Text("−", fontWeight = FontWeight.Bold, fontSize = 18.sp, color = if (value - step >= min) Primary else OnSurfaceVariant)
+            }
+            Text("$value", fontWeight = FontWeight.Bold, fontSize = 16.sp, color = OnSurface)
+            IconButton(
+                onClick = { onChange(value + step) },
+                enabled = value + step <= max,
+                modifier = Modifier.size(36.dp),
+            ) {
+                Text("+", fontWeight = FontWeight.Bold, fontSize = 18.sp, color = if (value + step <= max) Primary else OnSurfaceVariant)
+            }
+        }
     }
 }
 

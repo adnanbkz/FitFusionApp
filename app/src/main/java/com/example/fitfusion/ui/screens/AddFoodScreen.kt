@@ -11,6 +11,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.AutoAwesome
 import androidx.compose.material.icons.filled.Clear
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Public
@@ -130,6 +131,14 @@ fun PantallaAddFood(
                 },
                 actions = {
                     if (state.activeTab == FoodTab.ALIMENTOS) {
+                        IconButton(onClick = addFoodViewModel::openPlateDialog) {
+                            Icon(
+                                Icons.Default.AutoAwesome,
+                                contentDescription = "Estimar plato por descripción",
+                                tint = Primary,
+                                modifier = Modifier.size(22.dp),
+                            )
+                        }
                         if (state.barcodeLoading) {
                             Box(
                                 modifier = Modifier.size(48.dp),
@@ -258,6 +267,62 @@ fun PantallaAddFood(
         BarcodeScannerOverlay(
             onBarcodeDetected = addFoodViewModel::lookupBarcode,
             onClose           = addFoodViewModel::closeScanner,
+        )
+    }
+
+    if (state.aiPlateDialogOpen) {
+        AlertDialog(
+            onDismissRequest = addFoodViewModel::dismissPlateDialog,
+            title = { Text("Estimar plato con IA", fontWeight = FontWeight.Bold) },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Text(
+                        "Describe el plato y la IA estimará sus macros.",
+                        fontSize = 12.sp, color = OnSurfaceVariant,
+                    )
+                    OutlinedTextField(
+                        value         = state.aiPlateDescription,
+                        onValueChange = addFoodViewModel::onAiPlateDescriptionChange,
+                        placeholder   = { Text("Ej: ensalada césar con pollo y picatostes", fontSize = 13.sp) },
+                        minLines      = 3,
+                        maxLines      = 5,
+                        modifier      = Modifier.fillMaxWidth(),
+                        shape         = RoundedCornerShape(12.dp),
+                        colors        = OutlinedTextFieldDefaults.colors(
+                            unfocusedContainerColor = SurfaceContainerLow,
+                            focusedContainerColor   = SurfaceContainerLow,
+                            unfocusedBorderColor    = Color.Transparent,
+                            focusedBorderColor      = Primary,
+                        ),
+                    )
+                }
+            },
+            confirmButton = {
+                TextButton(
+                    onClick = addFoodViewModel::estimatePlateWithAi,
+                    enabled = state.aiPlateDescription.isNotBlank() && !state.isEstimatingPlate,
+                ) {
+                    if (state.isEstimatingPlate) {
+                        CircularProgressIndicator(modifier = Modifier.size(16.dp), strokeWidth = 2.dp, color = Primary)
+                    } else {
+                        Text("Estimar", color = Primary, fontWeight = FontWeight.Bold)
+                    }
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = addFoodViewModel::dismissPlateDialog) { Text("Cancelar") }
+            },
+        )
+    }
+
+    state.aiPlateError?.let { msg ->
+        AlertDialog(
+            onDismissRequest = addFoodViewModel::dismissPlateError,
+            title = { Text("No se pudo consultar la IA") },
+            text = { Text(msg, fontSize = 13.sp) },
+            confirmButton = {
+                TextButton(onClick = addFoodViewModel::dismissPlateError) { Text("OK") }
+            },
         )
     }
 }

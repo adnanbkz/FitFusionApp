@@ -3,7 +3,9 @@ package com.example.fitfusion.viewmodel
 import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.example.fitfusion.data.ai.AiEstimatePlateRequest
 import com.example.fitfusion.data.models.*
+import com.example.fitfusion.data.repository.AiRepository
 import com.example.fitfusion.data.repository.FoodRepository
 import com.example.fitfusion.data.repository.IngredientRepository
 import com.example.fitfusion.data.repository.OpenFoodFactsRepository
@@ -48,6 +50,10 @@ data class AddFoodUiState(
     val scannerOpen: Boolean = false,
     val barcodeLoading: Boolean = false,
     val barcodeNotFound: Boolean = false,
+    val aiPlateDialogOpen: Boolean = false,
+    val aiPlateDescription: String = "",
+    val isEstimatingPlate: Boolean = false,
+    val aiPlateError: String? = null,
 )
 
 @OptIn(FlowPreview::class)
@@ -426,6 +432,56 @@ class AddFoodViewModel : ViewModel() {
             } else {
                 _uiState.update { it.copy(barcodeLoading = false, barcodeNotFound = true) }
             }
+        }
+    }
+
+    fun openPlateDialog() = _uiState.update {
+        it.copy(aiPlateDialogOpen = true, aiPlateDescription = "", aiPlateError = null)
+    }
+
+    fun dismissPlateDialog() = _uiState.update {
+        it.copy(aiPlateDialogOpen = false, aiPlateDescription = "", aiPlateError = null)
+    }
+
+    fun onAiPlateDescriptionChange(value: String) = _uiState.update { it.copy(aiPlateDescription = value) }
+
+    fun dismissPlateError() = _uiState.update { it.copy(aiPlateError = null) }
+
+    fun estimatePlateWithAi() {
+        val description = _uiState.value.aiPlateDescription.trim()
+        if (description.isBlank() || _uiState.value.isEstimatingPlate) return
+        _uiState.update { it.copy(isEstimatingPlate = true, aiPlateError = null) }
+        viewModelScope.launch {
+            AiRepository.estimatePlate(AiEstimatePlateRequest(description = description))
+                .onSuccess { res ->
+                    val servingGrams = res.defaultServingGrams.coerceAtLeast(1f)
+                    val food = Food(
+                        id             = "ai-${java.util.UUID.randomUUID()}",
+                        name           = res.name,
+                        brand          = "IA",
+                        kcalPer100g    = res.kcalPer100g,
+                        proteinPer100g = res.proteinPer100g,
+                        carbsPer100g   = if (res.carbsPer100g > 0) res.carbsPer100g else 0f,
+                        fatsPer100g    = if (res.fatsPer100g > 0) res.fatsPer100g else 0f,
+                        servingOptions = listOf(
+                            Serving(res.defaultServingLabel.ifBlank { "Ración" }, servingGrams),
+                            Serving("100g", 100f),
+                        ),
+                    )
+                    _uiState.update {
+                        it.copy(
+                            isEstimatingPlate = false,
+                            aiPlateDialogOpen = false,
+                            aiPlateDescription = "",
+                        )
+                    }
+                    openSheet(food, _uiState.value.activeMealSlot)
+                }
+                .onFailure { e ->
+                    _uiState.update {
+                        it.copy(isEstimatingPlate = false, aiPlateError = e.message ?: "Error consultando la IA")
+                    }
+                }
         }
     }
 

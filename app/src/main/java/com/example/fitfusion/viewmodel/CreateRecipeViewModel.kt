@@ -3,9 +3,13 @@ package com.example.fitfusion.viewmodel
 import android.net.Uri
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.example.fitfusion.data.ai.AiIngredientInput
+import com.example.fitfusion.data.ai.AiRefineRecipeRequest
+import com.example.fitfusion.data.ai.AiRefineRecipeResponse
 import com.example.fitfusion.data.models.Food
 import com.example.fitfusion.data.models.Recipe
 import com.example.fitfusion.data.models.RecipeIngredient
+import com.example.fitfusion.data.repository.AiRepository
 import com.example.fitfusion.data.repository.OpenFoodFactsRepository
 import com.example.fitfusion.data.repository.RecipeRepository
 import com.google.firebase.auth.FirebaseAuth
@@ -37,9 +41,14 @@ data class CreateRecipeUiState(
     val isSearchingIngredients: Boolean = false,
     val isSaving: Boolean    = false,
     val saveError: String?   = null,
+    val kcalOverride: Int?   = null,
+    val isRefiningKcal: Boolean = false,
+    val aiKcalResult: AiRefineRecipeResponse? = null,
+    val aiKcalError: String? = null,
 ) {
     val isValid: Boolean get() = name.isNotBlank()
-    val totalKcal: Int get() = ingredients.sumOf { it.totalKcal }
+    val computedKcal: Int get() = ingredients.sumOf { it.totalKcal }
+    val totalKcal: Int get() = kcalOverride ?: computedKcal
     val isDirty: Boolean get() =
         name.isNotBlank() || description.isNotBlank() || ingredients.isNotEmpty() ||
         instructions.isNotBlank() || cookTime.isNotBlank() || bestMoments.isNotEmpty() || photoUri != null
@@ -134,6 +143,7 @@ class CreateRecipeViewModel(
                 showIngredientPicker = false,
                 ingredientQuery = "",
                 ingredientResults = emptyList(),
+                kcalOverride = null,
             )
         }
     }
@@ -142,7 +152,7 @@ class CreateRecipeViewModel(
         _uiState.update {
             val list = it.ingredients.toMutableList()
             if (index in list.indices) list.removeAt(index)
-            it.copy(ingredients = list)
+            it.copy(ingredients = list, kcalOverride = null)
         }
     }
 
@@ -152,7 +162,7 @@ class CreateRecipeViewModel(
             if (index in list.indices) {
                 list[index] = list[index].copy(quantityG = quantityG.coerceAtLeast(1))
             }
-            it.copy(ingredients = list)
+            it.copy(ingredients = list, kcalOverride = null)
         }
     }
 
@@ -174,6 +184,45 @@ class CreateRecipeViewModel(
 
     fun dismissDraftDialog() = _uiState.update { it.copy(showDraftDialog = false) }
 
+    fun refineKcalWithAi() {
+        val state = _uiState.value
+        if (state.ingredients.isEmpty() || state.isRefiningKcal) return
+        _uiState.update { it.copy(isRefiningKcal = true, aiKcalError = null) }
+        viewModelScope.launch {
+            val request = AiRefineRecipeRequest(
+                name = state.name.ifBlank { "Receta" },
+                ingredients = state.ingredients.map { ing ->
+                    AiIngredientInput(
+                        name           = ing.name,
+                        quantityG      = ing.quantityG,
+                        kcalPer100g    = ing.kcalPer100g,
+                        proteinPer100g = ing.proteinPer100g,
+                        carbsPer100g   = ing.carbsPer100g,
+                        fatsPer100g    = ing.fatsPer100g,
+                        brand          = ing.brand,
+                    )
+                },
+            )
+            AiRepository.refineRecipeKcal(request)
+                .onSuccess { res ->
+                    _uiState.update { it.copy(isRefiningKcal = false, aiKcalResult = res) }
+                }
+                .onFailure { e ->
+                    _uiState.update {
+                        it.copy(isRefiningKcal = false, aiKcalError = e.message ?: "Error consultando la IA")
+                    }
+                }
+        }
+    }
+
+    fun applyAiKcal() {
+        val res = _uiState.value.aiKcalResult ?: return
+        _uiState.update { it.copy(kcalOverride = res.totalKcal, aiKcalResult = null) }
+    }
+
+    fun dismissAiKcal() = _uiState.update { it.copy(aiKcalResult = null) }
+    fun dismissAiKcalError() = _uiState.update { it.copy(aiKcalError = null) }
+
     private fun persist(isDraft: Boolean, onSuccess: () -> Unit) {
         val state = _uiState.value
         if (!state.isValid || state.isSaving) return
@@ -185,7 +234,7 @@ class CreateRecipeViewModel(
             ingredients  = state.ingredients,
             instructions = state.instructions.trim(),
             cookTimeMin  = state.cookTime.toIntOrNull(),
-            kcal         = state.totalKcal.takeIf { it > 0 },
+            kcal         = (state.kcalOverride ?: state.computedKcal).takeIf { it > 0 },
             bestMoments  = state.bestMoments.toList(),
             isPublic     = state.isPublic && !isDraft,
             isDraft      = isDraft,

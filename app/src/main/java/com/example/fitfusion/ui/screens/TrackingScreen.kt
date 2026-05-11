@@ -54,6 +54,7 @@ import com.example.fitfusion.ui.theme.Surface
 import com.example.fitfusion.ui.theme.SurfaceContainerHigh
 import com.example.fitfusion.ui.theme.SurfaceContainerLow
 import com.example.fitfusion.ui.theme.SurfaceContainerLowest
+import com.example.fitfusion.ui.components.AiMealPlanButton
 import com.example.fitfusion.ui.theme.Tertiary
 import com.example.fitfusion.viewmodel.TrackingViewModel
 import java.time.DayOfWeek
@@ -96,10 +97,22 @@ fun PantallaTracking(
                         fontSize = 11.sp, fontWeight = FontWeight.Bold,
                         letterSpacing = 3.sp, color = Primary
                     )
-                    Text(
-                        "Seguimiento",
-                        fontSize = 22.sp, fontWeight = FontWeight.Black, color = OnSurface
-                    )
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    ) {
+                        Text(
+                            "Seguimiento",
+                            fontSize = 22.sp, fontWeight = FontWeight.Black, color = OnSurface
+                        )
+                        AiMealPlanButton(
+                            backgroundColor = SurfaceContainerLow,
+                            borderColor     = SurfaceContainerHigh,
+                            accent          = Primary,
+                            textColor       = OnSurface,
+                            mutedTextColor  = OnSurfaceVariant,
+                        )
+                    }
                 }
                 Box(
                     modifier = Modifier

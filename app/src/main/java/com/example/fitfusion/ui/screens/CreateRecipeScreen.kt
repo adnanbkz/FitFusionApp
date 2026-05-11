@@ -15,6 +15,7 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.AutoAwesome
 import androidx.compose.material.icons.filled.CameraAlt
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.PhotoCamera
@@ -164,8 +165,12 @@ fun PantallaCreateRecipe(
                         modifier      = Modifier.weight(1f),
                     )
                     KcalReadonlyField(
-                        kcal     = state.totalKcal,
-                        modifier = Modifier.weight(1f),
+                        kcal        = state.totalKcal,
+                        overridden  = state.kcalOverride != null,
+                        canRefine   = state.ingredients.isNotEmpty(),
+                        isRefining  = state.isRefiningKcal,
+                        onRefine    = viewModel::refineKcalWithAi,
+                        modifier    = Modifier.weight(1f),
                     )
                 }
             }
@@ -219,6 +224,44 @@ fun PantallaCreateRecipe(
             isSearching        = state.isSearchingIngredients,
             onAdd              = viewModel::addIngredient,
             onDismiss          = viewModel::dismissIngredientPicker,
+        )
+    }
+
+    state.aiKcalResult?.let { result ->
+        AlertDialog(
+            onDismissRequest = viewModel::dismissAiKcal,
+            title = { Text("Estimación IA", fontWeight = FontWeight.Bold) },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Text("Calculado por ingredientes: ${state.computedKcal} kcal", fontSize = 13.sp)
+                    Text(
+                        "Sugerencia IA: ${result.totalKcal} kcal · ${result.totalProteinG}P · ${result.totalCarbsG}C · ${result.totalFatG}G",
+                        fontSize = 13.sp, fontWeight = FontWeight.SemiBold, color = Primary,
+                    )
+                    result.notes?.takeIf { it.isNotBlank() }?.let {
+                        Text(it, fontSize = 12.sp, color = OnSurfaceVariant)
+                    }
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = viewModel::applyAiKcal) {
+                    Text("Aplicar", color = Primary, fontWeight = FontWeight.SemiBold)
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = viewModel::dismissAiKcal) { Text("Cancelar") }
+            },
+        )
+    }
+
+    state.aiKcalError?.let { msg ->
+        AlertDialog(
+            onDismissRequest = viewModel::dismissAiKcalError,
+            title = { Text("No se pudo consultar la IA") },
+            text = { Text(msg, fontSize = 13.sp) },
+            confirmButton = {
+                TextButton(onClick = viewModel::dismissAiKcalError) { Text("OK") }
+            },
         )
     }
 
@@ -339,7 +382,14 @@ private fun QuantityStepper(value: Int, onChange: (Int) -> Unit) {
 }
 
 @Composable
-private fun KcalReadonlyField(kcal: Int, modifier: Modifier = Modifier) {
+private fun KcalReadonlyField(
+    kcal: Int,
+    overridden: Boolean,
+    canRefine: Boolean,
+    isRefining: Boolean,
+    onRefine: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
     Card(
         shape = RoundedCornerShape(12.dp),
         colors = CardDefaults.cardColors(containerColor = SurfaceContainerLow),
@@ -347,7 +397,38 @@ private fun KcalReadonlyField(kcal: Int, modifier: Modifier = Modifier) {
         modifier = modifier,
     ) {
         Column(modifier = Modifier.padding(horizontal = 14.dp, vertical = 10.dp)) {
-            Text("Kcal totales", fontSize = 11.sp, color = OnSurfaceVariant)
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text(
+                    if (overridden) "Kcal (IA)" else "Kcal totales",
+                    fontSize = 11.sp, color = if (overridden) Primary else OnSurfaceVariant,
+                    modifier = Modifier.weight(1f),
+                )
+                if (canRefine) {
+                    if (isRefining) {
+                        CircularProgressIndicator(
+                            modifier    = Modifier.size(14.dp),
+                            strokeWidth = 2.dp,
+                            color       = Primary,
+                        )
+                    } else {
+                        Box(
+                            modifier = Modifier
+                                .size(22.dp)
+                                .clip(RoundedCornerShape(11.dp))
+                                .background(Primary.copy(alpha = 0.12f))
+                                .clickable(onClick = onRefine),
+                            contentAlignment = Alignment.Center,
+                        ) {
+                            Icon(
+                                Icons.Default.AutoAwesome,
+                                contentDescription = "Verificar con IA",
+                                tint = Primary,
+                                modifier = Modifier.size(13.dp),
+                            )
+                        }
+                    }
+                }
+            }
             Text("$kcal kcal", fontSize = 18.sp, fontWeight = FontWeight.Bold, color = OnSurface)
         }
     }
