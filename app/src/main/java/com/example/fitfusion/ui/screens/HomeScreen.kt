@@ -157,7 +157,7 @@ fun PantallaHome(
                     onSaveClick = homeViewModel::toggleSave,
                 )
                 1 -> PantallaTracking(navController = navController)
-                2 -> PantallaWorkout(navController = navController)
+                2 -> PantallaAddWorkout(navController = navController, isLogMode = true)
                 3 -> PantallaProfile(
                     navController = navController,
                     userName = userName,
@@ -196,83 +196,64 @@ private fun HomeFeedPage(
     onFilterSelect: (FeedFilter) -> Unit,
     onSaveClick: (String) -> Unit,
 ) {
+    val filtered = state.filteredItems
+    val pagerState = androidx.compose.foundation.pager.rememberPagerState(
+        pageCount = { filtered.size.coerceAtLeast(1) },
+    )
     Box(
         modifier = Modifier
             .fillMaxSize()
             .background(SurfaceContainerLowest)
     ) {
-        LazyColumn(
-            modifier = Modifier.fillMaxSize(),
-            contentPadding = PaddingValues(bottom = 96.dp),
-            verticalArrangement = Arrangement.spacedBy(0.dp)
-        ) {
-            item {
-                FeedTopBar(
-                    photoUri = photoUri,
-                    userName = userName,
-                    onAvatarClick = onAvatarClick,
-                )
-            }
+        Column(modifier = Modifier.fillMaxSize()) {
+            FeedTopBar(
+                photoUri = photoUri,
+                userName = userName,
+                onAvatarClick = onAvatarClick,
+            )
+            FeedFilterRow(
+                current  = state.filter,
+                onSelect = onFilterSelect,
+                modifier = Modifier
+                    .background(Surface)
+                    .fillMaxWidth()
+                    .padding(vertical = 8.dp)
+            )
+            HorizontalDivider(color = SurfaceContainerHigh)
 
-            item {
-                Column(
-                    modifier = Modifier
-                        .background(Surface)
-                        .fillMaxWidth()
-                        .padding(horizontal = 20.dp, vertical = 20.dp)
-                ) {
-                    Text(
-                        greetingForNow(userName),
-                        fontSize = 28.sp,
-                        fontWeight = FontWeight.Black,
-                        color = Primary,
-                        letterSpacing = (-0.5).sp,
-                    )
-                    Text(
-                        "Lo último de la comunidad",
-                        fontSize = 14.sp,
-                        color = OnSurfaceVariant,
-                    )
-                }
-            }
-
-            item {
-                FeedFilterRow(
-                    current  = state.filter,
-                    onSelect = onFilterSelect,
-                    modifier = Modifier
-                        .background(Surface)
-                        .fillMaxWidth()
-                        .padding(bottom = 12.dp)
-                )
-                HorizontalDivider(color = SurfaceContainerHigh)
-            }
-
-            val filtered = state.filteredItems
             if (filtered.isEmpty()) {
-                item { FeedEmptyState(filter = state.filter) }
+                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                    FeedEmptyState(filter = state.filter)
+                }
             } else {
-                items(filtered, key = { item ->
-                    when (item) {
-                        is FeedItem.Workout   -> item.post.id
-                        is FeedItem.Nutrition -> item.post.id
+                androidx.compose.foundation.pager.VerticalPager(
+                    state = pagerState,
+                    modifier = Modifier.fillMaxSize(),
+                    pageSize = androidx.compose.foundation.pager.PageSize.Fill,
+                    key = { idx ->
+                        when (val item = filtered[idx]) {
+                            is FeedItem.Workout   -> item.post.id
+                            is FeedItem.Nutrition -> item.post.id
+                        }
+                    },
+                ) { pageIndex ->
+                    val item = filtered[pageIndex]
+                    Box(modifier = Modifier.fillMaxSize().background(SurfaceContainerLowest)) {
+                        when (item) {
+                            is FeedItem.Workout -> WorkoutPostCard(
+                                post        = item.post,
+                                onLikeClick = { onLikeClick(item.post.id) },
+                                onCardClick = { onPostClick(item.post.id) },
+                                onSaveClick = { onSaveClick(item.post.id) },
+                            )
+                            is FeedItem.Nutrition -> NutritionPostCard(
+                                post        = item.post,
+                                onLikeClick = { onLikeClick(item.post.id) },
+                                onCardClick = { onPostClick(item.post.id) },
+                                onSaveClick = { onSaveClick(item.post.id) },
+                            )
+                        }
                     }
-                }) { item ->
-                    when (item) {
-                        is FeedItem.Workout -> WorkoutPostCard(
-                            post        = item.post,
-                            onLikeClick = { onLikeClick(item.post.id) },
-                            onCardClick = { onPostClick(item.post.id) },
-                            onSaveClick = { onSaveClick(item.post.id) },
-                        )
-                        is FeedItem.Nutrition -> NutritionPostCard(
-                            post        = item.post,
-                            onLikeClick = { onLikeClick(item.post.id) },
-                            onCardClick = { onPostClick(item.post.id) },
-                            onSaveClick = { onSaveClick(item.post.id) },
-                        )
-                    }
-                    HorizontalDivider(color = SurfaceContainerHigh)
                 }
             }
         }

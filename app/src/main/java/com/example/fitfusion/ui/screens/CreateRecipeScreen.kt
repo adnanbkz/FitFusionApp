@@ -1,5 +1,6 @@
 package com.example.fitfusion.ui.screens
 
+import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.PickVisualMediaRequest
 import androidx.activity.result.contract.ActivityResultContracts
@@ -7,15 +8,18 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.CameraAlt
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.PhotoCamera
 import androidx.compose.material.icons.filled.PhotoLibrary
+import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -31,6 +35,8 @@ import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavHostController
 import coil3.compose.AsyncImage
+import com.example.fitfusion.data.models.Food
+import com.example.fitfusion.data.models.RecipeIngredient
 import com.example.fitfusion.ui.theme.*
 import com.example.fitfusion.viewmodel.CreateRecipeViewModel
 
@@ -54,13 +60,19 @@ fun PantallaCreateRecipe(
         return
     }
 
+    BackHandler {
+        viewModel.requestExitWithDirtyCheck { navController.popBackStack() }
+    }
+
     Scaffold(
         containerColor = Surface,
         topBar = {
             TopAppBar(
                 title = { Text("Nueva receta", fontWeight = FontWeight.Bold, fontSize = 17.sp) },
                 navigationIcon = {
-                    IconButton(onClick = { navController.popBackStack() }) {
+                    IconButton(onClick = {
+                        viewModel.requestExitWithDirtyCheck { navController.popBackStack() }
+                    }) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Volver", tint = OnSurface)
                     }
                 },
@@ -90,7 +102,7 @@ fun PantallaCreateRecipe(
         }
     ) { innerPadding ->
         LazyColumn(
-            modifier       = Modifier.fillMaxSize().padding(innerPadding),
+            modifier       = Modifier.fillMaxSize().padding(innerPadding).imePadding(),
             contentPadding = PaddingValues(16.dp, bottom = 40.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp),
         ) {
@@ -121,12 +133,11 @@ fun PantallaCreateRecipe(
             item {
                 SectionLabel("INGREDIENTES")
                 Spacer(Modifier.height(8.dp))
-                FieldTextArea(
-                    value         = state.ingredients,
-                    onValueChange = viewModel::onIngredientsChange,
-                    placeholder   = "Un ingrediente por línea\nEj:\n200g de arroz\n1 pechuga de pollo",
-                    minLines      = 4,
-                    maxLines      = 10,
+                IngredientsSection(
+                    ingredients   = state.ingredients,
+                    onAdd         = viewModel::openIngredientPicker,
+                    onRemove      = viewModel::removeIngredient,
+                    onUpdateQty   = viewModel::updateIngredientQuantity,
                 )
             }
 
@@ -152,11 +163,9 @@ fun PantallaCreateRecipe(
                         placeholder   = "Tiempo (min)",
                         modifier      = Modifier.weight(1f),
                     )
-                    NumberField(
-                        value         = state.kcal,
-                        onValueChange = viewModel::onKcalChange,
-                        placeholder   = "Kcal totales",
-                        modifier      = Modifier.weight(1f),
+                    KcalReadonlyField(
+                        kcal     = state.totalKcal,
+                        modifier = Modifier.weight(1f),
                     )
                 }
             }
@@ -165,8 +174,8 @@ fun PantallaCreateRecipe(
                 SectionLabel("MEJOR MOMENTO")
                 Spacer(Modifier.height(8.dp))
                 BestMomentChips(
-                    selected    = state.bestMoment,
-                    onSelect    = viewModel::onBestMomentChange,
+                    selected = state.bestMoments,
+                    onToggle = viewModel::toggleBestMoment,
                 )
             }
 
@@ -200,6 +209,267 @@ fun PantallaCreateRecipe(
             },
             onCamera = viewModel::openCamera,
         )
+    }
+
+    if (state.showIngredientPicker) {
+        IngredientPickerSheet(
+            query              = state.ingredientQuery,
+            onQueryChange      = viewModel::onIngredientQueryChange,
+            results            = state.ingredientResults,
+            isSearching        = state.isSearchingIngredients,
+            onAdd              = viewModel::addIngredient,
+            onDismiss          = viewModel::dismissIngredientPicker,
+        )
+    }
+
+    if (state.showDraftDialog) {
+        AlertDialog(
+            onDismissRequest = viewModel::dismissDraftDialog,
+            title   = { Text("¿Guardar como borrador?") },
+            text    = { Text("Tienes cambios sin guardar. Puedes guardar la receta como borrador o descartarla.") },
+            confirmButton = {
+                TextButton(onClick = {
+                    viewModel.saveAsDraft { navController.popBackStack() }
+                }) { Text("Guardar borrador", color = Primary, fontWeight = FontWeight.SemiBold) }
+            },
+            dismissButton = {
+                Row {
+                    TextButton(onClick = {
+                        viewModel.dismissDraftDialog()
+                        navController.popBackStack()
+                    }) { Text("Descartar", color = MaterialTheme.colorScheme.error) }
+                    TextButton(onClick = viewModel::dismissDraftDialog) { Text("Seguir") }
+                }
+            },
+        )
+    }
+}
+
+@Composable
+private fun IngredientsSection(
+    ingredients: List<RecipeIngredient>,
+    onAdd: () -> Unit,
+    onRemove: (Int) -> Unit,
+    onUpdateQty: (Int, Int) -> Unit,
+) {
+    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        if (ingredients.isEmpty()) {
+            Card(
+                shape = RoundedCornerShape(14.dp),
+                colors = CardDefaults.cardColors(containerColor = SurfaceContainerLow),
+                elevation = CardDefaults.cardElevation(0.dp),
+            ) {
+                Text(
+                    "Aún no has añadido ingredientes",
+                    fontSize = 13.sp, color = OnSurfaceVariant,
+                    modifier = Modifier.padding(16.dp),
+                )
+            }
+        } else {
+            ingredients.forEachIndexed { index, ing ->
+                IngredientRow(
+                    ingredient = ing,
+                    onUpdateQty = { onUpdateQty(index, it) },
+                    onRemove = { onRemove(index) },
+                )
+            }
+        }
+        OutlinedButton(
+            onClick = onAdd,
+            modifier = Modifier.fillMaxWidth().height(48.dp),
+            shape = RoundedCornerShape(12.dp),
+            colors = ButtonDefaults.outlinedButtonColors(contentColor = Primary),
+        ) {
+            Icon(Icons.Default.Add, null, modifier = Modifier.size(18.dp))
+            Spacer(Modifier.width(8.dp))
+            Text("Añadir ingrediente", fontWeight = FontWeight.SemiBold)
+        }
+    }
+}
+
+@Composable
+private fun IngredientRow(
+    ingredient: RecipeIngredient,
+    onUpdateQty: (Int) -> Unit,
+    onRemove: () -> Unit,
+) {
+    Card(
+        shape = RoundedCornerShape(14.dp),
+        colors = CardDefaults.cardColors(containerColor = SurfaceContainerLow),
+        elevation = CardDefaults.cardElevation(0.dp),
+    ) {
+        Row(
+            modifier = Modifier.fillMaxWidth().padding(12.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(10.dp),
+        ) {
+            Column(modifier = Modifier.weight(1f)) {
+                Text(ingredient.name, fontWeight = FontWeight.SemiBold, fontSize = 14.sp, color = OnSurface, maxLines = 1)
+                Text(
+                    "${ingredient.totalKcal} kcal · ${ingredient.totalProtein}g P · ${ingredient.totalCarbs}g C · ${ingredient.totalFat}g G",
+                    fontSize = 11.sp, color = OnSurfaceVariant,
+                )
+            }
+            QuantityStepper(
+                value = ingredient.quantityG,
+                onChange = onUpdateQty,
+            )
+            IconButton(onClick = onRemove, modifier = Modifier.size(32.dp)) {
+                Icon(Icons.Default.Close, "Quitar", tint = OnSurfaceVariant, modifier = Modifier.size(16.dp))
+            }
+        }
+    }
+}
+
+@Composable
+private fun QuantityStepper(value: Int, onChange: (Int) -> Unit) {
+    Row(
+        modifier = Modifier.clip(RoundedCornerShape(10.dp)).background(SurfaceContainerLowest)
+            .padding(horizontal = 4.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        IconButton(onClick = { onChange(value - 10) }, enabled = value > 10, modifier = Modifier.size(28.dp)) {
+            Text("-", fontWeight = FontWeight.Bold, fontSize = 18.sp, color = if (value > 10) Primary else OnSurfaceVariant)
+        }
+        Text("${value}g", fontSize = 12.sp, fontWeight = FontWeight.SemiBold, modifier = Modifier.widthIn(min = 40.dp), textAlign = TextAlign.Center)
+        IconButton(onClick = { onChange(value + 10) }, modifier = Modifier.size(28.dp)) {
+            Text("+", fontWeight = FontWeight.Bold, fontSize = 18.sp, color = Primary)
+        }
+    }
+}
+
+@Composable
+private fun KcalReadonlyField(kcal: Int, modifier: Modifier = Modifier) {
+    Card(
+        shape = RoundedCornerShape(12.dp),
+        colors = CardDefaults.cardColors(containerColor = SurfaceContainerLow),
+        elevation = CardDefaults.cardElevation(0.dp),
+        modifier = modifier,
+    ) {
+        Column(modifier = Modifier.padding(horizontal = 14.dp, vertical = 10.dp)) {
+            Text("Kcal totales", fontSize = 11.sp, color = OnSurfaceVariant)
+            Text("$kcal kcal", fontSize = 18.sp, fontWeight = FontWeight.Bold, color = OnSurface)
+        }
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun IngredientPickerSheet(
+    query: String,
+    onQueryChange: (String) -> Unit,
+    results: List<Food>,
+    isSearching: Boolean,
+    onAdd: (Food, Int) -> Unit,
+    onDismiss: () -> Unit,
+) {
+    val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+    var selectedFood by remember { mutableStateOf<Food?>(null) }
+    var quantity by remember { mutableStateOf("100") }
+
+    ModalBottomSheet(
+        onDismissRequest = onDismiss,
+        sheetState       = sheetState,
+        containerColor   = SurfaceContainerLowest,
+        dragHandle       = { BottomSheetDefaults.DragHandle(color = OutlineVariant) },
+        modifier         = Modifier.imePadding(),
+    ) {
+        Column(
+            modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 12.dp).heightIn(max = 540.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp),
+        ) {
+            Text("Buscar ingrediente", fontWeight = FontWeight.Bold, fontSize = 18.sp, color = OnSurface)
+            OutlinedTextField(
+                value = query,
+                onValueChange = onQueryChange,
+                placeholder = { Text("Ej: pollo, arroz, manzana...", color = OnSurfaceVariant) },
+                leadingIcon = { Icon(Icons.Default.Search, null, tint = OnSurfaceVariant) },
+                singleLine = true,
+                shape = RoundedCornerShape(14.dp),
+                colors = OutlinedTextFieldDefaults.colors(
+                    unfocusedContainerColor = SurfaceContainerLow,
+                    focusedContainerColor = SurfaceContainerLow,
+                    unfocusedBorderColor = Color.Transparent,
+                    focusedBorderColor = Primary,
+                ),
+                modifier = Modifier.fillMaxWidth(),
+            )
+
+            if (selectedFood != null) {
+                val food = selectedFood!!
+                Card(
+                    shape = RoundedCornerShape(14.dp),
+                    colors = CardDefaults.cardColors(containerColor = SurfaceContainerLow),
+                    elevation = CardDefaults.cardElevation(0.dp),
+                ) {
+                    Column(modifier = Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                        Text(food.name, fontWeight = FontWeight.Bold, fontSize = 15.sp, color = OnSurface)
+                        food.brand?.let { Text(it, fontSize = 12.sp, color = OnSurfaceVariant) }
+                        Text("${food.kcalPer100g.toInt()} kcal / 100g", fontSize = 12.sp, color = Primary, fontWeight = FontWeight.SemiBold)
+                        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            OutlinedTextField(
+                                value = quantity,
+                                onValueChange = { v -> if (v.all(Char::isDigit) && v.length <= 4) quantity = v },
+                                label = { Text("Cantidad (g)") },
+                                singleLine = true,
+                                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                                modifier = Modifier.weight(1f),
+                                shape = RoundedCornerShape(12.dp),
+                                colors = OutlinedTextFieldDefaults.colors(
+                                    unfocusedContainerColor = SurfaceContainerLowest,
+                                    focusedContainerColor = SurfaceContainerLowest,
+                                    unfocusedBorderColor = Color.Transparent,
+                                    focusedBorderColor = Primary,
+                                ),
+                            )
+                            Button(
+                                onClick = {
+                                    val q = quantity.toIntOrNull() ?: 100
+                                    onAdd(food, q)
+                                    selectedFood = null
+                                    quantity = "100"
+                                },
+                                shape = RoundedCornerShape(12.dp),
+                                colors = ButtonDefaults.buttonColors(containerColor = Primary),
+                            ) { Text("Añadir", fontWeight = FontWeight.SemiBold) }
+                        }
+                    }
+                }
+            } else if (isSearching) {
+                Box(modifier = Modifier.fillMaxWidth().padding(24.dp), contentAlignment = Alignment.Center) {
+                    CircularProgressIndicator(color = Primary, modifier = Modifier.size(28.dp))
+                }
+            } else if (query.isNotBlank() && results.isEmpty()) {
+                Text("Sin resultados para \"$query\"", fontSize = 13.sp, color = OnSurfaceVariant)
+            } else {
+                LazyColumn(verticalArrangement = Arrangement.spacedBy(6.dp), modifier = Modifier.weight(1f, fill = false)) {
+                    items(results, key = { it.id }) { food ->
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clip(RoundedCornerShape(12.dp))
+                                .background(SurfaceContainerLow)
+                                .clickable {
+                                    selectedFood = food
+                                    quantity = "100"
+                                }
+                                .padding(12.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                        ) {
+                            Column(modifier = Modifier.weight(1f)) {
+                                Text(food.name, fontWeight = FontWeight.SemiBold, fontSize = 14.sp, color = OnSurface, maxLines = 1)
+                                if (food.brand != null) {
+                                    Text(food.brand, fontSize = 11.sp, color = OnSurfaceVariant, maxLines = 1)
+                                }
+                            }
+                            Text("${food.kcalPer100g.toInt()} kcal/100g", fontSize = 12.sp, color = Primary, fontWeight = FontWeight.SemiBold)
+                        }
+                    }
+                }
+            }
+
+            Spacer(Modifier.height(12.dp))
+        }
     }
 }
 
@@ -323,16 +593,16 @@ private fun NumberField(
 
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
-private fun BestMomentChips(selected: String?, onSelect: (String?) -> Unit) {
+private fun BestMomentChips(selected: Set<String>, onToggle: (String) -> Unit) {
     FlowRow(
         horizontalArrangement = Arrangement.spacedBy(8.dp),
         verticalArrangement   = Arrangement.spacedBy(8.dp),
     ) {
         listOf("Desayuno", "Almuerzo", "Cena", "Snack", "Pre-entreno", "Post-entreno").forEach { moment ->
-            val isSelected = selected == moment
+            val isSelected = moment in selected
             FilterChip(
                 selected = isSelected,
-                onClick  = { onSelect(if (isSelected) null else moment) },
+                onClick  = { onToggle(moment) },
                 label    = { Text(moment, fontSize = 12.sp) },
                 shape    = RoundedCornerShape(20.dp),
                 colors   = FilterChipDefaults.filterChipColors(

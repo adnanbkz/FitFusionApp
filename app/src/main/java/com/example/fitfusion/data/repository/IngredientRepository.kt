@@ -91,7 +91,6 @@ internal fun DocumentSnapshot.toFood(): Food? {
         proteinPer100g = (getDouble("proteinPer100g") ?: 0.0).toFloat(),
         carbsPer100g   = (getDouble("carbsPer100g")   ?: 0.0).toFloat(),
         fatsPer100g    = (getDouble("fatsPer100g")    ?: 0.0).toFloat(),
-        emoji          = getString("emoji") ?: "",
         servingOptions = parseServingOptions(get("servingOptions")),
     )
 }

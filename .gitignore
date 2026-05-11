@@ -17,5 +17,6 @@ local.properties
 functions/.env
 functions/node_modules/
 scripts/node_modules/
+planes/
 *.md
 !DEVLOG.md

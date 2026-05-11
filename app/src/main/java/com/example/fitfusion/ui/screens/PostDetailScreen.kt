@@ -171,8 +171,8 @@ fun PantallaPostDetail(
                 modifier = Modifier.fillMaxWidth().padding(horizontal = 24.dp),
                 horizontalArrangement = Arrangement.spacedBy(12.dp)
             ) {
-                StatCard(state.metricOneLabel, state.metricOneValue, state.metricOneUnit, "", Modifier.weight(1f))
-                StatCard(state.metricTwoLabel, state.metricTwoValue, state.metricTwoUnit, "", Modifier.weight(1f))
+                StatCard(state.metricOneLabel, state.metricOneValue, state.metricOneUnit, Modifier.weight(1f))
+                StatCard(state.metricTwoLabel, state.metricTwoValue, state.metricTwoUnit, Modifier.weight(1f))
             }
 
             Column(modifier = Modifier.padding(horizontal = 24.dp, vertical = 24.dp)) {

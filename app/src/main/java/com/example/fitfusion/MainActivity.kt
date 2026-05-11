@@ -111,7 +111,7 @@ class MainActivity : ComponentActivity() {
                             PantallaSignUp(
                                 onSignUpSuccess = { username ->
                                     loggedUser = username
-                                    navController.navigate(Screens.HomeScreen.name) {
+                                    navController.navigate(Screens.OnboardingScreen.name) {
                                         popUpTo(Screens.SignUpScreen.name) { inclusive = true }
                                     }
                                 },
@@ -119,6 +119,16 @@ class MainActivity : ComponentActivity() {
                                     navController.popBackStack()
                                 },
                                 authViewModel = authViewModel
+                            )
+                        }
+
+                        composable(Screens.OnboardingScreen.name) {
+                            PantallaOnboarding(
+                                onComplete = {
+                                    navController.navigate(Screens.HomeScreen.name) {
+                                        popUpTo(Screens.OnboardingScreen.name) { inclusive = true }
+                                    }
+                                },
                             )
                         }
 
@@ -187,6 +197,16 @@ class MainActivity : ComponentActivity() {
 
                         composable(Screens.WorkoutFinishScreen.name) {
                             PantallaWorkoutFinish(navController)
+                        }
+
+                        composable(
+                            route = "${Screens.WorkoutPostScreen.name}/{workoutId}",
+                            arguments = listOf(navArgument("workoutId") { type = NavType.StringType })
+                        ) { backStackEntry ->
+                            PantallaWorkoutPost(
+                                navController = navController,
+                                workoutId = backStackEntry.arguments?.getString("workoutId"),
+                            )
                         }
 
                         composable(Screens.AccountScreen.name) {

@@ -14,7 +14,6 @@ import kotlinx.coroutines.launch
 
 data class CreateRoutineUiState(
     val name: String        = "",
-    val emoji: String       = "",
     val description: String = "",
     val duration: String    = "",
     val isPublic: Boolean   = false,
@@ -66,7 +65,6 @@ class CreateRoutineViewModel(
     }
 
     fun onNameChange(v: String)        = _uiState.update { it.copy(name = v, saveError = null) }
-    fun onEmojiChange(v: String)       = _uiState.update { it.copy(emoji = v.takeLast(2).ifBlank { "" }) }
     fun onDescriptionChange(v: String) = _uiState.update { it.copy(description = v) }
     fun onDurationChange(v: String)    = _uiState.update { it.copy(duration = v.filter(Char::isDigit).take(4)) }
     fun onPublicToggle(v: Boolean)     = _uiState.update { it.copy(isPublic = v) }
@@ -78,7 +76,6 @@ class CreateRoutineViewModel(
             exerciseId   = item.documentId,
             exerciseName = item.name,
             muscleGroup  = item.muscleGroup ?: item.primeMoverMuscle ?: "",
-            emoji        = "",
         )
         _uiState.update { it.copy(
             exercises     = it.exercises + exercise,
@@ -125,7 +122,6 @@ class CreateRoutineViewModel(
         _uiState.update { it.copy(isSaving = true, saveError = null) }
         val routine = Routine(
             name                 = state.name.trim(),
-            emoji                = state.emoji,
             description          = state.description.trim(),
             exercises            = state.exercises,
             estimatedDurationMin = state.duration.toIntOrNull(),

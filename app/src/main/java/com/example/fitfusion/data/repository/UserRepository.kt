@@ -20,6 +20,8 @@ data class UserProfile(
     val weightKg: Float? = null,
     val goalType: String? = null,
     val activityLevel: String? = null,
+    val birthDate: String? = null,
+    val isOnboarded: Boolean = false,
     val followersCount: Int = 0,
     val followingCount: Int = 0,
 )
@@ -46,6 +48,8 @@ class UserRepository(
             "weightKg" to null,
             "goalType" to null,
             "activityLevel" to null,
+            "birthDate" to null,
+            "isOnboarded" to false,
             "followersCount" to 0,
             "followingCount" to 0,
         )
@@ -93,6 +97,36 @@ class UserRepository(
             .await()
     }
 
+    suspend fun markOnboarded(uid: String) {
+        firestore.collection("users")
+            .document(uid)
+            .set(mapOf("isOnboarded" to true, "updatedAt" to FieldValue.serverTimestamp()), SetOptions.merge())
+            .await()
+    }
+
+    suspend fun saveOnboardingData(
+        uid: String,
+        heightCm: Int?,
+        weightKg: Float?,
+        activityLevel: String?,
+        birthDate: String?,
+        goalType: String?,
+    ) {
+        val data = mapOf(
+            "heightCm"       to heightCm,
+            "weightKg"       to weightKg,
+            "activityLevel"  to activityLevel,
+            "birthDate"      to birthDate,
+            "goalType"       to goalType,
+            "isOnboarded"    to true,
+            "updatedAt"      to FieldValue.serverTimestamp(),
+        )
+        firestore.collection("users")
+            .document(uid)
+            .set(data, SetOptions.merge())
+            .await()
+    }
+
     private fun DocumentSnapshot.toUserProfile(uid: String, fallbackEmail: String): UserProfile {
         val displayName = getString("displayName").orEmpty().ifBlank {
             fallbackEmail.substringBefore("@").ifBlank { "Usuario" }
@@ -108,6 +142,8 @@ class UserRepository(
             weightKg = (get("weightKg") as? Number)?.toFloat(),
             goalType = getString("goalType"),
             activityLevel = getString("activityLevel"),
+            birthDate = getString("birthDate"),
+            isOnboarded = getBoolean("isOnboarded") ?: false,
             followersCount = getLong("followersCount")?.toInt() ?: 0,
             followingCount = getLong("followingCount")?.toInt() ?: 0,
         )

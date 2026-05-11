@@ -35,6 +35,7 @@ object FeedRepository {
     private val commentCountsByPostId = mutableMapOf<String, Int>()
     private val commentListenerRegistrations = mutableMapOf<String, ListenerRegistration>()
     private var feedListenerRegistration: ListenerRegistration? = null
+    private var savesListenerRegistration: ListenerRegistration? = null
     private var authListenerRegistered = false
     private var currentUid: String? = null
 
@@ -52,8 +53,29 @@ object FeedRepository {
     }
 
     fun toggleSave(itemId: String) {
-        if (itemId in savedPostIds) savedPostIds.remove(itemId) else savedPostIds.add(itemId)
+        val uid = auth.currentUser?.uid ?: return
+        val saveRef = firestore.collection("users")
+            .document(uid)
+            .collection("saves")
+            .document(itemId)
+
+        val wasSaved = itemId in savedPostIds
+        if (wasSaved) {
+            savedPostIds.remove(itemId)
+        } else {
+            savedPostIds.add(itemId)
+        }
         emitItems()
+
+        val task = if (wasSaved) {
+            saveRef.delete()
+        } else {
+            saveRef.set(mapOf("savedAtMs" to System.currentTimeMillis()))
+        }
+        task.addOnFailureListener {
+            if (wasSaved) savedPostIds.add(itemId) else savedPostIds.remove(itemId)
+            emitItems()
+        }
     }
 
     fun toggleLike(itemId: String) {
@@ -88,7 +110,10 @@ object FeedRepository {
 
         feedListenerRegistration?.remove()
         feedListenerRegistration = null
+        savesListenerRegistration?.remove()
+        savesListenerRegistration = null
         clearInteractionListeners()
+        savedPostIds.clear()
         currentUid = uid
         _likedPosts.value = emptyList()
 
@@ -107,6 +132,15 @@ object FeedRepository {
                 val postIds = baseItems.map { it.postId }
                 syncLikeListeners(uid, postIds)
                 syncCommentCountListeners(postIds)
+                emitItems()
+            }
+        savesListenerRegistration = firestore.collection("users")
+            .document(uid)
+            .collection("saves")
+            .addSnapshotListener { snapshot, error ->
+                if (error != null || snapshot == null) return@addSnapshotListener
+                savedPostIds.clear()
+                savedPostIds.addAll(snapshot.documents.map { it.id })
                 emitItems()
             }
         refreshLikedPosts()

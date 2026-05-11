@@ -87,7 +87,6 @@ private fun DocumentSnapshot.toRoutine(): Routine? {
     return Routine(
         id                   = id,
         name                 = name,
-        emoji                = getString("emoji") ?: "",
         description          = getString("description") ?: "",
         exercises            = exercises,
         estimatedDurationMin = getLong("estimatedDurationMin")?.toInt(),

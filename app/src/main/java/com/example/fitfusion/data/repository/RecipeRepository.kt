@@ -2,6 +2,7 @@ package com.example.fitfusion.data.repository
 
 import android.net.Uri
 import com.example.fitfusion.data.models.Recipe
+import com.example.fitfusion.data.models.RecipeIngredient
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.DocumentSnapshot
 import com.google.firebase.firestore.FirebaseFirestore
@@ -89,7 +90,7 @@ class RecipeRepository(
         }
         personal.document(recipe.id).set(recipe.toMap())
             .addOnSuccessListener {
-                if (recipe.isPublic) {
+                if (recipe.isPublic && !recipe.isDraft) {
                     communityRecipes().document(recipe.id).set(recipe.toMap())
                         .addOnSuccessListener { onSuccess() }
                         .addOnFailureListener(onError)
@@ -127,18 +128,28 @@ class RecipeRepository(
 
 private fun DocumentSnapshot.toRecipe(): Recipe? {
     val name = getString("name")?.takeIf { it.isNotBlank() } ?: return null
+    val ingredientsField = get("ingredients")
+    val rawIngredients: List<RecipeIngredient> = when (ingredientsField) {
+        is List<*> -> ingredientsField.mapNotNull { (it as? Map<*, *>)?.let { map -> RecipeIngredient.fromMap(map) } }
+        is String  -> ingredientsField.lines().filter { it.isNotBlank() }
+            .map { line -> RecipeIngredient(name = line.trim()) }
+        else       -> emptyList()
+    }
+    val moments = (get("bestMoments") as? List<*>)?.mapNotNull { it as? String }
+        ?: getString("bestMoment")?.let { listOf(it) }
+        ?: emptyList()
     return Recipe(
         id           = id,
         name         = name,
-        emoji        = getString("emoji") ?: "",
         photoUrl     = getString("photoUrl"),
         description  = getString("description")  ?: "",
-        ingredients  = getString("ingredients")  ?: "",
+        ingredients  = rawIngredients,
         instructions = getString("instructions") ?: "",
         cookTimeMin  = getLong("cookTimeMin")?.toInt(),
         kcal         = getLong("kcal")?.toInt(),
-        bestMoment   = getString("bestMoment"),
+        bestMoments  = moments,
         isPublic     = getBoolean("isPublic") ?: false,
+        isDraft      = getBoolean("isDraft") ?: false,
         authorId     = getString("authorId"),
         authorName   = getString("authorName"),
         createdAt    = getLong("createdAt") ?: System.currentTimeMillis(),

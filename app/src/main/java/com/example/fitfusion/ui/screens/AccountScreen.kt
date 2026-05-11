@@ -23,7 +23,6 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
-import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -78,6 +77,7 @@ fun PantallaAccount(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(innerPadding)
+                .imePadding()
                 .verticalScroll(rememberScrollState())
         ) {
             if (state.isLoading) {
@@ -237,21 +237,9 @@ fun PantallaAccount(
                         modifier = Modifier.padding(vertical = 12.dp),
                         color = OutlineVariant.copy(alpha = 0.3f)
                     )
-                    AccountField(
-                        label = "Objetivo",
-                        value = state.goalType,
-                        onValueChange = accountViewModel::onGoalTypeChange,
-                        placeholder = "Perder grasa, ganar músculo..."
-                    )
-                    HorizontalDivider(
-                        modifier = Modifier.padding(vertical = 12.dp),
-                        color = OutlineVariant.copy(alpha = 0.3f)
-                    )
-                    AccountField(
-                        label = "Nivel de actividad",
+                    ActivityLevelDropdown(
                         value = state.activityLevel,
                         onValueChange = accountViewModel::onActivityLevelChange,
-                        placeholder = "Sedentario, moderado, alto..."
                     )
                 }
             }
@@ -277,61 +265,6 @@ fun PantallaAccount(
                 } else {
                     Text("Guardar cambios", fontWeight = FontWeight.Bold)
                 }
-            }
-
-            Spacer(modifier = Modifier.height(32.dp))
-
-            SettingsSectionHeader("CAMBIAR CONTRASEÑA")
-            Card(
-                shape = RoundedCornerShape(20.dp),
-                colors = CardDefaults.cardColors(containerColor = SurfaceContainerLowest),
-                elevation = CardDefaults.cardElevation(0.dp),
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 24.dp)
-            ) {
-                Column(modifier = Modifier.padding(20.dp)) {
-                    AccountPasswordField(
-                        label = "Contraseña actual",
-                        value = state.currentPassword,
-                        onValueChange = accountViewModel::onCurrentPasswordChange
-                    )
-                    HorizontalDivider(
-                        modifier = Modifier.padding(vertical = 12.dp),
-                        color = OutlineVariant.copy(alpha = 0.3f)
-                    )
-                    AccountPasswordField(
-                        label = "Nueva contraseña",
-                        value = state.newPassword,
-                        onValueChange = accountViewModel::onNewPasswordChange
-                    )
-                    HorizontalDivider(
-                        modifier = Modifier.padding(vertical = 12.dp),
-                        color = OutlineVariant.copy(alpha = 0.3f)
-                    )
-                    AccountPasswordField(
-                        label = "Confirmar nueva contraseña",
-                        value = state.confirmNewPassword,
-                        onValueChange = accountViewModel::onConfirmNewPasswordChange
-                    )
-                }
-            }
-
-            Spacer(modifier = Modifier.height(12.dp))
-
-            OutlinedButton(
-                onClick = accountViewModel::changePassword,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 24.dp)
-                    .height(50.dp),
-                shape = RoundedCornerShape(14.dp),
-                colors = ButtonDefaults.outlinedButtonColors(contentColor = Primary),
-                enabled = !state.isSaving
-            ) {
-                Icon(Icons.Default.Lock, null, Modifier.size(18.dp))
-                Spacer(modifier = Modifier.width(8.dp))
-                Text("Actualizar contraseña", fontWeight = FontWeight.SemiBold)
             }
 
             Spacer(modifier = Modifier.height(32.dp))
@@ -424,27 +357,50 @@ private fun AccountField(
     )
 }
 
+private val ACTIVITY_LEVELS = listOf("Sedentario", "Ligero", "Medio", "Alto", "Atleta")
+
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun AccountPasswordField(
-    label: String,
+private fun ActivityLevelDropdown(
     value: String,
-    onValueChange: (String) -> Unit
+    onValueChange: (String) -> Unit,
 ) {
-    Text(label, fontSize = 12.sp, fontWeight = FontWeight.Medium, color = OnSurfaceVariant)
+    var expanded by remember { mutableStateOf(false) }
+    Text("Nivel de actividad", fontSize = 12.sp, fontWeight = FontWeight.Medium, color = OnSurfaceVariant)
     Spacer(modifier = Modifier.height(4.dp))
-    OutlinedTextField(
-        value = value,
-        onValueChange = onValueChange,
-        placeholder = { Text("••••••••", color = OnSurfaceVariant) },
-        visualTransformation = PasswordVisualTransformation(),
-        singleLine = true,
-        shape = RoundedCornerShape(10.dp),
-        colors = OutlinedTextFieldDefaults.colors(
-            unfocusedContainerColor = SurfaceContainerLow,
-            focusedContainerColor = SurfaceContainerLow,
-            unfocusedBorderColor = Color.Transparent,
-            focusedBorderColor = Primary
-        ),
-        modifier = Modifier.fillMaxWidth()
-    )
+    ExposedDropdownMenuBox(
+        expanded = expanded,
+        onExpandedChange = { expanded = it },
+        modifier = Modifier.fillMaxWidth(),
+    ) {
+        OutlinedTextField(
+            value = value.ifBlank { "Selecciona uno" },
+            onValueChange = {},
+            readOnly = true,
+            singleLine = true,
+            trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded) },
+            shape = RoundedCornerShape(10.dp),
+            colors = OutlinedTextFieldDefaults.colors(
+                unfocusedContainerColor = SurfaceContainerLow,
+                focusedContainerColor = SurfaceContainerLow,
+                unfocusedBorderColor = Color.Transparent,
+                focusedBorderColor = Primary,
+            ),
+            modifier = Modifier.fillMaxWidth().menuAnchor(MenuAnchorType.PrimaryNotEditable, true),
+        )
+        ExposedDropdownMenu(
+            expanded = expanded,
+            onDismissRequest = { expanded = false },
+        ) {
+            ACTIVITY_LEVELS.forEach { level ->
+                DropdownMenuItem(
+                    text = { Text(level) },
+                    onClick = {
+                        onValueChange(level)
+                        expanded = false
+                    },
+                )
+            }
+        }
+    }
 }

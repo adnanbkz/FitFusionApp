@@ -7,10 +7,10 @@ import androidx.lifecycle.viewModelScope
 import com.example.fitfusion.data.repository.WorkoutRepository
 import com.example.fitfusion.data.workout.ActiveWorkoutManager
 import com.example.fitfusion.data.workout.ActiveWorkoutSession
-import com.example.fitfusion.viewmodel.ProfileViewModel
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.storage.FirebaseStorage
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -70,17 +70,17 @@ class WorkoutFinishViewModel(app: Application) : AndroidViewModel(app) {
         _uiState.update { it.copy(mediaUris = it.mediaUris.filter { item -> item != uri }) }
     }
 
-    fun save(onDone: () -> Unit) {
+    fun save(onDone: (String) -> Unit) {
         publishMode = false
         performSave(onDone)
     }
 
-    fun saveAndPublish(onDone: () -> Unit) {
+    fun saveAndPublish(onDone: (String) -> Unit) {
         publishMode = true
         performSave(onDone)
     }
 
-    private fun performSave(onDone: () -> Unit) {
+    private fun performSave(onDone: (String) -> Unit) {
         val state = _uiState.value
         if (state.isSaving || state.session == null) return
         val sessionId = state.session.id
@@ -88,26 +88,26 @@ class WorkoutFinishViewModel(app: Application) : AndroidViewModel(app) {
 
         viewModelScope.launch {
             _uiState.update { it.copy(isSaving = true, errorMessage = null) }
-            val saved = runCatching {
-                ActiveWorkoutManager.finishSession(
-                    title       = title,
-                    description = state.description.trim(),
-                    mediaUrls   = emptyList(),
-                )
+            val saved = withContext(NonCancellable) {
+                runCatching {
+                    ActiveWorkoutManager.finishSession(
+                        title       = title,
+                        description = state.description.trim(),
+                        mediaUrls   = emptyList(),
+                    )
+                }
             }
             saved.fold(
                 onSuccess = {
-                    if (state.mediaUris.isNotEmpty()) {
-                        runCatching { uploadMedia(sessionId, state.mediaUris) }
-                            .onSuccess { urls ->
-                                runCatching { WorkoutRepository.updateWorkoutMedia(sessionId, urls) }
-                            }
-                    }
-                    if (publishMode) {
-                        ProfileViewModel.queueWorkoutPost(sessionId)
-                    }
                     _uiState.update { it.copy(isSaving = false, savedWorkoutId = sessionId) }
-                    onDone()
+                    onDone(sessionId)
+                    if (state.mediaUris.isNotEmpty()) {
+                        ActiveWorkoutManager.uploadMediaInBackground(
+                            workoutId = sessionId,
+                            uris      = state.mediaUris,
+                            uploader  = { uploadMedia(sessionId, state.mediaUris) },
+                        )
+                    }
                 },
                 onFailure = { error ->
                     _uiState.update {

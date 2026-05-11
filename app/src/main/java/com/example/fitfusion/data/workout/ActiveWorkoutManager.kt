@@ -224,6 +224,22 @@ object ActiveWorkoutManager {
         clear()
     }
 
+    fun uploadMediaInBackground(
+        workoutId: String,
+        uris: List<android.net.Uri>,
+        uploader: suspend () -> List<String>,
+    ) {
+        if (uris.isEmpty()) return
+        scope.launch {
+            runCatching { uploader() }
+                .onSuccess { urls ->
+                    if (urls.isNotEmpty()) {
+                        runCatching { WorkoutRepository.updateWorkoutMedia(workoutId, urls) }
+                    }
+                }
+        }
+    }
+
     private fun clear() {
         tickerJob?.cancel()
         tickerJob = null

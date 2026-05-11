@@ -7,7 +7,6 @@ import java.util.UUID
 data class RoutineExercise(
     val exerciseId: String,
     val exerciseName: String,
-    val emoji: String = "",
     val muscleGroup: String = "",
     val targetSets: Int = 3,
     val targetReps: Int = 10,
@@ -18,7 +17,6 @@ data class RoutineExercise(
     fun toMap(): Map<String, Any?> = mapOf(
         "exerciseId"     to exerciseId,
         "exerciseName"   to exerciseName,
-        "emoji"          to emoji,
         "muscleGroup"    to muscleGroup,
         "targetSets"     to targetSets,
         "targetReps"     to targetReps,
@@ -34,7 +32,6 @@ data class RoutineExercise(
             return RoutineExercise(
                 exerciseId     = id,
                 exerciseName   = name,
-                emoji          = map["emoji"]       as? String ?: "",
                 muscleGroup    = map["muscleGroup"] as? String ?: "",
                 targetSets     = (map["targetSets"]     as? Number)?.toInt()   ?: 3,
                 targetReps     = (map["targetReps"]     as? Number)?.toInt()   ?: 10,
@@ -49,7 +46,6 @@ data class RoutineExercise(
 data class Routine(
     val id: String = UUID.randomUUID().toString(),
     val name: String = "",
-    val emoji: String = "",
     val description: String = "",
     val exercises: List<RoutineExercise> = emptyList(),
     val estimatedDurationMin: Int? = null,
@@ -63,7 +59,6 @@ data class Routine(
     fun toMap(): Map<String, Any?> = mapOf(
         "id"                   to id,
         "name"                 to name,
-        "emoji"                to emoji,
         "description"          to description,
         "exercises"            to exercises.map { it.toMap() },
         "estimatedDurationMin" to estimatedDurationMin,
@@ -77,7 +72,6 @@ data class Routine(
 data class WeeklyRoutinePlan(
     val id: String = UUID.randomUUID().toString(),
     val name: String = "",
-    val emoji: String = "",
     val days: Map<DayOfWeek, String?> = emptyMap(),
     val dayRoutineNames: Map<DayOfWeek, String?> = emptyMap(),
     val isPublic: Boolean = false,
@@ -91,7 +85,6 @@ data class WeeklyRoutinePlan(
     fun toMap(): Map<String, Any?> = mapOf(
         "id"               to id,
         "name"             to name,
-        "emoji"            to emoji,
         "days"             to days.mapKeys { it.key.name },
         "dayRoutineNames"  to dayRoutineNames.mapKeys { it.key.name },
         "isPublic"         to isPublic,
@@ -105,12 +98,10 @@ data class ScheduledRoutine(
     val date: LocalDate,
     val routineId: String,
     val routineName: String,
-    val emoji: String = "",
 ) {
     fun toMap(): Map<String, Any?> = mapOf(
         "date"         to date.toString(),
         "routineId"    to routineId,
         "routineName"  to routineName,
-        "emoji"        to emoji,
     )
 }

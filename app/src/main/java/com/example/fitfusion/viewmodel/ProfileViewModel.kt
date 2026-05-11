@@ -13,7 +13,6 @@ import com.example.fitfusion.data.repository.PostRepository
 import com.example.fitfusion.data.repository.UserProfileStore
 import com.example.fitfusion.data.repository.UserRepository
 import com.example.fitfusion.data.repository.WorkoutRepository
-import com.example.fitfusion.data.repository.FeedRepository
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.ListenerRegistration
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -75,8 +74,7 @@ data class ProfileUiState(
         else userPosts.filter { p ->
             val q = searchQuery.trim().lowercase()
             p.caption.lowercase().contains(q) ||
-            p.workoutName?.lowercase()?.contains(q) == true ||
-            p.workoutEmoji?.contains(q) == true
+            p.workoutName?.lowercase()?.contains(q) == true
         }
 
     val filteredDayWorkouts: List<LoggedWorkout> get() =
@@ -107,43 +105,16 @@ private const val KEY_PHOTO_URI = "profile_photo_uri"
 
 class ProfileViewModel(application: Application) : AndroidViewModel(application) {
 
-    companion object {
-        private var pendingPostWorkoutId: String? = null
-
-        fun queueWorkoutPost(workoutId: String) {
-            pendingPostWorkoutId = workoutId
-        }
-
-        fun consumePendingWorkoutPostId(): String? {
-            val workoutId = pendingPostWorkoutId
-            pendingPostWorkoutId = null
-            return workoutId
-        }
-    }
-
     private val prefs = application.getSharedPreferences(PREFS_NAME, android.content.Context.MODE_PRIVATE)
     private val auth = FirebaseAuth.getInstance()
     private val userRepository = UserRepository()
     private var profileListenerRegistration: ListenerRegistration? = null
 
     private var workoutsByDay: Map<LocalDate, List<LoggedWorkout>> = emptyMap()
-    private var pendingWorkoutPostId: String? = null
 
     init {
         UserProfileStore.ensureInitialized(application)
         attachUserProfileListener()
-        viewModelScope.launch {
-            FeedRepository.items.collect { items ->
-                _uiState.update { state ->
-                    state.copy(savedFeedItems = items.filter { item ->
-                        when (item) {
-                            is FeedItem.Workout   -> item.post.isSaved
-                            is FeedItem.Nutrition -> item.post.isSaved
-                        }
-                    })
-                }
-            }
-        }
     }
 
     private val _uiState = MutableStateFlow(ProfileUiState(
@@ -229,7 +200,6 @@ class ProfileViewModel(application: Application) : AndroidViewModel(application)
                         selectedDayWorkouts   = workoutMap[s.selectedWorkoutDay] ?: emptyList(),
                     )
                 }
-                pendingWorkoutPostId?.let { tryOpenWorkoutPost(it) }
             }
         }
         viewModelScope.launch {
@@ -241,6 +211,18 @@ class ProfileViewModel(application: Application) : AndroidViewModel(application)
             FeedRepository.ensureInitialized()
             FeedRepository.likedPosts.collect { liked ->
                 _uiState.update { it.copy(likedFeedItems = liked, isLoadingLikedPosts = false) }
+            }
+        }
+        viewModelScope.launch {
+            FeedRepository.items.collect { items ->
+                _uiState.update { state ->
+                    state.copy(savedFeedItems = items.filter { item ->
+                        when (item) {
+                            is FeedItem.Workout   -> item.post.isSaved
+                            is FeedItem.Nutrition -> item.post.isSaved
+                        }
+                    })
+                }
             }
         }
         _uiState.update { it.copy(isLoadingLikedPosts = true) }
@@ -294,26 +276,6 @@ class ProfileViewModel(application: Application) : AndroidViewModel(application)
 
     fun showCreatePost() {
         _uiState.update { it.copy(showCreatePostSheet = true) }
-    }
-
-    fun openWorkoutPostWhenAvailable(workoutId: String) {
-        pendingWorkoutPostId = workoutId
-        tryOpenWorkoutPost(workoutId)
-    }
-
-    private fun tryOpenWorkoutPost(workoutId: String) {
-        val workout = workoutsByDay.values.flatten().firstOrNull { it.id == workoutId }
-            ?: WorkoutRepository.workouts.value.values.flatten().firstOrNull { it.id == workoutId }
-            ?: return
-        pendingWorkoutPostId = null
-        _uiState.update {
-            it.copy(
-                showCreatePostSheet = true,
-                createPostType = UserPostType.WORKOUT,
-                selectedWorkout = workout,
-                createPostErrorMessage = null,
-            )
-        }
     }
 
     fun showCreatePostWithMedia(uri: Uri, isVideo: Boolean) {
@@ -416,7 +378,6 @@ class ProfileViewModel(application: Application) : AndroidViewModel(application)
                     type                   = UserPostType.WORKOUT,
                     caption                = state.postCaption.ifBlank { w.name },
                     workoutName            = w.name,
-                    workoutEmoji           = w.emoji,
                     workoutDurationMinutes = w.durationMinutes,
                     workoutKcal            = w.kcalBurned,
                     workoutVideoUri        = state.capturedVideoUri?.toString(),

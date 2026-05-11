@@ -17,12 +17,16 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.HelpOutline
 import androidx.compose.material.icons.filled.Bookmark
 import androidx.compose.material.icons.filled.CameraAlt
+import androidx.compose.material.icons.filled.Favorite
+import androidx.compose.material.icons.filled.FavoriteBorder
 import androidx.compose.material.icons.filled.GridView
 import androidx.compose.material.icons.filled.LocalFireDepartment
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.outlined.BookmarkBorder
+import androidx.compose.material.icons.outlined.FitnessCenter
+import androidx.compose.material.icons.outlined.Restaurant
 import androidx.compose.material3.*
 import androidx.compose.material3.TabRowDefaults.tabIndicatorOffset
 import androidx.compose.runtime.*
@@ -60,6 +64,7 @@ fun PantallaProfile(
     val tabs = listOf(
         Triple("Posts", Icons.Default.GridView, 0),
         Triple("Guardado", Icons.Default.Bookmark, 1),
+        Triple("Me gusta", Icons.Default.Favorite, 2),
     )
 
     val photoLauncher = rememberLauncherForActivityResult(
@@ -293,7 +298,8 @@ fun PantallaProfile(
                     val isSelected = state.selectedTab == index
                     val icon = when (index) {
                         0    -> Icons.Default.GridView
-                        else -> if (isSelected) Icons.Default.Bookmark else Icons.Outlined.BookmarkBorder
+                        1    -> if (isSelected) Icons.Default.Bookmark else Icons.Outlined.BookmarkBorder
+                        else -> if (isSelected) Icons.Default.Favorite else Icons.Default.FavoriteBorder
                     }
                     Tab(
                         selected = isSelected,
@@ -328,6 +334,15 @@ fun PantallaProfile(
                         popUpTo(Screens.HomeScreen.name) { inclusive = true }
                     }
                 })
+                2 -> LikedTab(
+                    items = state.likedFeedItems,
+                    isLoading = state.isLoadingLikedPosts,
+                    onExplore = {
+                        navController.navigate(Screens.HomeScreen.name) {
+                            popUpTo(Screens.HomeScreen.name) { inclusive = true }
+                        }
+                    },
+                )
             }
         }
     }
@@ -497,9 +512,11 @@ private fun PostGridCell(post: UserPost, modifier: Modifier = Modifier) {
             verticalArrangement = Arrangement.Center,
             modifier = Modifier.padding(4.dp)
         ) {
-            Text(
-                post.workoutEmoji ?: if (post.type == UserPostType.NUTRITION) "🥗" else "🏋️",
-                fontSize = 26.sp
+            Icon(
+                if (post.type == UserPostType.NUTRITION) Icons.Outlined.Restaurant else Icons.Outlined.FitnessCenter,
+                contentDescription = null,
+                tint = Color.White,
+                modifier = Modifier.size(28.dp),
             )
             // Type badge
             val badgeText = when (post.type) {
@@ -579,14 +596,14 @@ private fun SavedTab(items: List<FeedItem>, onExplore: () -> Unit) {
 // ─── SavedGridCell ────────────────────────────────────────────────────────────
 @Composable
 private fun SavedGridCell(item: FeedItem, modifier: Modifier = Modifier) {
-    val (emoji, bgBrush, badgeText) = when (item) {
+    val (icon, bgBrush, badgeText) = when (item) {
         is FeedItem.Workout   -> Triple(
-            "🏋️",
+            Icons.Outlined.FitnessCenter,
             GreenGradientBrush,
             item.post.workoutName.take(10).ifBlank { "Entreno" }
         )
         is FeedItem.Nutrition -> Triple(
-            "🥗",
+            Icons.Outlined.Restaurant,
             androidx.compose.ui.graphics.Brush.linearGradient(
                 colors = listOf(Color(0xFFE65C00), Color(0xFFF9D423))
             ),
@@ -602,7 +619,7 @@ private fun SavedGridCell(item: FeedItem, modifier: Modifier = Modifier) {
             verticalArrangement = Arrangement.Center,
             modifier = Modifier.padding(4.dp)
         ) {
-            Text(emoji, fontSize = 26.sp)
+            Icon(icon, contentDescription = null, tint = Color.White, modifier = Modifier.size(28.dp))
             Text(
                 badgeText,
                 fontSize   = 9.sp,
@@ -616,6 +633,75 @@ private fun SavedGridCell(item: FeedItem, modifier: Modifier = Modifier) {
                 maxLines   = 1,
                 overflow   = TextOverflow.Ellipsis
             )
+        }
+    }
+}
+
+// ─── LikedTab: 3-column grid of liked FeedItems ──────────────────────────────
+@Composable
+private fun LikedTab(
+    items: List<FeedItem>,
+    isLoading: Boolean,
+    onExplore: () -> Unit,
+) {
+    when {
+        isLoading && items.isEmpty() -> {
+            Box(
+                modifier = Modifier.fillMaxWidth().padding(vertical = 48.dp),
+                contentAlignment = Alignment.Center,
+            ) {
+                CircularProgressIndicator(color = Primary)
+            }
+        }
+        items.isEmpty() -> {
+            Box(
+                modifier = Modifier.fillMaxWidth().padding(horizontal = 24.dp, vertical = 48.dp),
+                contentAlignment = Alignment.Center
+            ) {
+                Column(
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    Text("Sin me gusta", fontWeight = FontWeight.SemiBold, fontSize = 16.sp, color = OnSurface)
+                    Text(
+                        "Las publicaciones que marques con me gusta aparecerán aquí",
+                        fontSize = 13.sp, color = OnSurfaceVariant, textAlign = TextAlign.Center
+                    )
+                    Box(
+                        modifier = Modifier
+                            .padding(top = 4.dp)
+                            .clip(RoundedCornerShape(20.dp))
+                            .background(GreenGradientBrush)
+                            .clickable(onClick = onExplore)
+                            .padding(horizontal = 24.dp, vertical = 10.dp)
+                    ) {
+                        Text("Explorar Feed", fontWeight = FontWeight.Bold, color = Color.White, fontSize = 14.sp)
+                    }
+                }
+            }
+        }
+        else -> {
+            Column(
+                modifier = Modifier.fillMaxWidth(),
+                verticalArrangement = Arrangement.spacedBy(2.dp)
+            ) {
+                items.chunked(3).forEach { row ->
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(2.dp)
+                    ) {
+                        row.forEach { item ->
+                            SavedGridCell(
+                                item     = item,
+                                modifier = Modifier.weight(1f).aspectRatio(1f)
+                            )
+                        }
+                        repeat(3 - row.size) {
+                            Spacer(Modifier.weight(1f).aspectRatio(1f))
+                        }
+                    }
+                }
+            }
         }
     }
 }

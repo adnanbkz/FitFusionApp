@@ -1,5 +1,6 @@
 package com.example.fitfusion.ui.screens
 
+import android.R
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
@@ -134,7 +135,9 @@ fun PantallaActiveWorkout(
                     onClick  = {  },
                     modifier = Modifier.fillMaxWidth().height(48.dp),
                     shape    = RoundedCornerShape(12.dp),
-                    colors   = ButtonDefaults.outlinedButtonColors(contentColor = MaterialTheme.colorScheme.onPrimary),
+                    colors   = ButtonDefaults.outlinedButtonColors(
+                        contentColor = MaterialTheme.colorScheme.primary,
+                        containerColor = MaterialTheme.colorScheme.primary),
                 ) {
                     Text("Añadir ejercicio", fontSize = 14.sp, fontWeight = FontWeight.SemiBold)
                 }
@@ -144,7 +147,8 @@ fun PantallaActiveWorkout(
                     onClick  = { showCancelDialog = true },
                     modifier = Modifier.fillMaxWidth().height(48.dp),
                     shape    = RoundedCornerShape(12.dp),
-                    colors   = ButtonDefaults.outlinedButtonColors(contentColor = MaterialTheme.colorScheme.error),
+                    colors   = ButtonDefaults.outlinedButtonColors(contentColor = MaterialTheme.colorScheme.onPrimary,
+                                                                    containerColor = MaterialTheme.colorScheme.error ),
                 ) {
                     Text("Descartar entrenamiento", fontSize = 14.sp, fontWeight = FontWeight.SemiBold)
                 }

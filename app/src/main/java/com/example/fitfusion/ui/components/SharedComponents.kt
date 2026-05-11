@@ -194,7 +194,7 @@ fun MacroRow(label: String, current: Int, goal: Int, color: Color) {
 }
 
 @Composable
-fun RecentLogItem(emoji: String, title: String, subtitle: String, calories: String, unit: String) {
+fun RecentLogItem(title: String, subtitle: String, calories: String, unit: String) {
     Card(
         shape = RoundedCornerShape(16.dp),
         colors = CardDefaults.cardColors(containerColor = SurfaceContainerLowest),
@@ -417,7 +417,7 @@ fun OverlayStat(value: String, label: String) {
 }
 
 @Composable
-fun StatCard(label: String, value: String, unit: String, emoji: String, modifier: Modifier = Modifier) {
+fun StatCard(label: String, value: String, unit: String, modifier: Modifier = Modifier) {
     Card(
         shape = RoundedCornerShape(16.dp),
         colors = CardDefaults.cardColors(containerColor = SurfaceContainerLowest),

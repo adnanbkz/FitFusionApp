@@ -68,6 +68,7 @@ fun PantallaWorkoutFinish(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(innerPadding)
+                .imePadding()
                 .padding(horizontal = 16.dp),
             verticalArrangement = Arrangement.spacedBy(14.dp),
         ) {
@@ -240,8 +241,10 @@ fun PantallaWorkoutFinish(
 
             OutlinedButton(
                 onClick = {
-                    workoutFinishViewModel.saveAndPublish {
-                        navController.popBackStack(Screens.HomeScreen.name, inclusive = false)
+                    workoutFinishViewModel.saveAndPublish { workoutId ->
+                        navController.navigate("${Screens.WorkoutPostScreen.name}/$workoutId") {
+                            popUpTo(Screens.HomeScreen.name) { inclusive = false }
+                        }
                     }
                 },
                 enabled  = !state.isSaving,

@@ -14,7 +14,6 @@ import java.time.DayOfWeek
 
 data class CreateWeeklyPlanUiState(
     val name: String     = "",
-    val emoji: String    = "",
     val isPublic: Boolean = false,
     val days: Map<DayOfWeek, String?> = DayOfWeek.entries.associateWith { null },
     val myRoutines: List<Routine> = emptyList(),
@@ -50,7 +49,6 @@ class CreateWeeklyPlanViewModel(
     }
 
     fun onNameChange(v: String)      = _uiState.update { it.copy(name = v, saveError = null) }
-    fun onEmojiChange(v: String)     = _uiState.update { it.copy(emoji = v.takeLast(2).ifBlank { "" }) }
     fun onPublicToggle(v: Boolean)   = _uiState.update { it.copy(isPublic = v) }
 
     fun openDaySelector(day: DayOfWeek) = _uiState.update { it.copy(selectingForDay = day) }
@@ -74,7 +72,6 @@ class CreateWeeklyPlanViewModel(
 
         val plan = WeeklyRoutinePlan(
             name            = state.name.trim(),
-            emoji           = state.emoji,
             days            = state.days,
             dayRoutineNames = dayNames,
             isPublic        = state.isPublic,

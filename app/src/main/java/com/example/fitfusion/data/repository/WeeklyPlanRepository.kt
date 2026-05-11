@@ -89,7 +89,6 @@ private fun DocumentSnapshot.toPlan(): WeeklyRoutinePlan? {
     return WeeklyRoutinePlan(
         id              = id,
         name            = name,
-        emoji           = getString("emoji") ?: "",
         days            = days,
         dayRoutineNames = names,
         isPublic        = getBoolean("isPublic") ?: false,

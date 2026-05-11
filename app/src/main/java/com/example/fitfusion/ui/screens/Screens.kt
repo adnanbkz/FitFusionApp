@@ -3,6 +3,7 @@ package com.example.fitfusion.ui.screens
 enum class Screens {
     LoginScreen,
     SignUpScreen,
+    OnboardingScreen,
     HomeScreen,
     TrackingScreen,
     ProfileScreen,
@@ -12,6 +13,7 @@ enum class Screens {
     AddWorkoutScreen,
     ActiveWorkoutScreen,
     WorkoutFinishScreen,
+    WorkoutPostScreen,
     AccountScreen,
     PrivacyScreen,
     DataStorageScreen,

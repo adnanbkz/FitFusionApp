@@ -37,6 +37,17 @@ class WorkoutForegroundService : Service() {
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
+        when (intent?.action) {
+            ACTION_TOGGLE_PAUSE -> {
+                val current = ActiveWorkoutManager.session.value
+                if (current?.isPaused == true) ActiveWorkoutManager.resume() else ActiveWorkoutManager.pause()
+            }
+            ACTION_FINISH -> {
+                ActiveWorkoutManager.cancelSession()
+                stopSelf()
+                return START_NOT_STICKY
+            }
+        }
         startForegroundCompat(buildNotification(elapsedSeconds = 0L, name = "Entrenamiento activo"))
 
         observerJob?.cancel()
@@ -118,6 +129,22 @@ class WorkoutForegroundService : Service() {
         )
         val statusLine = if (isPaused) "Sesión en pausa · ${formatElapsed(elapsedSeconds)}"
         else "En curso · ${formatElapsed(elapsedSeconds)}"
+
+        val pauseIntent = Intent(this, WorkoutForegroundService::class.java).apply { action = ACTION_TOGGLE_PAUSE }
+        val pausePending = PendingIntent.getService(
+            this,
+            1,
+            pauseIntent,
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
+        )
+        val finishIntent = Intent(this, WorkoutForegroundService::class.java).apply { action = ACTION_FINISH }
+        val finishPending = PendingIntent.getService(
+            this,
+            2,
+            finishIntent,
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
+        )
+
         return NotificationCompat.Builder(this, CHANNEL_ID)
             .setSmallIcon(R.drawable.ic_dumbbell)
             .setContentTitle(name)
@@ -128,12 +155,16 @@ class WorkoutForegroundService : Service() {
             .setShowWhen(false)
             .setPriority(NotificationCompat.PRIORITY_LOW)
             .setCategory(NotificationCompat.CATEGORY_SERVICE)
+            .addAction(0, if (isPaused) "Reanudar" else "Pausar", pausePending)
+            .addAction(0, "Cancelar", finishPending)
             .build()
     }
 
     companion object {
         private const val CHANNEL_ID = "fitfusion_workout"
         private const val NOTIFICATION_ID = 1042
+        private const val ACTION_TOGGLE_PAUSE = "com.example.fitfusion.action.TOGGLE_PAUSE"
+        private const val ACTION_FINISH = "com.example.fitfusion.action.FINISH"
 
         fun start(context: Context) {
             val intent = Intent(context, WorkoutForegroundService::class.java)

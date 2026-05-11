@@ -116,7 +116,6 @@ fun PantallaCreateWeeklyPlan(
                     day         = day,
                     routineId   = state.days[day],
                     routineName = state.myRoutines.find { it.id == state.days[day] }?.name,
-                    emoji       = state.myRoutines.find { it.id == state.days[day] }?.emoji,
                     onClick     = { viewModel.openDaySelector(day) },
                 )
             }
@@ -148,7 +147,6 @@ private fun DayRow(
     day: DayOfWeek,
     routineId: String?,
     routineName: String?,
-    emoji: String?,
     onClick: () -> Unit,
 ) {
     Card(

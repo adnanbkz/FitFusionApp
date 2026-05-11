@@ -8,7 +8,6 @@ import androidx.lifecycle.viewModelScope
 import com.example.fitfusion.data.repository.UserProfile
 import com.example.fitfusion.data.repository.UserProfileStore
 import com.example.fitfusion.data.repository.UserRepository
-import com.google.firebase.auth.EmailAuthProvider
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.auth.UserProfileChangeRequest
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -29,9 +28,6 @@ data class AccountUiState(
     val goalType: String = "",
     val activityLevel: String = "",
     val photoUrl: String = "",
-    val currentPassword: String = "",
-    val newPassword: String = "",
-    val confirmNewPassword: String = "",
     val isLoading: Boolean = true,
     val isSaving: Boolean = false,
     val saveSuccess: Boolean = false,
@@ -66,9 +62,6 @@ class AccountViewModel(
     }
     fun onGoalTypeChange(value: String) = _uiState.update { it.copy(goalType = value, saveSuccess = false) }
     fun onActivityLevelChange(value: String) = _uiState.update { it.copy(activityLevel = value, saveSuccess = false) }
-    fun onCurrentPasswordChange(value: String) = _uiState.update { it.copy(currentPassword = value) }
-    fun onNewPasswordChange(value: String) = _uiState.update { it.copy(newPassword = value) }
-    fun onConfirmNewPasswordChange(value: String) = _uiState.update { it.copy(confirmNewPassword = value) }
 
     fun onPhotoChange(uri: Uri) {
         try {
@@ -138,57 +131,6 @@ class AccountViewModel(
                     it.copy(
                         isSaving = false,
                         errorMessage = exception.localizedMessage ?: "No se pudo guardar el perfil",
-                    )
-                }
-            }
-        }
-    }
-
-    fun changePassword() {
-        val user = auth.currentUser
-        val email = user?.email
-        if (user == null || email.isNullOrBlank()) {
-            _uiState.update { it.copy(errorMessage = "Inicia sesión para cambiar la contraseña") }
-            return
-        }
-
-        val state = _uiState.value
-        when {
-            state.currentPassword.isBlank() -> {
-                _uiState.update { it.copy(errorMessage = "Introduce tu contraseña actual") }
-                return
-            }
-            state.newPassword != state.confirmNewPassword -> {
-                _uiState.update { it.copy(errorMessage = "Las contraseñas no coinciden") }
-                return
-            }
-            state.newPassword.length < 6 -> {
-                _uiState.update { it.copy(errorMessage = "La contraseña debe tener al menos 6 caracteres") }
-                return
-            }
-        }
-
-        viewModelScope.launch {
-            _uiState.update { it.copy(isSaving = true, saveSuccess = false, errorMessage = null) }
-            try {
-                user.reauthenticate(
-                    EmailAuthProvider.getCredential(email, state.currentPassword)
-                ).await()
-                user.updatePassword(state.newPassword).await()
-                _uiState.update {
-                    it.copy(
-                        currentPassword = "",
-                        newPassword = "",
-                        confirmNewPassword = "",
-                        isSaving = false,
-                        saveSuccess = true,
-                    )
-                }
-            } catch (exception: Exception) {
-                _uiState.update {
-                    it.copy(
-                        isSaving = false,
-                        errorMessage = exception.localizedMessage ?: "No se pudo actualizar la contraseña",
                     )
                 }
             }

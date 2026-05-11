@@ -161,6 +161,7 @@ fun PantallaAddFood(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(innerPadding)
+                .imePadding()
         ) {
             TabRow(
                 selectedTabIndex = state.activeTab.ordinal,
@@ -821,7 +822,7 @@ private fun RecipeCard(
                         if (isNotEmpty()) append(" · ")
                         append("$it kcal")
                     }
-                    if (isEmpty()) append(recipe.bestMoment ?: "Receta")
+                    if (isEmpty()) append(recipe.bestMoments.firstOrNull() ?: "Receta")
                 }
                 Text(
                     subtitle,
@@ -1056,10 +1057,15 @@ private fun RecipeDetailSheet(recipe: Recipe) {
 
         RecipeDetailMeta(recipe = recipe)
 
-        if (recipe.ingredients.isNotBlank()) {
+        if (recipe.ingredients.isNotEmpty()) {
             Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
                 Text("INGREDIENTES", fontSize = 11.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.5.sp, color = Primary)
-                Text(recipe.ingredients, fontSize = 14.sp, color = OnSurface, lineHeight = 20.sp)
+                recipe.ingredients.forEach { ing ->
+                    Text(
+                        "${ing.name} · ${ing.quantityG}g · ${ing.totalKcal} kcal",
+                        fontSize = 13.sp, color = OnSurface, lineHeight = 18.sp,
+                    )
+                }
             }
         }
 
@@ -1076,7 +1082,7 @@ private fun RecipeDetailSheet(recipe: Recipe) {
 private fun RecipeDetailMeta(recipe: Recipe) {
     val items = buildList {
         recipe.cookTimeMin?.let { add("$it min") }
-        recipe.bestMoment?.let { add(it) }
+        recipe.bestMoments.firstOrNull()?.let { add(it) }
         if (recipe.isPublic) add("Pública")
     }
     if (items.isEmpty()) return

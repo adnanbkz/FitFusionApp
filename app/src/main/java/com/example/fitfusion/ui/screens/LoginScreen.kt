@@ -43,7 +43,7 @@ fun PantallaLogin(
         }
     }
 
-    Box(modifier = Modifier.fillMaxSize().background(Surface)) {
+    Box(modifier = Modifier.fillMaxSize().background(Surface).imePadding()) {
         Column(
             modifier = Modifier
                 .fillMaxSize()
