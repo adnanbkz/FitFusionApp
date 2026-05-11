@@ -144,19 +144,21 @@ fun AuthField(
 @Composable
 fun MomentumRing(progress: Float, size: Int) {
     val strokeWidth = if (size > 100) 14f else 10f
+    val primaryColor = Primary
+    val primaryContainerColor = PrimaryContainer
     Box(
         modifier = Modifier
             .size(size.dp)
             .drawBehind {
                 drawArc(
-                    color = PrimaryContainer.copy(alpha = 0.2f),
+                    color = primaryContainerColor.copy(alpha = 0.2f),
                     startAngle = -90f, sweepAngle = 360f, useCenter = false,
                     style = Stroke(width = strokeWidth, cap = StrokeCap.Round),
                     topLeft = Offset(strokeWidth / 2, strokeWidth / 2),
                     size = Size(this.size.width - strokeWidth, this.size.height - strokeWidth)
                 )
                 drawArc(
-                    color = Primary,
+                    color = primaryColor,
                     startAngle = -90f, sweepAngle = 360f * progress, useCenter = false,
                     style = Stroke(width = strokeWidth, cap = StrokeCap.Round),
                     topLeft = Offset(strokeWidth / 2, strokeWidth / 2),

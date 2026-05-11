@@ -45,8 +45,16 @@ import com.example.fitfusion.data.models.MealSlot
 import androidx.compose.material3.BottomSheetDefaults
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.rememberModalBottomSheetState
+import com.example.fitfusion.ui.theme.OnSurface
+import com.example.fitfusion.ui.theme.OnSurfaceVariant
 import com.example.fitfusion.ui.theme.OutlineVariant
 import com.example.fitfusion.ui.theme.Primary
+import com.example.fitfusion.ui.theme.Secondary
+import com.example.fitfusion.ui.theme.Surface
+import com.example.fitfusion.ui.theme.SurfaceContainerHigh
+import com.example.fitfusion.ui.theme.SurfaceContainerLow
+import com.example.fitfusion.ui.theme.SurfaceContainerLowest
+import com.example.fitfusion.ui.theme.Tertiary
 import com.example.fitfusion.viewmodel.TrackingViewModel
 import java.time.DayOfWeek
 import java.time.LocalDate
@@ -54,16 +62,6 @@ import java.time.format.DateTimeFormatter
 import java.time.temporal.TemporalAdjusters
 import java.util.Locale
 
-// ── Neon dark palette ────────────────────────────────────────────────────────
-private val DarkBg        = Color(0xFF080D18)
-private val DarkCard      = Color(0xFF0F1629)
-private val DarkCardBorder = Color(0xFF1E293B)
-private val NeonGreen     = Color(0xFF00FF7F)
-private val NeonCyan      = Color(0xFF00D4FF)
-private val NeonOrange    = Color(0xFFFF6B35)
-private val NeonText      = Color(0xFFE2E8F0)
-private val NeonMuted     = Color(0xFF64748B)
-private val NeonDim       = Color(0xFF94A3B8)
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -76,7 +74,7 @@ fun PantallaTracking(
     LazyColumn(
         modifier = Modifier
             .fillMaxSize()
-            .background(DarkBg),
+            .background(Surface),
         verticalArrangement = Arrangement.spacedBy(12.dp),
         contentPadding = PaddingValues(bottom = 24.dp)
     ) {
@@ -86,7 +84,7 @@ fun PantallaTracking(
                 modifier = Modifier
                     .fillMaxWidth()
                     .background(
-                        Brush.verticalGradient(listOf(Color(0xFF0D1729), DarkBg))
+                        Brush.verticalGradient(listOf(SurfaceContainerLow, Surface))
                     )
                     .padding(horizontal = 20.dp, vertical = 20.dp),
                 horizontalArrangement = Arrangement.SpaceBetween,
@@ -96,23 +94,23 @@ fun PantallaTracking(
                     Text(
                         "DIETA",
                         fontSize = 11.sp, fontWeight = FontWeight.Bold,
-                        letterSpacing = 3.sp, color = NeonGreen
+                        letterSpacing = 3.sp, color = Primary
                     )
                     Text(
                         "Seguimiento",
-                        fontSize = 22.sp, fontWeight = FontWeight.Black, color = NeonText
+                        fontSize = 22.sp, fontWeight = FontWeight.Black, color = OnSurface
                     )
                 }
                 Box(
                     modifier = Modifier
                         .clip(RoundedCornerShape(12.dp))
-                        .background(DarkCard)
-                        .border(1.dp, DarkCardBorder, RoundedCornerShape(12.dp))
+                        .background(SurfaceContainerLow)
+                        .border(1.dp, SurfaceContainerHigh, RoundedCornerShape(12.dp))
                         .padding(horizontal = 14.dp, vertical = 8.dp)
                 ) {
                     Text(
                         state.selectedDate.format(DateTimeFormatter.ofPattern("EEE d MMM", Locale.forLanguageTag("es"))),
-                        fontSize = 13.sp, fontWeight = FontWeight.SemiBold, color = NeonDim
+                        fontSize = 13.sp, fontWeight = FontWeight.SemiBold, color = OnSurfaceVariant
                     )
                 }
             }
@@ -129,7 +127,7 @@ fun PantallaTracking(
 
         // ── Calorie ring ────────────────────────────────────────────────────
         item {
-            NeonDarkCard(modifier = Modifier.padding(horizontal = 16.dp)) {
+            NeonSurfaceContainerLow(modifier = Modifier.padding(horizontal = 16.dp)) {
                 Column(
                     modifier = Modifier.padding(24.dp).fillMaxWidth(),
                     horizontalAlignment = Alignment.CenterHorizontally,
@@ -138,19 +136,19 @@ fun PantallaTracking(
                     Text(
                         "RESUMEN DIARIO",
                         fontSize = 10.sp, fontWeight = FontWeight.Bold,
-                        letterSpacing = 3.sp, color = NeonGreen
+                        letterSpacing = 3.sp, color = Primary
                     )
                     Box(contentAlignment = Alignment.Center) {
                         NeonRing(progress = state.netProgress, size = 160)
                         Column(horizontalAlignment = Alignment.CenterHorizontally) {
                             Text(
                                 "${state.kcalLeft}",
-                                fontSize = 44.sp, fontWeight = FontWeight.Black, color = NeonText
+                                fontSize = 44.sp, fontWeight = FontWeight.Black, color = OnSurface
                             )
                             Text(
                                 "KCAL REST.",
                                 fontSize = 10.sp, fontWeight = FontWeight.Bold,
-                                letterSpacing = 2.sp, color = NeonGreen
+                                letterSpacing = 2.sp, color = Primary
                             )
                         }
                     }
@@ -158,11 +156,11 @@ fun PantallaTracking(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.SpaceEvenly
                     ) {
-                        NeonStatColumn("INGERIDAS", "${state.kcalEaten}", NeonCyan)
+                        NeonStatColumn("INGERIDAS", "${state.kcalEaten}", Secondary)
                         NeonDividerV()
-                        NeonStatColumn("QUEMADAS",  "${state.kcalBurned}", NeonOrange)
+                        NeonStatColumn("QUEMADAS",  "${state.kcalBurned}", Tertiary)
                         NeonDividerV()
-                        NeonStatColumn("OBJETIVO",  "${state.kcalGoal}", NeonGreen)
+                        NeonStatColumn("OBJETIVO",  "${state.kcalGoal}", Primary)
                     }
                 }
             }
@@ -171,27 +169,27 @@ fun PantallaTracking(
         // ── Workout today ───────────────────────────────────────────────────
         state.dailySummary?.takeIf { it.workoutCount > 0 }?.let { ds ->
             item {
-                NeonDarkCard(modifier = Modifier.padding(horizontal = 16.dp)) {
+                NeonSurfaceContainerLow(modifier = Modifier.padding(horizontal = 16.dp)) {
                     Column(
                         modifier = Modifier.padding(20.dp),
                         verticalArrangement = Arrangement.spacedBy(16.dp)
                     ) {
                         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                             Box(
-                                modifier = Modifier.size(8.dp).clip(CircleShape).background(NeonOrange)
+                                modifier = Modifier.size(8.dp).clip(CircleShape).background(Tertiary)
                             )
                             Text(
                                 "ENTRENAMIENTO HOY",
                                 fontSize = 10.sp, fontWeight = FontWeight.Bold,
-                                letterSpacing = 2.sp, color = NeonOrange
+                                letterSpacing = 2.sp, color = Tertiary
                             )
                         }
                         Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly) {
-                            NeonStatColumn("SESIONES", "${ds.workoutCount}", NeonText)
+                            NeonStatColumn("SESIONES", "${ds.workoutCount}", OnSurface)
                             NeonDividerV()
-                            NeonStatColumn("KCAL",     "${ds.kcalBurned}", NeonOrange)
+                            NeonStatColumn("KCAL",     "${ds.kcalBurned}", Tertiary)
                             NeonDividerV()
-                            NeonStatColumn("VOLUMEN",  "${ds.totalVolumeKg.toInt()} kg", NeonCyan)
+                            NeonStatColumn("VOLUMEN",  "${ds.totalVolumeKg.toInt()} kg", Secondary)
                         }
                     }
                 }
@@ -201,7 +199,7 @@ fun PantallaTracking(
         // ── Health Connect ──────────────────────────────────────────────────
         state.healthData?.let { healthData ->
             item {
-                NeonDarkCard(modifier = Modifier.padding(horizontal = 16.dp)) {
+                NeonSurfaceContainerLow(modifier = Modifier.padding(horizontal = 16.dp)) {
                     Column(modifier = Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
                         Row(
                             modifier = Modifier.fillMaxWidth(),
@@ -209,17 +207,17 @@ fun PantallaTracking(
                             verticalAlignment = Alignment.CenterVertically
                         ) {
                             Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
-                                Box(modifier = Modifier.size(8.dp).clip(CircleShape).background(NeonCyan))
-                                Text("HEALTH CONNECT", fontSize = 10.sp, fontWeight = FontWeight.Bold, letterSpacing = 2.sp, color = NeonCyan)
+                                Box(modifier = Modifier.size(8.dp).clip(CircleShape).background(Secondary))
+                                Text("HEALTH CONNECT", fontSize = 10.sp, fontWeight = FontWeight.Bold, letterSpacing = 2.sp, color = Secondary)
                             }
-                            Text("Sync", fontSize = 11.sp, color = NeonGreen, fontWeight = FontWeight.SemiBold)
+                            Text("Sincronizar", fontSize = 11.sp, color = Primary, fontWeight = FontWeight.SemiBold)
                         }
                         Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly) {
-                            NeonStatColumn("PASOS",      "${healthData.steps}", NeonText)
+                            NeonStatColumn("PASOS",      "${healthData.steps}", OnSurface)
                             NeonDividerV()
-                            NeonStatColumn("KCAL PASOS", "${healthData.stepCaloriesEstimated}", NeonOrange)
+                            NeonStatColumn("KCAL PASOS", "${healthData.stepCaloriesEstimated}", Tertiary)
                             NeonDividerV()
-                            NeonStatColumn("FC MEDIA",   healthData.averageHeartRate?.let { "$it" } ?: "—", NeonCyan)
+                            NeonStatColumn("FC MEDIA",   healthData.averageHeartRate?.let { "$it" } ?: "—", Secondary)
                         }
                     }
                 }
@@ -228,7 +226,7 @@ fun PantallaTracking(
 
         // ── Macros ──────────────────────────────────────────────────────────
         item {
-            NeonDarkCard(modifier = Modifier.padding(horizontal = 16.dp)) {
+            NeonSurfaceContainerLow(modifier = Modifier.padding(horizontal = 16.dp)) {
                 Column(modifier = Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
                     Row(
                         modifier = Modifier.fillMaxWidth(),
@@ -236,16 +234,16 @@ fun PantallaTracking(
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
-                            Box(modifier = Modifier.size(8.dp).clip(CircleShape).background(NeonGreen))
-                            Text("MACROS", fontSize = 10.sp, fontWeight = FontWeight.Bold, letterSpacing = 2.sp, color = NeonGreen)
+                            Box(modifier = Modifier.size(8.dp).clip(CircleShape).background(Primary))
+                            Text("MACROS", fontSize = 10.sp, fontWeight = FontWeight.Bold, letterSpacing = 2.sp, color = Primary)
                         }
                         TextButton(onClick = { navController.navigate(Screens.WeeklyLogScreen.name) }) {
-                            Text("Ver semana →", fontSize = 12.sp, color = NeonCyan, fontWeight = FontWeight.SemiBold)
+                            Text("Ver semana →", fontSize = 12.sp, color = Secondary, fontWeight = FontWeight.SemiBold)
                         }
                     }
-                    NeonMacroRow("PROTEÍNAS",     state.dayLog.totalProtein, state.proteinGoal, NeonGreen)
-                    NeonMacroRow("CARBOHIDRATOS", state.dayLog.totalCarbs,   state.carbsGoal,   NeonCyan)
-                    NeonMacroRow("GRASAS",        state.dayLog.totalFat,     state.fatsGoal,    NeonOrange)
+                    NeonMacroRow("PROTEÍNAS",     state.dayLog.totalProtein, state.proteinGoal, Primary)
+                    NeonMacroRow("CARBOHIDRATOS", state.dayLog.totalCarbs,   state.carbsGoal,   Secondary)
+                    NeonMacroRow("GRASAS",        state.dayLog.totalFat,     state.fatsGoal,    Tertiary)
 
                     // AI tip
                     if (state.aiTip.isNotBlank()) {
@@ -253,13 +251,13 @@ fun PantallaTracking(
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .clip(RoundedCornerShape(12.dp))
-                                .background(Color(0xFF0A1628))
-                                .border(1.dp, NeonGreen.copy(alpha = 0.15f), RoundedCornerShape(12.dp))
+                                .background(SurfaceContainerLowest)
+                                .border(1.dp, Primary.copy(alpha = 0.15f), RoundedCornerShape(12.dp))
                                 .padding(12.dp)
                         ) {
                             Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                                 Text("⚡", fontSize = 14.sp)
-                                Text(state.aiTip, fontSize = 12.sp, color = NeonDim, lineHeight = 18.sp)
+                                Text(state.aiTip, fontSize = 12.sp, color = OnSurfaceVariant, lineHeight = 18.sp)
                             }
                         }
                     }
@@ -277,17 +275,17 @@ fun PantallaTracking(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
-                    Box(modifier = Modifier.size(8.dp).clip(CircleShape).background(NeonCyan))
-                    Text("MIS COMIDAS HOY", fontSize = 10.sp, fontWeight = FontWeight.Bold, letterSpacing = 2.sp, color = NeonCyan)
+                    Box(modifier = Modifier.size(8.dp).clip(CircleShape).background(Secondary))
+                    Text("MIS COMIDAS HOY", fontSize = 10.sp, fontWeight = FontWeight.Bold, letterSpacing = 2.sp, color = Secondary)
                 }
                 Box(
                     modifier = Modifier
                         .clip(RoundedCornerShape(20.dp))
-                        .background(NeonGreen.copy(alpha = 0.12f))
+                        .background(Primary.copy(alpha = 0.12f))
                         .clickable(onClick = trackingViewModel::showAddMealDialog)
                         .padding(horizontal = 14.dp, vertical = 6.dp)
                 ) {
-                    Text("+ Comida", fontSize = 12.sp, color = NeonGreen, fontWeight = FontWeight.Bold)
+                    Text("+ Comida", fontSize = 12.sp, color = Primary, fontWeight = FontWeight.Bold)
                 }
             }
         }
@@ -334,8 +332,8 @@ fun PantallaTracking(
         ModalBottomSheet(
             onDismissRequest = trackingViewModel::dismissEditSheet,
             sheetState       = sheetState,
-            containerColor   = DarkCard,
-            dragHandle       = { BottomSheetDefaults.DragHandle(color = NeonMuted) }
+            containerColor   = SurfaceContainerLow,
+            dragHandle       = { BottomSheetDefaults.DragHandle(color = OnSurfaceVariant) }
         ) {
             FoodDetailSheet(
                 food            = ef.loggedFood.food,
@@ -357,13 +355,13 @@ fun PantallaTracking(
 // ── Neon components ───────────────────────────────────────────────────────────
 
 @Composable
-private fun NeonDarkCard(modifier: Modifier = Modifier, content: @Composable () -> Unit) {
+private fun NeonSurfaceContainerLow(modifier: Modifier = Modifier, content: @Composable () -> Unit) {
     Box(
         modifier = modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(20.dp))
-            .background(DarkCard)
-            .border(1.dp, DarkCardBorder, RoundedCornerShape(20.dp))
+            .background(SurfaceContainerLow)
+            .border(1.dp, SurfaceContainerHigh, RoundedCornerShape(20.dp))
     ) { content() }
 }
 
@@ -375,6 +373,7 @@ private fun NeonRing(progress: Float, size: Int) {
         label = "neonRingProgress"
     )
     val sw = if (size > 120) 16f else 10f
+    val primaryColor = Primary
     Box(
         modifier = Modifier
             .size(size.dp)
@@ -385,7 +384,7 @@ private fun NeonRing(progress: Float, size: Int) {
 
                 // Track
                 drawArc(
-                    color = NeonGreen.copy(alpha = 0.08f),
+                    color = primaryColor.copy(alpha = 0.08f),
                     startAngle = -90f, sweepAngle = 360f, useCenter = false,
                     style = Stroke(width = sw, cap = StrokeCap.Round),
                     topLeft = topLeft, size = arcSize,
@@ -393,14 +392,14 @@ private fun NeonRing(progress: Float, size: Int) {
                 if (animatedProgress > 0f) {
                     val sweep = 360f * animatedProgress
                     // Glow layers
-                    drawArc(color = NeonGreen.copy(alpha = 0.04f), startAngle = -90f, sweepAngle = sweep, useCenter = false,
+                    drawArc(color = primaryColor.copy(alpha = 0.04f), startAngle = -90f, sweepAngle = sweep, useCenter = false,
                         style = Stroke(width = sw * 5f, cap = StrokeCap.Round), topLeft = topLeft, size = arcSize)
-                    drawArc(color = NeonGreen.copy(alpha = 0.10f), startAngle = -90f, sweepAngle = sweep, useCenter = false,
+                    drawArc(color = primaryColor.copy(alpha = 0.10f), startAngle = -90f, sweepAngle = sweep, useCenter = false,
                         style = Stroke(width = sw * 3f, cap = StrokeCap.Round), topLeft = topLeft, size = arcSize)
-                    drawArc(color = NeonGreen.copy(alpha = 0.25f), startAngle = -90f, sweepAngle = sweep, useCenter = false,
+                    drawArc(color = primaryColor.copy(alpha = 0.25f), startAngle = -90f, sweepAngle = sweep, useCenter = false,
                         style = Stroke(width = sw * 1.8f, cap = StrokeCap.Round), topLeft = topLeft, size = arcSize)
                     // Solid arc
-                    drawArc(color = NeonGreen, startAngle = -90f, sweepAngle = sweep, useCenter = false,
+                    drawArc(color = primaryColor, startAngle = -90f, sweepAngle = sweep, useCenter = false,
                         style = Stroke(width = sw, cap = StrokeCap.Round), topLeft = topLeft, size = arcSize)
                 }
             },
@@ -409,9 +408,9 @@ private fun NeonRing(progress: Float, size: Int) {
 }
 
 @Composable
-private fun NeonStatColumn(label: String, value: String, color: Color = NeonText) {
+private fun NeonStatColumn(label: String, value: String, color: Color = OnSurface) {
     Column(horizontalAlignment = Alignment.CenterHorizontally) {
-        Text(label, fontSize = 9.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.5.sp, color = NeonMuted)
+        Text(label, fontSize = 9.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.5.sp, color = OnSurfaceVariant)
         Text(value, fontSize = 22.sp, fontWeight = FontWeight.Black, color = color)
     }
 }
@@ -422,7 +421,7 @@ private fun NeonDividerV() {
         modifier = Modifier
             .width(1.dp)
             .height(36.dp)
-            .background(DarkCardBorder)
+            .background(SurfaceContainerHigh)
     )
 }
 
@@ -437,8 +436,8 @@ private fun NeonMacroRow(label: String, current: Int, goal: Int, color: Color) {
         Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
             Text(label, fontSize = 10.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.sp, color = color)
             Row {
-                Text("$current", fontSize = 13.sp, fontWeight = FontWeight.Bold, color = NeonText)
-                Text(" / ${goal}g", fontSize = 12.sp, color = NeonMuted)
+                Text("$current", fontSize = 13.sp, fontWeight = FontWeight.Bold, color = OnSurface)
+                Text(" / ${goal}g", fontSize = 12.sp, color = OnSurfaceVariant)
             }
         }
         Box(
@@ -476,7 +475,7 @@ private fun NeonWeekStrip(
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .background(DarkCard)
+            .background(SurfaceContainerLow)
             .border(width = 0.dp, color = Color.Transparent)
             .padding(horizontal = 12.dp, vertical = 14.dp),
         horizontalArrangement = Arrangement.SpaceBetween
@@ -491,7 +490,7 @@ private fun NeonWeekStrip(
 
             val bgColor by animateColorAsState(
                 targetValue = when {
-                    isSelected -> NeonGreen.copy(alpha = 0.15f)
+                    isSelected -> Primary.copy(alpha = 0.15f)
                     else       -> Color.Transparent
                 },
                 label = "dayBg"
@@ -503,7 +502,7 @@ private fun NeonWeekStrip(
                     .clip(RoundedCornerShape(12.dp))
                     .background(bgColor)
                     .then(
-                        if (isSelected) Modifier.border(1.dp, NeonGreen.copy(alpha = 0.4f), RoundedCornerShape(12.dp))
+                        if (isSelected) Modifier.border(1.dp, Primary.copy(alpha = 0.4f), RoundedCornerShape(12.dp))
                         else Modifier
                     )
                     .clickable(enabled = !isFuture) { onDaySelected(date) }
@@ -515,9 +514,9 @@ private fun NeonWeekStrip(
                     fontSize   = 11.sp,
                     fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
                     color      = when {
-                        isSelected -> NeonGreen
-                        isFuture   -> NeonMuted.copy(alpha = 0.4f)
-                        else       -> NeonDim
+                        isSelected -> Primary
+                        isFuture   -> OnSurfaceVariant.copy(alpha = 0.4f)
+                        else       -> OnSurfaceVariant
                     }
                 )
                 Box(
@@ -526,10 +525,10 @@ private fun NeonWeekStrip(
                         .clip(CircleShape)
                         .background(
                             when {
-                                isToday  -> NeonGreen
-                                hasData  -> NeonCyan.copy(alpha = 0.6f)
+                                isToday  -> Primary
+                                hasData  -> Secondary.copy(alpha = 0.6f)
                                 isFuture -> Color.Transparent
-                                else     -> NeonMuted.copy(alpha = 0.3f)
+                                else     -> OnSurfaceVariant.copy(alpha = 0.3f)
                             }
                         )
                 )
@@ -537,7 +536,7 @@ private fun NeonWeekStrip(
                     Text(
                         "${dayLog.totalKcal}",
                         fontSize   = 8.sp,
-                        color      = if (isSelected) NeonGreen else NeonMuted,
+                        color      = if (isSelected) Primary else OnSurfaceVariant,
                         fontWeight = FontWeight.SemiBold
                     )
                 } else {
@@ -569,8 +568,8 @@ private fun NeonMealSection(
         modifier = modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(16.dp))
-            .background(DarkCard)
-            .border(1.dp, DarkCardBorder, RoundedCornerShape(16.dp))
+            .background(SurfaceContainerLow)
+            .border(1.dp, SurfaceContainerHigh, RoundedCornerShape(16.dp))
     ) {
         Row(
             modifier = Modifier
@@ -581,36 +580,36 @@ private fun NeonMealSection(
             horizontalArrangement = Arrangement.SpaceBetween
         ) {
             Column(modifier = Modifier.weight(1f)) {
-                Text(slot.name, fontWeight = FontWeight.SemiBold, fontSize = 15.sp, color = NeonText)
+                Text(slot.name, fontWeight = FontWeight.SemiBold, fontSize = 15.sp, color = OnSurface)
                 if (entries.isNotEmpty()) {
                     Text(
                         "$totalKcal kcal · ${entries.size} alimento${if (entries.size > 1) "s" else ""}",
-                        fontSize = 12.sp, color = NeonCyan
+                        fontSize = 12.sp, color = Secondary
                     )
                 } else {
-                    Text("Sin registros", fontSize = 12.sp, color = NeonMuted)
+                    Text("Sin registros", fontSize = 12.sp, color = OnSurfaceVariant)
                 }
             }
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(2.dp)) {
                 IconButton(onClick = onRename, modifier = Modifier.size(32.dp)) {
-                    Icon(Icons.Default.Edit, null, tint = NeonMuted, modifier = Modifier.size(15.dp))
+                    Icon(Icons.Default.Edit, null, tint = OnSurfaceVariant, modifier = Modifier.size(15.dp))
                 }
                 IconButton(onClick = onDelete, modifier = Modifier.size(32.dp)) {
-                    Icon(Icons.Default.Close, null, tint = NeonMuted, modifier = Modifier.size(16.dp))
+                    Icon(Icons.Default.Close, null, tint = OnSurfaceVariant, modifier = Modifier.size(16.dp))
                 }
                 IconButton(onClick = onAdd, modifier = Modifier.size(32.dp)) {
-                    Icon(Icons.Default.Add, null, tint = NeonGreen, modifier = Modifier.size(20.dp))
+                    Icon(Icons.Default.Add, null, tint = Primary, modifier = Modifier.size(20.dp))
                 }
                 Icon(
                     if (isExpanded) Icons.Default.KeyboardArrowUp else Icons.Default.KeyboardArrowDown,
-                    contentDescription = null, tint = NeonMuted, modifier = Modifier.size(20.dp)
+                    contentDescription = null, tint = OnSurfaceVariant, modifier = Modifier.size(20.dp)
                 )
             }
         }
 
         AnimatedVisibility(visible = isExpanded && entries.isNotEmpty(), enter = expandVertically(), exit = shrinkVertically()) {
             Column {
-                HorizontalDivider(color = DarkCardBorder)
+                HorizontalDivider(color = SurfaceContainerHigh)
                 entries.forEach { logged ->
                     NeonLoggedFoodRow(logged = logged, onEdit = { onEdit(logged) }, onRemove = { onRemove(logged.id) })
                 }
@@ -637,34 +636,34 @@ private fun NeonLoggedFoodRow(
             modifier = Modifier
                 .size(40.dp)
                 .clip(RoundedCornerShape(10.dp))
-                .background(Color(0xFF1A2540))
-                .border(1.dp, DarkCardBorder, RoundedCornerShape(10.dp)),
+                .background(SurfaceContainerHigh)
+                .border(1.dp, SurfaceContainerHigh, RoundedCornerShape(10.dp)),
             contentAlignment = Alignment.Center
         ) { Icon(Icons.Default.Restaurant, null, Modifier.size(18.dp), tint = Primary) }
 
         Column(modifier = Modifier.weight(1f)) {
             Text(
                 logged.food.name,
-                fontWeight = FontWeight.SemiBold, fontSize = 14.sp, color = NeonText,
+                fontWeight = FontWeight.SemiBold, fontSize = 14.sp, color = OnSurface,
                 maxLines = 1, overflow = TextOverflow.Ellipsis
             )
             Text(
                 "${logged.serving.label} × ${logged.quantity}",
-                fontSize = 12.sp, color = NeonMuted
+                fontSize = 12.sp, color = OnSurfaceVariant
             )
         }
 
-        Text("${logged.kcal}", fontSize = 14.sp, fontWeight = FontWeight.Bold, color = NeonCyan)
+        Text("${logged.kcal}", fontSize = 14.sp, fontWeight = FontWeight.Bold, color = Secondary)
 
         Box(
             modifier = Modifier
                 .size(28.dp)
                 .clip(CircleShape)
-                .background(NeonOrange.copy(alpha = 0.12f))
+                .background(Tertiary.copy(alpha = 0.12f))
                 .clickable(onClick = onRemove),
             contentAlignment = Alignment.Center
         ) {
-            Text("×", fontSize = 16.sp, color = NeonOrange, fontWeight = FontWeight.Bold)
+            Text("×", fontSize = 16.sp, color = Tertiary, fontWeight = FontWeight.Bold)
         }
     }
 }
@@ -675,23 +674,23 @@ private fun NeonLoggedFoodRow(
 private fun AddMealDialog(name: String, onNameChange: (String) -> Unit, onConfirm: () -> Unit, onDismiss: () -> Unit) {
     AlertDialog(
         onDismissRequest = onDismiss,
-        containerColor   = DarkCard,
-        title = { Text("Nueva comida", fontWeight = FontWeight.Bold, fontSize = 18.sp, color = NeonText) },
+        containerColor   = SurfaceContainerLow,
+        title = { Text("Nueva comida", fontWeight = FontWeight.Bold, fontSize = 18.sp, color = OnSurface) },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                Text("Ponle un nombre a esta comida.", fontSize = 14.sp, color = NeonDim)
+                Text("Ponle un nombre a esta comida.", fontSize = 14.sp, color = OnSurfaceVariant)
                 OutlinedTextField(
                     value = name, onValueChange = onNameChange,
-                    placeholder = { Text("Ej: Post-entreno, Snack...", color = NeonMuted, fontSize = 14.sp) },
+                    placeholder = { Text("Ej: Post-entreno, Snack...", color = OnSurfaceVariant, fontSize = 14.sp) },
                     singleLine = true,
                     shape = RoundedCornerShape(12.dp),
                     colors = OutlinedTextFieldDefaults.colors(
-                        unfocusedContainerColor = Color(0xFF0A1628),
-                        focusedContainerColor   = Color(0xFF0A1628),
-                        unfocusedBorderColor    = DarkCardBorder,
-                        focusedBorderColor      = NeonGreen,
-                        focusedTextColor        = NeonText,
-                        unfocusedTextColor      = NeonText,
+                        unfocusedContainerColor = SurfaceContainerLowest,
+                        focusedContainerColor   = SurfaceContainerLowest,
+                        unfocusedBorderColor    = SurfaceContainerHigh,
+                        focusedBorderColor      = Primary,
+                        focusedTextColor        = OnSurface,
+                        unfocusedTextColor      = OnSurface,
                     ),
                     modifier = Modifier.fillMaxWidth()
                 )
@@ -699,11 +698,11 @@ private fun AddMealDialog(name: String, onNameChange: (String) -> Unit, onConfir
         },
         confirmButton = {
             TextButton(onClick = onConfirm, enabled = name.isNotBlank()) {
-                Text("Añadir", color = NeonGreen, fontWeight = FontWeight.Bold)
+                Text("Añadir", color = Primary, fontWeight = FontWeight.Bold)
             }
         },
         dismissButton = {
-            TextButton(onClick = onDismiss) { Text("Cancelar", color = NeonMuted) }
+            TextButton(onClick = onDismiss) { Text("Cancelar", color = OnSurfaceVariant) }
         }
     )
 }
@@ -712,32 +711,32 @@ private fun AddMealDialog(name: String, onNameChange: (String) -> Unit, onConfir
 private fun RenameMealDialog(name: String, onNameChange: (String) -> Unit, onConfirm: () -> Unit, onDismiss: () -> Unit) {
     AlertDialog(
         onDismissRequest = onDismiss,
-        containerColor   = DarkCard,
-        title = { Text("Renombrar comida", fontWeight = FontWeight.Bold, fontSize = 18.sp, color = NeonText) },
+        containerColor   = SurfaceContainerLow,
+        title = { Text("Renombrar comida", fontWeight = FontWeight.Bold, fontSize = 18.sp, color = OnSurface) },
         text = {
             OutlinedTextField(
                 value = name, onValueChange = onNameChange,
-                placeholder = { Text("Nombre de la comida", color = NeonMuted, fontSize = 14.sp) },
+                placeholder = { Text("Nombre de la comida", color = OnSurfaceVariant, fontSize = 14.sp) },
                 singleLine = true,
                 shape = RoundedCornerShape(12.dp),
                 colors = OutlinedTextFieldDefaults.colors(
-                    unfocusedContainerColor = Color(0xFF0A1628),
-                    focusedContainerColor   = Color(0xFF0A1628),
-                    unfocusedBorderColor    = DarkCardBorder,
-                    focusedBorderColor      = NeonGreen,
-                    focusedTextColor        = NeonText,
-                    unfocusedTextColor      = NeonText,
+                    unfocusedContainerColor = SurfaceContainerLowest,
+                    focusedContainerColor   = SurfaceContainerLowest,
+                    unfocusedBorderColor    = SurfaceContainerHigh,
+                    focusedBorderColor      = Primary,
+                    focusedTextColor        = OnSurface,
+                    unfocusedTextColor      = OnSurface,
                 ),
                 modifier = Modifier.fillMaxWidth()
             )
         },
         confirmButton = {
             TextButton(onClick = onConfirm, enabled = name.isNotBlank()) {
-                Text("Guardar", color = NeonGreen, fontWeight = FontWeight.Bold)
+                Text("Guardar", color = Primary, fontWeight = FontWeight.Bold)
             }
         },
         dismissButton = {
-            TextButton(onClick = onDismiss) { Text("Cancelar", color = NeonMuted) }
+            TextButton(onClick = onDismiss) { Text("Cancelar", color = OnSurfaceVariant) }
         }
     )
 }

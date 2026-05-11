@@ -17,6 +17,7 @@ import androidx.compose.foundation.layout.statusBars
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Scaffold
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -30,11 +31,14 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
+import com.example.fitfusion.data.AppThemeStore
 import com.example.fitfusion.data.repository.UserProfileStore
 import com.example.fitfusion.data.workout.ActiveWorkoutManager
 import com.example.fitfusion.ui.components.ActiveWorkoutBanner
 import com.example.fitfusion.ui.screens.PantallaLogin
 import com.example.fitfusion.ui.screens.Screens
+import com.example.fitfusion.ui.theme.FitFusionTheme
+import com.example.fitfusion.ui.theme.Surface
 import com.example.fitfusion.viewmodel.AuthViewModel
 import com.example.fitfusion.ui.screens.*
 import com.google.firebase.FirebaseApp
@@ -46,8 +50,11 @@ class MainActivity : ComponentActivity() {
         enableEdgeToEdge()
         FirebaseApp.initializeApp(this)
         UserProfileStore.ensureInitialized(applicationContext)
+        AppThemeStore.ensureInitialized(applicationContext)
         ActiveWorkoutManager.init(applicationContext)
         setContent {
+            val themeMode by AppThemeStore.themeMode.collectAsState()
+            FitFusionTheme(themeMode = themeMode) {
             val navController = rememberNavController()
 
             val authViewModel: AuthViewModel = viewModel()
@@ -76,7 +83,7 @@ class MainActivity : ComponentActivity() {
 
             Scaffold(
                 modifier = Modifier.fillMaxSize(),
-                containerColor = Color(0xFFFBF8FE),
+                containerColor = Surface,
                 contentWindowInsets = WindowInsets.statusBars,
             ) { innerPadding ->
                 Column(modifier = Modifier.fillMaxSize().padding(innerPadding)) {
@@ -245,6 +252,7 @@ class MainActivity : ComponentActivity() {
                     }
                 }
             }
+            } // FitFusionTheme
         }
     }
 }

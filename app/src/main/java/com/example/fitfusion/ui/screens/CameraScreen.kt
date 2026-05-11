@@ -63,6 +63,7 @@ import androidx.compose.ui.viewinterop.AndroidView
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import com.example.fitfusion.ui.theme.Primary
+import com.example.fitfusion.ui.theme.PrimaryContainer
 import com.example.fitfusion.ui.theme.Tertiary
 import java.io.File
 
@@ -422,7 +423,7 @@ private fun PermissionPrompt(onRequest: () -> Unit, onClose: () -> Unit) {
                 .height(48.dp)
                 .fillMaxWidth()
                 .clip(RoundedCornerShape(14.dp))
-                .background(Brush.linearGradient(listOf(Primary, Color(0xFF32CD32))))
+                .background(Brush.linearGradient(listOf(Primary, PrimaryContainer)))
                 .clickable(onClick = onRequest),
             contentAlignment = Alignment.Center,
         ) {

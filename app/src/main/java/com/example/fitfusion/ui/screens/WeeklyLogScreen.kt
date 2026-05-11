@@ -217,7 +217,7 @@ fun PantallaWeeklyLog(
                             horizontalArrangement = Arrangement.SpaceAround
                         ) {
                             SummaryStatCard("${state.weekSummary.avgKcal}", "MEDIA DIARIA", "kcal", Primary)
-                            SummaryStatCard("${state.weekSummary.daysLogged}/7", "DÍAS LOGADOS", "", OnSurface)
+                            SummaryStatCard("${state.weekSummary.daysLogged}/7", "DÍAS REGISTRADOS", "", OnSurface)
                         }
                         Spacer(Modifier.height(12.dp))
                         Row(

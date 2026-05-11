@@ -255,7 +255,7 @@ private fun RestRow(onClick: () -> Unit) {
         Box(
             modifier = Modifier.size(40.dp).clip(CircleShape).background(SurfaceContainerHigh),
             contentAlignment = Alignment.Center,
-        ) { Text("REST", fontSize = 10.sp, fontWeight = FontWeight.Bold, color = OnSurfaceVariant) }
+        ) { Text("DESC", fontSize = 10.sp, fontWeight = FontWeight.Bold, color = OnSurfaceVariant) }
         Text("Descanso", fontWeight = FontWeight.SemiBold, fontSize = 14.sp, color = OnSurface)
     }
 }

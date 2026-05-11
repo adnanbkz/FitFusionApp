@@ -38,6 +38,7 @@ import com.example.fitfusion.ui.theme.OnSurface
 import com.example.fitfusion.ui.theme.OnSurfaceVariant
 import com.example.fitfusion.ui.theme.Primary
 import com.example.fitfusion.ui.theme.Surface
+import com.example.fitfusion.ui.theme.Tertiary
 import com.example.fitfusion.ui.theme.SurfaceContainerLow
 import com.example.fitfusion.viewmodel.OnboardingViewModel
 
@@ -114,7 +115,7 @@ fun PantallaOnboarding(
             }
 
             if (state.errorMessage != null) {
-                Text(state.errorMessage!!, color = Color(0xFFD32F2F), fontSize = 13.sp)
+                Text(state.errorMessage!!, color = Tertiary, fontSize = 13.sp)
             }
 
             Spacer(Modifier.weight(1f))

@@ -31,28 +31,28 @@ private data class FaqItem(val question: String, val answer: String)
 
 private val faqItems = listOf(
     FaqItem(
-        "Como registro un entrenamiento?",
-        "Ve a la pestana Seguimiento y pulsa 'Registrar entrenamiento'. Elige el tipo de actividad, introduce la duracion y los detalles, luego guarda."
+        "¿Cómo registro un entrenamiento?",
+        "Ve a la pestaña Seguimiento y pulsa 'Registrar entrenamiento'. Elige el tipo de actividad, introduce la duración y los detalles, luego guarda."
     ),
     FaqItem(
-        "Como funciona la sincronizacion con Health Connect?",
-        "En Ajustes > Preferencias activa 'Sincronizacion de datos de salud'. Asegurate de tener Health Connect instalado y de haber concedido los permisos necesarios."
+        "¿Cómo funciona la sincronización con Health Connect?",
+        "En Ajustes > Preferencias activa 'Sincronización de datos de salud'. Asegúrate de tener Health Connect instalado y de haber concedido los permisos necesarios."
     ),
     FaqItem(
-        "Puedo usar la app sin conexion a internet?",
-        "Si. Puedes registrar entrenamientos y comidas sin conexion. Los datos se sincronizaran automaticamente cuando vuelvas a conectarte."
+        "¿Puedo usar la app sin conexión a internet?",
+        "Sí. Puedes registrar entrenamientos y comidas sin conexión. Los datos se sincronizarán automáticamente cuando vuelvas a conectarte."
     ),
     FaqItem(
-        "Como cambio mi objetivo calorico diario?",
-        "Ve a tu Perfil > Ajustes > Cuenta y edita tus datos. El sistema calculara automaticamente las calorias recomendadas."
+        "¿Cómo cambio mi objetivo calórico diario?",
+        "Ve a tu Perfil > Ajustes > Cuenta y edita tus datos. El sistema calculará automáticamente las calorías recomendadas."
     ),
     FaqItem(
-        "Como elimino una publicacion del feed?",
-        "Pulsa los tres puntos en la esquina de la publicacion y selecciona 'Eliminar'. Esta accion es permanente."
+        "¿Cómo elimino una publicación del feed?",
+        "Pulsa los tres puntos en la esquina de la publicación y selecciona 'Eliminar'. Esta acción es permanente."
     ),
     FaqItem(
-        "Estan seguros mis datos?",
-        "Si. Todos los datos se almacenan con cifrado en reposo y en transito. Puedes exportar o eliminar tu cuenta en cualquier momento desde Ajustes > Cuenta."
+        "¿Están seguros mis datos?",
+        "Sí. Todos los datos se almacenan con cifrado en reposo y en tránsito. Puedes exportar o eliminar tu cuenta en cualquier momento desde Ajustes > Cuenta."
     )
 )
 
@@ -208,7 +208,7 @@ fun PantallaHelpSupport(
                 },
                 navigationIcon = {
                     IconButton(onClick = { navController.popBackStack() }) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, "Atras")
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, "Atrás")
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(containerColor = Surface)
@@ -240,7 +240,7 @@ fun PantallaHelpSupport(
                 ) {
                     Column(modifier = Modifier.weight(1f)) {
                         Text(
-                            "Necesitas ayuda?",
+                            "¿Necesitas ayuda?",
                             fontWeight = FontWeight.Bold,
                             fontSize = 16.sp,
                             color = OnSurface
@@ -306,7 +306,7 @@ fun PantallaHelpSupport(
                     )
                     HelpLinkRow(
                         icon = Icons.Default.Star,
-                        title = "Valorar la aplicacion",
+                        title = "Valorar la aplicación",
                         subtitle = "Comparte tu opinion en la tienda",
                         onClick = { }
                     )
@@ -317,7 +317,7 @@ fun PantallaHelpSupport(
                     HelpLinkRow(
                         icon = Icons.Default.Notifications,
                         title = "Novedades y actualizaciones",
-                        subtitle = "Consulta las ultimas mejoras de FitFusion",
+                        subtitle = "Consulta las últimas mejoras de FitFusion",
                         onClick = { }
                     )
                 }
@@ -335,7 +335,7 @@ fun PantallaHelpSupport(
                 Column {
                     ExpandableLegalRow(
                         icon = Icons.Default.Info,
-                        title = "Terminos de servicio",
+                        title = "Términos de servicio",
                         subtitle = "Condiciones de uso de la plataforma",
                         content = tosText,
                     )
@@ -345,7 +345,7 @@ fun PantallaHelpSupport(
                     )
                     ExpandableLegalRow(
                         icon = Icons.Default.Lock,
-                        title = "Politica de privacidad",
+                        title = "Política de privacidad",
                         subtitle = "Como tratamos tus datos personales",
                         content = privacyText,
                     )
@@ -355,7 +355,7 @@ fun PantallaHelpSupport(
                     )
                     ExpandableLegalRow(
                         icon = Icons.AutoMirrored.Filled.List,
-                        title = "Licencias de codigo abierto",
+                        title = "Licencias de código abierto",
                         subtitle = "Bibliotecas de terceros utilizadas",
                         content = licensesText,
                     )
@@ -377,7 +377,7 @@ fun PantallaHelpSupport(
                     verticalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
                     Text(
-                        "Tienes preguntas o sugerencias?",
+                        "¿Tienes preguntas o sugerencias?",
                         fontSize = 15.sp,
                         fontWeight = FontWeight.SemiBold,
                         color = OnSurface,

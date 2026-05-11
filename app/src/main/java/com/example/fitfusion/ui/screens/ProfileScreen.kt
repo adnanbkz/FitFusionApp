@@ -62,7 +62,7 @@ fun PantallaProfile(
 ) {
     val state by profileViewModel.uiState.collectAsState()
     val tabs = listOf(
-        Triple("Posts", Icons.Default.GridView, 0),
+        Triple("Publicaciones", Icons.Default.GridView, 0),
         Triple("Guardado", Icons.Default.Bookmark, 1),
         Triple("Me gusta", Icons.Default.Favorite, 2),
     )
@@ -72,6 +72,7 @@ fun PantallaProfile(
     ) { uri -> uri?.let { profileViewModel.updateProfilePhoto(it) } }
 
     LaunchedEffect(userName) { profileViewModel.updateFromUser(userName) }
+    val primaryColor = Primary
 
     LazyColumn(
         modifier = Modifier.fillMaxSize().background(Surface),
@@ -168,7 +169,7 @@ fun PantallaProfile(
                         Box(
                             modifier = Modifier.size(98.dp).drawBehind {
                                 drawCircle(
-                                    color  = Primary,
+                                    color  = primaryColor,
                                     radius = size.minDimension / 2,
                                     style  = Stroke(width = 5f)
                                 )
@@ -216,7 +217,7 @@ fun PantallaProfile(
                         horizontalArrangement = Arrangement.SpaceEvenly,
                         verticalAlignment   = Alignment.CenterVertically
                     ) {
-                        StatBlock(value = state.postCount, label = "Posts")
+                        StatBlock(value = state.postCount, label = "Publicaciones")
                         StatBlock(value = state.followers, label = "Seguidores")
                         StatBlock(value = state.following, label = "Siguiendo")
                     }

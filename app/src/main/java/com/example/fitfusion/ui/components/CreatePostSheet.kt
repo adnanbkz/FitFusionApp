@@ -486,7 +486,7 @@ private fun CapturedVideoPreview(onRemove: () -> Unit) {
             .clip(RoundedCornerShape(14.dp))
             .background(
                 androidx.compose.ui.graphics.Brush.linearGradient(
-                    listOf(Color(0xFF1A1A1A), Color(0xFF2D2D2D))
+                    listOf(SurfaceContainerLowest, SurfaceContainerLow)
                 )
             ),
         contentAlignment = Alignment.Center,

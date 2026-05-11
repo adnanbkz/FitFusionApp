@@ -36,6 +36,7 @@ data class PostDetailUiState(
     val statThreeValue: String = "—",
     val statThreeLabel: String = "TOTAL",
     val isLiked: Boolean = false,
+    val isSaved: Boolean = false,
     val likeCount: String = "0",
     val commentCount: String = "0",
     val energyCount: String = "0",
@@ -113,6 +114,10 @@ class PostDetailViewModel : ViewModel() {
     fun toggleLike() {
         val id = loadedPostId ?: return
         FeedRepository.toggleLike(id)
+    }
+
+    fun toggleSave() {
+        _uiState.update { it.copy(isSaved = !it.isSaved) }
     }
 
     fun sendComment() {

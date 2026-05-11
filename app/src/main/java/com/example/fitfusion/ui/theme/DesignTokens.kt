@@ -1,34 +1,54 @@
 package com.example.fitfusion.ui.theme
 
-
+import androidx.compose.runtime.Composable
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 
-// ─── Colors (DESIGN.md — "The Kinetic Editorial") ───
+// ─── Colors — read from the active FitFusionColors via CompositionLocal ───────
 
-val Primary = Color(0xFF006E0A)
-val PrimaryContainer = Color(0xFF32CD32)
-val Secondary = Color(0xFF476083)
-val SecondaryContainer = Color(0xFFBDD6FF)
-val Tertiary = Color(0xFFB02F00)
+val Primary: Color
+    @Composable get() = LocalFitFusionColors.current.primary
 
-val Surface = Color(0xFFFBF8FE)
-val SurfaceContainerLow = Color(0xFFF6F2F8)
-val SurfaceContainerLowest = Color(0xFFFFFFFF)
-val SurfaceContainerHigh = Color(0xFFEAE7ED)
+val PrimaryContainer: Color
+    @Composable get() = LocalFitFusionColors.current.primaryContainer
 
-val OnSurface = Color(0xFF1B1B1F)
-val OnSurfaceVariant = Color(0xFF757575)
-val OutlineVariant = Color(0xFFBCCBB4)
+val Secondary: Color
+    @Composable get() = LocalFitFusionColors.current.secondary
 
-// ─── Gradients ───
+val SecondaryContainer: Color
+    @Composable get() = LocalFitFusionColors.current.secondaryContainer
 
-val GreenGradientBrush = Brush.linearGradient(
-    colors = listOf(Primary, PrimaryContainer)
-)
+val Tertiary: Color
+    @Composable get() = LocalFitFusionColors.current.tertiary
 
-// ─── Spacing ───
+val Surface: Color
+    @Composable get() = LocalFitFusionColors.current.surface
+
+val SurfaceContainerLow: Color
+    @Composable get() = LocalFitFusionColors.current.surfaceContainerLow
+
+val SurfaceContainerLowest: Color
+    @Composable get() = LocalFitFusionColors.current.surfaceContainerLowest
+
+val SurfaceContainerHigh: Color
+    @Composable get() = LocalFitFusionColors.current.surfaceContainerHigh
+
+val OnSurface: Color
+    @Composable get() = LocalFitFusionColors.current.onSurface
+
+val OnSurfaceVariant: Color
+    @Composable get() = LocalFitFusionColors.current.onSurfaceVariant
+
+val OutlineVariant: Color
+    @Composable get() = LocalFitFusionColors.current.outlineVariant
+
+// ─── Gradients ────────────────────────────────────────────────────────────────
+
+val GreenGradientBrush: Brush
+    @Composable get() = Brush.linearGradient(listOf(Primary, PrimaryContainer))
+
+// ─── Spacing ──────────────────────────────────────────────────────────────────
 
 val Spacing2 = 8.dp
 val Spacing4 = 16.dp

@@ -10,6 +10,8 @@ import androidx.compose.animation.fadeOut
 import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -75,6 +77,8 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavHostController
 import androidx.health.connect.client.PermissionController
 import com.example.fitfusion.R
+import com.example.fitfusion.data.AppThemeStore
+import com.example.fitfusion.data.ThemeMode
 import com.example.fitfusion.ui.components.SectionTitle
 import com.example.fitfusion.ui.components.SettingsRow
 import com.example.fitfusion.ui.components.SettingsToggleRow
@@ -104,6 +108,7 @@ fun PantallaSettings(
     settingsViewModel: SettingsViewModel = viewModel(),
 ) {
     val state by settingsViewModel.uiState.collectAsState()
+    val themeMode by AppThemeStore.themeMode.collectAsState()
     val context = LocalContext.current
 
     val permissionLauncher = rememberLauncherForActivityResult(
@@ -250,7 +255,7 @@ fun PantallaSettings(
                 settingsViewModel.clearPasswordState()
             }
             Text(
-                "Contrasena actualizada correctamente",
+                "Contraseña actualizada correctamente",
                 color = Primary,
                 fontSize = 13.sp,
                 fontWeight = FontWeight.SemiBold,
@@ -281,6 +286,14 @@ fun PantallaSettings(
             }
             Text("Actualizar contraseña", fontWeight = FontWeight.SemiBold)
         }
+
+        Spacer(modifier = Modifier.height(12.dp))
+
+        SectionTitle("APARIENCIA")
+        ThemeSelectorCard(
+            currentMode = themeMode,
+            onModeSelected = { mode -> AppThemeStore.save(context, mode) },
+        )
 
         Spacer(modifier = Modifier.height(12.dp))
 
@@ -654,6 +667,103 @@ private fun HcStatPill(value: String, label: String, modifier: Modifier = Modifi
     ) {
         Text(value, fontSize = 14.sp, fontWeight = FontWeight.Bold, color = OnSurface)
         Text(label, fontSize = 9.sp, color = OnSurfaceVariant, letterSpacing = 0.5.sp)
+    }
+}
+
+@Composable
+private fun ThemeSelectorCard(
+    currentMode: ThemeMode,
+    onModeSelected: (ThemeMode) -> Unit,
+) {
+    Card(
+        shape = RoundedCornerShape(20.dp),
+        colors = CardDefaults.cardColors(containerColor = SurfaceContainerLowest),
+        elevation = CardDefaults.cardElevation(0.dp),
+        modifier = Modifier.fillMaxWidth().padding(horizontal = 24.dp),
+    ) {
+        Row(
+            modifier = Modifier.padding(16.dp),
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
+        ) {
+            ThemeOptionCard(
+                label = "Claro",
+                selected = currentMode == ThemeMode.LIGHT,
+                previewBg = Color(0xFFFBF8FE),
+                previewAccent = Color(0xFF006E0A),
+                modifier = Modifier.weight(1f),
+                onClick = { onModeSelected(ThemeMode.LIGHT) },
+            )
+            ThemeOptionCard(
+                label = "Neon Oscuro",
+                selected = currentMode == ThemeMode.DARK_NEON,
+                previewBg = Color(0xFF080D18),
+                previewAccent = Color(0xFF00FF7F),
+                modifier = Modifier.weight(1f),
+                onClick = { onModeSelected(ThemeMode.DARK_NEON) },
+            )
+        }
+    }
+}
+
+@Composable
+private fun ThemeOptionCard(
+    label: String,
+    selected: Boolean,
+    previewBg: Color,
+    previewAccent: Color,
+    modifier: Modifier = Modifier,
+    onClick: () -> Unit,
+) {
+    Column(
+        modifier = modifier
+            .clip(RoundedCornerShape(14.dp))
+            .border(
+                width = if (selected) 2.dp else 1.dp,
+                color = if (selected) Primary else OutlineVariant.copy(alpha = 0.4f),
+                shape = RoundedCornerShape(14.dp),
+            )
+            .background(SurfaceContainerLow)
+            .clickable(onClick = onClick)
+            .padding(10.dp),
+        verticalArrangement = Arrangement.spacedBy(8.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+    ) {
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(56.dp)
+                .clip(RoundedCornerShape(8.dp))
+                .background(previewBg),
+        ) {
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth(0.75f)
+                    .height(8.dp)
+                    .align(Alignment.Center)
+                    .clip(RoundedCornerShape(4.dp))
+                    .background(previewAccent.copy(alpha = 0.4f))
+            )
+            Box(
+                modifier = Modifier
+                    .padding(6.dp)
+                    .size(8.dp)
+                    .align(Alignment.TopStart)
+                    .clip(CircleShape)
+                    .background(previewAccent)
+            )
+        }
+        Text(
+            label,
+            fontSize = 12.sp,
+            fontWeight = if (selected) FontWeight.Bold else FontWeight.Normal,
+            color = if (selected) Primary else OnSurfaceVariant,
+            textAlign = TextAlign.Center,
+        )
+        if (selected) {
+            Icon(Icons.Default.CheckCircle, null, Modifier.size(14.dp), tint = Primary)
+        } else {
+            Spacer(Modifier.height(14.dp))
+        }
     }
 }
 
