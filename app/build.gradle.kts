@@ -3,6 +3,7 @@ import java.util.Properties
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.android)
+    alias(libs.plugins.kotlin.serialization)
     alias(libs.plugins.kotlin.compose)
     alias(libs.plugins.google.gms.google.services)
     alias(libs.plugins.google.firebase.crashlytics)
@@ -34,6 +35,8 @@ val algoliaSearchApiKey = configValue("ALGOLIA_SEARCH_API_KEY")
     .ifBlank { "34f1596d1dabef7bf8ec268a6219e5d6" }
 val algoliaExercisesIndexName = configValue("ALGOLIA_EXERCISES_INDEX_NAME")
     .ifBlank { "fitfusion_exercises_algolia" }
+val aiApiBaseUrl = configValue("AI_API_BASE_URL")
+    .ifBlank { "http://10.0.2.2:5000" }
 
 android {
     namespace = "com.example.fitfusion"
@@ -62,6 +65,11 @@ android {
             "String",
             "ALGOLIA_EXERCISES_INDEX_NAME",
             "\"${escapedBuildConfigValue(algoliaExercisesIndexName)}\""
+        )
+        buildConfigField(
+            "String",
+            "AI_API_BASE_URL",
+            "\"${escapedBuildConfigValue(aiApiBaseUrl)}\""
         )
     }
 
@@ -114,6 +122,8 @@ dependencies {
 
     //COROUTINES
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-play-services:1.8.1")
+    implementation(libs.kotlinx.serialization.json)
+    implementation(libs.okhttp)
 
     //FIREBASE
     implementation(platform("com.google.firebase:firebase-bom:34.11.0"))

@@ -8,6 +8,11 @@
 /.idea/navEditor.xml
 /.idea/assetWizardSettings.xml
 .DS_Store
+.agents/
+.codex
+.idea/.name
+skills
+skills-lock.json
 /build
 /captures
 .externalNativeBuild
