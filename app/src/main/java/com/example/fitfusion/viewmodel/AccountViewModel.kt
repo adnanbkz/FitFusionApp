@@ -36,9 +36,10 @@ data class AccountUiState(
 
 class AccountViewModel(
     application: Application,
-    private val auth: FirebaseAuth = FirebaseAuth.getInstance(),
-    private val userRepository: UserRepository = UserRepository(),
 ) : AndroidViewModel(application) {
+
+    private val auth: FirebaseAuth = FirebaseAuth.getInstance()
+    private val userRepository: UserRepository = UserRepository()
 
     private val _uiState = MutableStateFlow(AccountUiState())
     val uiState: StateFlow<AccountUiState> = _uiState.asStateFlow()
