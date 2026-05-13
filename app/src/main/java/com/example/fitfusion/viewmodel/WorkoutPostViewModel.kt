@@ -8,7 +8,9 @@ import com.example.fitfusion.data.models.UserPost
 import com.example.fitfusion.data.models.UserPostType
 import com.example.fitfusion.data.repository.PostRepository
 import com.example.fitfusion.data.repository.WorkoutRepository
+import com.example.fitfusion.data.workout.ActiveWorkoutManager
 import com.google.firebase.auth.FirebaseAuth
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -19,6 +21,7 @@ data class WorkoutPostUiState(
     val workout: LoggedWorkout? = null,
     val caption: String = "",
     val isPublishing: Boolean = false,
+    val isMediaUploading: Boolean = false,
     val errorMessage: String? = null,
     val published: Boolean = false,
 )
@@ -30,10 +33,31 @@ class WorkoutPostViewModel(application: Application) : AndroidViewModel(applicat
     private val _uiState = MutableStateFlow(WorkoutPostUiState())
     val uiState: StateFlow<WorkoutPostUiState> = _uiState.asStateFlow()
 
+    private var loadJob: Job? = null
+    private var uploadObserveJob: Job? = null
+
     fun loadWorkout(workoutId: String) {
-        if (_uiState.value.workout?.id == workoutId) return
-        val workout = WorkoutRepository.workouts.value.values.flatten().firstOrNull { it.id == workoutId }
-        _uiState.update { it.copy(workout = workout, caption = workout?.name ?: "") }
+        if (_uiState.value.workout?.id == workoutId && loadJob?.isActive == true) return
+        loadJob?.cancel()
+        uploadObserveJob?.cancel()
+        loadJob = viewModelScope.launch {
+            WorkoutRepository.workouts.collect { workoutMap ->
+                val workout = workoutMap.values.flatten().firstOrNull { it.id == workoutId }
+                if (workout != null) {
+                    _uiState.update { current ->
+                        current.copy(
+                            workout = workout,
+                            caption = if (current.caption.isBlank()) workout.name else current.caption,
+                        )
+                    }
+                }
+            }
+        }
+        uploadObserveJob = viewModelScope.launch {
+            ActiveWorkoutManager.uploadingWorkoutIds.collect { uploadingIds ->
+                _uiState.update { it.copy(isMediaUploading = workoutId in uploadingIds) }
+            }
+        }
     }
 
     fun onCaptionChange(value: String) {

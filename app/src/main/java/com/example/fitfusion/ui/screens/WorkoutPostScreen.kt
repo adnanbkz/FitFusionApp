@@ -120,16 +120,35 @@ fun PantallaWorkoutPost(
                 }
             }
 
-            if (workout.mediaUrls.isNotEmpty()) {
+            if (workout.mediaUrls.isNotEmpty() || state.isMediaUploading) {
                 Text("FOTOS DEL ENTRENAMIENTO", fontSize = 11.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.5.sp, color = Primary)
-                LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    items(workout.mediaUrls) { url ->
-                        AsyncImage(
-                            model = url,
-                            contentDescription = null,
-                            contentScale = ContentScale.Crop,
-                            modifier = Modifier.size(120.dp).clip(RoundedCornerShape(12.dp)).background(SurfaceContainerLow),
-                        )
+                if (state.isMediaUploading && workout.mediaUrls.isEmpty()) {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(120.dp)
+                            .clip(RoundedCornerShape(12.dp))
+                            .background(SurfaceContainerLow),
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(10.dp),
+                        ) {
+                            CircularProgressIndicator(modifier = Modifier.size(20.dp), strokeWidth = 2.dp, color = Primary)
+                            Text("Subiendo imágenes...", fontSize = 13.sp, color = OnSurfaceVariant)
+                        }
+                    }
+                } else {
+                    LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        items(workout.mediaUrls) { url ->
+                            AsyncImage(
+                                model = url,
+                                contentDescription = null,
+                                contentScale = ContentScale.Crop,
+                                modifier = Modifier.size(120.dp).clip(RoundedCornerShape(12.dp)).background(SurfaceContainerLow),
+                            )
+                        }
                     }
                 }
             }
@@ -157,13 +176,15 @@ fun PantallaWorkoutPost(
 
             Button(
                 onClick = viewModel::publish,
-                enabled = !state.isPublishing,
+                enabled = !state.isPublishing && !state.isMediaUploading,
                 modifier = Modifier.fillMaxWidth().height(52.dp),
                 shape = RoundedCornerShape(14.dp),
                 colors = ButtonDefaults.buttonColors(containerColor = Primary),
             ) {
                 if (state.isPublishing) {
                     CircularProgressIndicator(color = Color.White, strokeWidth = 2.dp, modifier = Modifier.size(20.dp))
+                } else if (state.isMediaUploading) {
+                    Text("Esperando subida...", fontWeight = FontWeight.Bold, fontSize = 16.sp)
                 } else {
                     Text("Publicar", fontWeight = FontWeight.Bold, fontSize = 16.sp)
                 }

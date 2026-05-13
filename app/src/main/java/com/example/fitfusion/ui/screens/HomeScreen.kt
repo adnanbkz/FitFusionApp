@@ -27,17 +27,17 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.pager.HorizontalPager
+import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Bookmark
-import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.FavoriteBorder
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.MoreVert
-import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.filled.Restaurant
 import androidx.compose.material.icons.filled.Share
 import androidx.compose.material.icons.outlined.BookmarkBorder
@@ -47,8 +47,6 @@ import androidx.compose.material.icons.outlined.Home
 import androidx.compose.material.icons.outlined.Person
 import androidx.compose.material.icons.outlined.Restaurant
 import androidx.compose.material.icons.outlined.Schedule
-import androidx.compose.material3.Badge
-import androidx.compose.material3.BadgedBox
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.FloatingActionButtonDefaults
@@ -66,6 +64,7 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -77,10 +76,6 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.platform.LocalInspectionMode
-import androidx.compose.ui.window.Dialog
-import androidx.compose.ui.window.DialogProperties
-import kotlinx.coroutines.delay
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
@@ -89,12 +84,9 @@ import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavHostController
 import coil3.compose.AsyncImage
-import com.example.fitfusion.R
-import com.example.fitfusion.data.AppThemeStore
-import com.example.fitfusion.data.ThemeMode
 import com.example.fitfusion.data.repository.UserProfileStore
+import com.example.fitfusion.ui.components.CommentsBottomSheet
 import com.example.fitfusion.ui.components.CreatePostSheetHost
-import com.example.fitfusion.ui.theme.FitFusionColors
 import com.example.fitfusion.ui.theme.LocalFitFusionColors
 import com.example.fitfusion.ui.theme.OnSurface
 import com.example.fitfusion.ui.theme.OnSurfaceVariant
@@ -114,6 +106,8 @@ import com.example.fitfusion.viewmodel.NutritionPost
 import com.example.fitfusion.viewmodel.ProfileViewModel
 import com.example.fitfusion.viewmodel.WorkoutPost
 import java.time.LocalTime
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -126,6 +120,12 @@ fun PantallaHome(
     val state by homeViewModel.uiState.collectAsState()
     val photoUri by UserProfileStore.photoUri.collectAsState()
     var selectedTab by rememberSaveable { mutableStateOf(0) }
+    val pagerState = rememberPagerState(pageCount = { 4 })
+    val scope = rememberCoroutineScope()
+
+    LaunchedEffect(pagerState.currentPage) {
+        selectedTab = pagerState.currentPage
+    }
 
     Scaffold(
         containerColor = Surface,
@@ -133,28 +133,28 @@ fun PantallaHome(
             NavigationBar(containerColor = SurfaceContainerLowest) {
                 NavigationBarItem(
                     selected = selectedTab == 0,
-                    onClick = { selectedTab = 0 },
+                    onClick = { selectedTab = 0; scope.launch { pagerState.animateScrollToPage(0) } },
                     icon = { Icon(if (selectedTab == 0) Icons.Default.Home else Icons.Outlined.Home, "Inicio") },
                     label = { Text("Inicio") },
                     colors = navBarItemColors(),
                 )
                 NavigationBarItem(
                     selected = selectedTab == 1,
-                    onClick = { selectedTab = 1 },
+                    onClick = { selectedTab = 1; scope.launch { pagerState.animateScrollToPage(1) } },
                     icon = { Icon(if (selectedTab == 1) Icons.Default.Restaurant else Icons.Outlined.Restaurant, "Dieta") },
                     label = { Text("Dieta") },
                     colors = navBarItemColors(),
                 )
                 NavigationBarItem(
                     selected = selectedTab == 2,
-                    onClick = { selectedTab = 2 },
+                    onClick = { selectedTab = 2; scope.launch { pagerState.animateScrollToPage(2) } },
                     icon = { Icon(Icons.Outlined.FitnessCenter, "Ejercicio") },
                     label = { Text("Ejercicio") },
                     colors = navBarItemColors(),
                 )
                 NavigationBarItem(
                     selected = selectedTab == 3,
-                    onClick = { selectedTab = 3 },
+                    onClick = { selectedTab = 3; scope.launch { pagerState.animateScrollToPage(3) } },
                     icon = { Icon(Icons.Outlined.Person, "Perfil") },
                     label = { Text("Perfil") },
                     colors = navBarItemColors(),
@@ -162,13 +162,17 @@ fun PantallaHome(
             }
         }
     ) { innerPadding ->
-        Box(modifier = Modifier.fillMaxSize().padding(innerPadding)) {
-            when (selectedTab) {
+        HorizontalPager(
+            state = pagerState,
+            beyondViewportPageCount = 0,
+            modifier = Modifier.fillMaxSize().padding(innerPadding),
+        ) { page ->
+            when (page) {
                 0 -> HomeFeedPage(
                     state = state,
                     userName = userName,
                     photoUri = photoUri?.toString(),
-                    onAvatarClick = { selectedTab = 3 },
+                    onAvatarClick = { selectedTab = 3; scope.launch { pagerState.animateScrollToPage(3) } },
                     onFabClick = profileViewModel::showCreatePost,
                     onPostClick = { postId ->
                         navController.navigate("${Screens.PostDetailScreen.name}/$postId")
@@ -219,7 +223,12 @@ private fun HomeFeedPage(
     onSaveClick: (String) -> Unit,
 ) {
     val filtered = state.filteredItems
-    var viewingStory by remember { mutableStateOf<String?>(null) }
+    var commentPostId by remember { mutableStateOf<String?>(null) }
+
+    commentPostId?.let { pid ->
+        CommentsBottomSheet(postId = pid, onDismiss = { commentPostId = null })
+    }
+
     Box(
         modifier = Modifier
             .fillMaxSize()
@@ -232,10 +241,6 @@ private fun HomeFeedPage(
                     userName = userName,
                     onAvatarClick = onAvatarClick,
                 )
-            }
-            item {
-                StoriesRow(userName = userName, photoUri = photoUri, onStoryClick = { viewingStory = it })
-                HorizontalDivider(color = SurfaceContainerHigh, thickness = 0.5.dp)
             }
             item {
                 FeedFilterRow(
@@ -271,16 +276,18 @@ private fun HomeFeedPage(
                 ) { item ->
                     when (item) {
                         is FeedItem.Workout -> WorkoutPostCard(
-                            post        = item.post,
-                            onLikeClick = { onLikeClick(item.post.id) },
-                            onCardClick = { onPostClick(item.post.id) },
-                            onSaveClick = { onSaveClick(item.post.id) },
+                            post          = item.post,
+                            onLikeClick   = { onLikeClick(item.post.id) },
+                            onCardClick   = { onPostClick(item.post.id) },
+                            onSaveClick   = { onSaveClick(item.post.id) },
+                            onCommentClick = { commentPostId = item.post.id },
                         )
                         is FeedItem.Nutrition -> NutritionPostCard(
-                            post        = item.post,
-                            onLikeClick = { onLikeClick(item.post.id) },
-                            onCardClick = { onPostClick(item.post.id) },
-                            onSaveClick = { onSaveClick(item.post.id) },
+                            post          = item.post,
+                            onLikeClick   = { onLikeClick(item.post.id) },
+                            onCardClick   = { onPostClick(item.post.id) },
+                            onSaveClick   = { onSaveClick(item.post.id) },
+                            onCommentClick = { commentPostId = item.post.id },
                         )
                     }
                     HorizontalDivider(color = SurfaceContainerHigh, thickness = 0.5.dp)
@@ -315,24 +322,6 @@ private fun HomeFeedPage(
             }
         }
     }
-
-    viewingStory?.let { storyOwner ->
-        StoriesViewer(
-            name = storyOwner,
-            onDismiss = { viewingStory = null },
-        )
-    }
-}
-
-private fun greetingForNow(userName: String?): String {
-    val hour = LocalTime.now().hour
-    val greeting = when (hour) {
-        in 6..11  -> "Buenos días"
-        in 12..19 -> "Buenas tardes"
-        else      -> "Buenas noches"
-    }
-    val firstName = userName?.trim()?.split(' ')?.firstOrNull()?.takeIf { it.isNotBlank() }
-    return if (firstName != null) "$greeting, $firstName" else greeting
 }
 
 @Composable
@@ -414,36 +403,19 @@ private fun FeedTopBar(
             .background(Surface.copy(alpha = 0.97f))
             .padding(horizontal = 8.dp)
     ) {
-        // Notification bell on the left
         Box(
             modifier = Modifier.height(56.dp).align(Alignment.CenterStart),
             contentAlignment = Alignment.Center,
         ) {
-            IconButton(onClick = { }) {
-                BadgedBox(badge = { Badge(containerColor = Tertiary) }) {
-                    Icon(
-                        Icons.Default.Notifications,
-                        contentDescription = "Notificaciones",
-                        tint = OnSurface,
-                        modifier = Modifier.size(24.dp),
-                    )
-                }
-            }
+            Text(
+                "FitFusion",
+                fontWeight = FontWeight.Black,
+                fontSize = 22.sp,
+                color = Primary,
+                modifier = Modifier.padding(start = 8.dp),
+            )
         }
 
-        // Brand logo centered
-        AsyncImage(
-            model = R.drawable.logowithoutbg,
-            contentDescription = "FitFusion",
-            contentScale = ContentScale.Fit,
-            modifier = Modifier
-                .height(56.dp)
-                .width(110.dp)
-                .align(Alignment.Center)
-                .padding(vertical = 12.dp),
-        )
-
-        // Profile avatar on the far right
         Box(
             modifier = Modifier
                 .height(56.dp)
@@ -508,13 +480,13 @@ private fun ProfileAvatarButton(
     }
 }
 
-
 @Composable
 private fun WorkoutPostCard(
     post: WorkoutPost,
     onLikeClick: () -> Unit,
     onCardClick: () -> Unit,
     onSaveClick: () -> Unit,
+    onCommentClick: () -> Unit = {},
 ) {
     val context = LocalContext.current
     val colors = LocalFitFusionColors.current
@@ -522,13 +494,12 @@ private fun WorkoutPostCard(
     val overlayTextColor = if (isDark) Color.White else colors.onSurface
     val overlaySubTextColor = if (isDark) Color.White.copy(alpha = 0.7f) else colors.onSurface.copy(alpha = 0.7f)
     val overlayBadgeBg = if (isDark) Color.White.copy(alpha = 0.08f) else Color.Black.copy(alpha = 0.06f)
-    val gradientColors = if (isDark) {
-        listOf(SurfaceContainerLowest, SurfaceContainerLowest, Primary.copy(alpha = 0.75f))
-    } else {
-        listOf(Primary.copy(alpha = 0.12f), Primary.copy(alpha = 0.35f), Primary.copy(alpha = 0.75f))
-    }
+    val gradientColors = listOf(Primary.copy(alpha = 0.9f), PrimaryContainer.copy(alpha = 0.75f), Primary)
     var showHeart by remember { mutableStateOf(false) }
     LaunchedEffect(showHeart) { if (showHeart) { delay(700); showHeart = false } }
+
+    val mediaUrls = post.mediaUrls
+    val imagePagerState = rememberPagerState(pageCount = { mediaUrls.size.coerceAtLeast(1) })
 
     Column(
         modifier = Modifier
@@ -536,7 +507,6 @@ private fun WorkoutPostCard(
             .background(SurfaceContainerLowest)
             .clickable(onClick = onCardClick)
     ) {
-        // Header: avatar + name + type | ⋮
         Row(
             modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 10.dp),
             verticalAlignment = Alignment.CenterVertically,
@@ -550,100 +520,171 @@ private fun WorkoutPostCard(
             Icon(Icons.Default.MoreVert, null, tint = OnSurfaceVariant, modifier = Modifier.size(20.dp))
         }
 
-        // Media: green gradient with workout info overlaid
         Box(
             modifier = Modifier
                 .fillMaxWidth()
-                .aspectRatio(4f / 3f)
-                .background(
-                    Brush.linearGradient(
-                        colors = gradientColors
-                    )
-                )
-                .pointerInput(post.isLiked) {
-                    detectTapGestures(
-                        onTap = { onCardClick() },
-                        onDoubleTap = { if (!post.isLiked) onLikeClick(); showHeart = true },
-                    )
-                },
+                .aspectRatio(4f / 3f),
             contentAlignment = Alignment.Center,
         ) {
-            Column(
-                horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.spacedBy(12.dp),
-                modifier = Modifier.padding(horizontal = 24.dp, vertical = 16.dp),
-            ) {
-                Text(
-                    post.workoutName,
-                    fontSize = 26.sp,
-                    fontWeight = FontWeight.Black,
-                    color = Color.White,
-                    textAlign = TextAlign.Center,
-                    lineHeight = 30.sp,
-                )
-                Row(
-                    horizontalArrangement = Arrangement.spacedBy(24.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    PostStatChip(
-                        icon = { Icon(Icons.Outlined.Schedule, null, Modifier.size(14.dp), tint = overlaySubTextColor) },
-                        label = "${post.durationMin} min",
-                        textColor = overlayTextColor,
-                    )
-                    if (post.totalWeightKg > 0) {
-                        PostStatChip(
-                            icon = { Icon(Icons.Outlined.FitnessCenter, null, Modifier.size(14.dp), tint = overlaySubTextColor) },
-                            label = "${post.totalWeightKg.toInt()} kg",
-                            textColor = overlayTextColor,
+            when {
+                mediaUrls.size > 1 -> {
+                    HorizontalPager(
+                        state = imagePagerState,
+                        modifier = Modifier.fillMaxSize(),
+                    ) { page ->
+                        AsyncImage(
+                            model = mediaUrls[page],
+                            contentDescription = null,
+                            contentScale = ContentScale.Crop,
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .pointerInput(post.isLiked) {
+                                    detectTapGestures(
+                                        onTap = { onCardClick() },
+                                        onDoubleTap = { if (!post.isLiked) onLikeClick(); showHeart = true },
+                                    )
+                                },
+                        )
+                    }
+                    Row(
+                        modifier = Modifier
+                            .align(Alignment.BottomCenter)
+                            .padding(bottom = 10.dp)
+                            .clip(RoundedCornerShape(8.dp))
+                            .background(Color.Black.copy(alpha = 0.4f))
+                            .padding(horizontal = 7.dp, vertical = 4.dp),
+                        horizontalArrangement = Arrangement.spacedBy(5.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        repeat(mediaUrls.size) { index ->
+                            val isSelected = imagePagerState.currentPage == index
+                            Box(
+                                modifier = Modifier
+                                    .size(if (isSelected) 7.dp else 5.dp)
+                                    .clip(CircleShape)
+                                    .background(if (isSelected) Color.White else Color.White.copy(alpha = 0.55f))
+                            )
+                        }
+                    }
+                    Box(
+                        modifier = Modifier
+                            .align(Alignment.TopEnd)
+                            .padding(top = 8.dp, end = 8.dp)
+                            .clip(RoundedCornerShape(10.dp))
+                            .background(Color.Black.copy(alpha = 0.45f))
+                            .padding(horizontal = 8.dp, vertical = 3.dp),
+                    ) {
+                        Text(
+                            "${imagePagerState.currentPage + 1}/${mediaUrls.size}",
+                            fontSize = 12.sp,
+                            fontWeight = FontWeight.SemiBold,
+                            color = Color.White,
                         )
                     }
                 }
-                if (post.exercises.isNotEmpty()) {
-                    Column(
+                mediaUrls.size == 1 -> {
+                    AsyncImage(
+                        model = mediaUrls[0],
+                        contentDescription = null,
+                        contentScale = ContentScale.Crop,
                         modifier = Modifier
-                            .fillMaxWidth()
-                            .clip(RoundedCornerShape(12.dp))
-                            .background(overlayBadgeBg)
-                            .padding(10.dp),
-                        verticalArrangement = Arrangement.spacedBy(6.dp),
+                            .fillMaxSize()
+                            .pointerInput(post.isLiked) {
+                                detectTapGestures(
+                                    onTap = { onCardClick() },
+                                    onDoubleTap = { if (!post.isLiked) onLikeClick(); showHeart = true },
+                                )
+                            },
+                    )
+                }
+                else -> {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .background(Brush.linearGradient(gradientColors))
+                            .pointerInput(post.isLiked) {
+                                detectTapGestures(
+                                    onTap = { onCardClick() },
+                                    onDoubleTap = { if (!post.isLiked) onLikeClick(); showHeart = true },
+                                )
+                            },
+                        contentAlignment = Alignment.Center,
                     ) {
-                        post.exercises.take(3).forEach { ex ->
-                            Row(
-                                verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.spacedBy(8.dp),
-                            ) {
-                                Box(
-                                    modifier = Modifier
-                                        .size(6.dp)
-                                        .clip(CircleShape)
-                                        .background(Color(0xFF7ED321)),
-                                )
-                                Text(
-                                    ex.name,
-                                    fontSize = 12.sp,
-                                    color = Color.White,
-                                    modifier = Modifier.weight(1f),
-                                    maxLines = 1,
-                                    overflow = TextOverflow.Ellipsis,
-                                )
-                                val detail = buildString {
-                                    if (ex.weightKg > 0) append("${ex.weightKg.toInt()} kg · ")
-                                    if (ex.reps > 0) append("${ex.sets}×${ex.reps}") else append("${ex.sets} series")
-                                }
-                                Text(
-                                    detail,
-                                    fontSize = 11.sp,
-                                    color = overlaySubTextColor,
-                                )
-                            }
-                        }
-                        if (post.exercises.size > 3) {
+                        Column(
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            verticalArrangement = Arrangement.spacedBy(12.dp),
+                            modifier = Modifier.padding(horizontal = 24.dp, vertical = 16.dp),
+                        ) {
                             Text(
-                                "+${post.exercises.size - 3} ejercicios más",
-                                fontSize = 11.sp,
-                                color = overlaySubTextColor,
-                                modifier = Modifier.padding(top = 2.dp),
+                                post.workoutName,
+                                fontSize = 26.sp,
+                                fontWeight = FontWeight.Black,
+                                color = Color.White,
+                                textAlign = TextAlign.Center,
+                                lineHeight = 30.sp,
                             )
+                            Row(
+                                horizontalArrangement = Arrangement.spacedBy(24.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                            ) {
+                                PostStatChip(
+                                    icon = { Icon(Icons.Outlined.Schedule, null, Modifier.size(14.dp), tint = overlaySubTextColor) },
+                                    label = "${post.durationMin} min",
+                                    textColor = overlayTextColor,
+                                )
+                                if (post.totalWeightKg > 0) {
+                                    PostStatChip(
+                                        icon = { Icon(Icons.Outlined.FitnessCenter, null, Modifier.size(14.dp), tint = overlaySubTextColor) },
+                                        label = "${post.totalWeightKg.toInt()} kg",
+                                        textColor = overlayTextColor,
+                                    )
+                                }
+                            }
+                            if (post.exercises.isNotEmpty()) {
+                                Column(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .clip(RoundedCornerShape(12.dp))
+                                        .background(overlayBadgeBg)
+                                        .padding(10.dp),
+                                    verticalArrangement = Arrangement.spacedBy(6.dp),
+                                ) {
+                                    post.exercises.take(3).forEach { ex ->
+                                        Row(
+                                            verticalAlignment = Alignment.CenterVertically,
+                                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                                        ) {
+                                            Box(
+                                                modifier = Modifier
+                                                    .size(6.dp)
+                                                    .clip(CircleShape)
+                                                    .background(Color(0xFF7ED321)),
+                                            )
+                                            Text(
+                                                ex.name,
+                                                fontSize = 12.sp,
+                                                color = Color.White,
+                                                modifier = Modifier.weight(1f),
+                                                maxLines = 1,
+                                                overflow = TextOverflow.Ellipsis,
+                                            )
+                                            val detail = buildString {
+                                                if (ex.weightKg > 0) append("${ex.weightKg.toInt()} kg · ")
+                                                if (ex.reps > 0) append("${ex.sets}×${ex.reps}") else append("${ex.sets} series")
+                                            }
+                                            Text(detail, fontSize = 11.sp, color = overlaySubTextColor)
+                                        }
+                                    }
+                                    if (post.exercises.size > 3) {
+                                        Text(
+                                            "+${post.exercises.size - 3} ejercicios más",
+                                            fontSize = 11.sp,
+                                            color = overlaySubTextColor,
+                                            modifier = Modifier.padding(top = 2.dp),
+                                        )
+                                    }
+                                }
+                            }
                         }
                     }
                 }
@@ -651,7 +692,6 @@ private fun WorkoutPostCard(
             HeartBurst(visible = showHeart)
         }
 
-        // Action bar (no divider above)
         InteractionBar(
             likes = post.likes,
             comments = post.comments,
@@ -659,6 +699,7 @@ private fun WorkoutPostCard(
             isSaved = post.isSaved,
             onLikeClick = onLikeClick,
             onSaveClick = onSaveClick,
+            onCommentClick = onCommentClick,
             onShareClick = {
                 context.startActivity(
                     Intent(Intent.ACTION_SEND).apply {
@@ -669,7 +710,6 @@ private fun WorkoutPostCard(
             },
         )
 
-        // Likes count
         if (post.likes > 0) {
             Text(
                 "${post.likes} me gusta",
@@ -680,20 +720,19 @@ private fun WorkoutPostCard(
             )
         }
 
-        // Caption
         PostCaption(author = post.author, text = post.workoutName)
 
-        // Comments link
         if (post.comments > 0) {
             Text(
                 "Ver los ${post.comments} comentarios",
                 fontSize = 13.sp,
                 color = OnSurfaceVariant,
-                modifier = Modifier.padding(horizontal = 14.dp, vertical = 2.dp),
+                modifier = Modifier
+                    .padding(horizontal = 14.dp, vertical = 2.dp)
+                    .clickable(onClick = onCommentClick),
             )
         }
 
-        // Timestamp
         Text(
             post.timeAgo.uppercase(),
             fontSize = 10.sp,
@@ -704,24 +743,20 @@ private fun WorkoutPostCard(
     }
 }
 
-
 @Composable
 private fun NutritionPostCard(
     post: NutritionPost,
     onLikeClick: () -> Unit,
     onCardClick: () -> Unit,
     onSaveClick: () -> Unit,
+    onCommentClick: () -> Unit = {},
 ) {
     val context = LocalContext.current
     val colors = LocalFitFusionColors.current
     val isDark = colors.isDark
-    val fallbackGradientColors = if (isDark) {
-        listOf(SurfaceContainerLowest, Primary.copy(alpha = 0.4f), PrimaryContainer.copy(alpha = 0.6f))
-    } else {
-        listOf(Primary.copy(alpha = 0.12f), Primary.copy(alpha = 0.4f), PrimaryContainer.copy(alpha = 0.6f))
-    }
+    val gradientStart = if (isDark) SurfaceContainerLowest else Color.Transparent
+    val fallbackGradientColors = listOf(gradientStart, Primary.copy(alpha = 0.4f), PrimaryContainer.copy(alpha = 0.6f))
     val overlayTextColor = if (isDark) Color.White else colors.onSurface
-    val overlayIconColor = if (isDark) Color.White.copy(alpha = 0.8f) else colors.onSurface.copy(alpha = 0.6f)
     var showHeart by remember { mutableStateOf(false) }
     LaunchedEffect(showHeart) { if (showHeart) { delay(700); showHeart = false } }
 
@@ -731,7 +766,6 @@ private fun NutritionPostCard(
             .background(SurfaceContainerLowest)
             .clickable(onClick = onCardClick)
     ) {
-        // Header: avatar + name + meta | ⋮
         Row(
             modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 10.dp),
             verticalAlignment = Alignment.CenterVertically,
@@ -745,17 +779,10 @@ private fun NutritionPostCard(
             Icon(Icons.Default.MoreVert, null, tint = OnSurfaceVariant, modifier = Modifier.size(20.dp))
         }
 
-        // Media: image or gradient banner
         Box(
             modifier = Modifier
                 .fillMaxWidth()
-                .aspectRatio(4f / 3f)
-                .pointerInput(post.isLiked) {
-                    detectTapGestures(
-                        onTap = { onCardClick() },
-                        onDoubleTap = { if (!post.isLiked) onLikeClick(); showHeart = true },
-                    )
-                },
+                .aspectRatio(4f / 3f),
             contentAlignment = Alignment.BottomStart,
         ) {
             if (post.imageUrl != null) {
@@ -763,41 +790,38 @@ private fun NutritionPostCard(
                     model = post.imageUrl,
                     contentDescription = null,
                     contentScale = ContentScale.Crop,
-                    modifier = Modifier.fillMaxSize(),
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .pointerInput(post.isLiked) {
+                            detectTapGestures(
+                                onTap = { onCardClick() },
+                                onDoubleTap = { if (!post.isLiked) onLikeClick(); showHeart = true },
+                            )
+                        },
                 )
             } else {
                 Box(
                     modifier = Modifier
                         .fillMaxSize()
-                        .background(
-                            Brush.linearGradient(
-                                colors = fallbackGradientColors
+                        .background(Brush.linearGradient(fallbackGradientColors))
+                        .pointerInput(post.isLiked) {
+                            detectTapGestures(
+                                onTap = { onCardClick() },
+                                onDoubleTap = { if (!post.isLiked) onLikeClick(); showHeart = true },
                             )
-                        ),
+                        },
                     contentAlignment = Alignment.Center,
                 ) {
-                    Column(
-                        horizontalAlignment = Alignment.CenterHorizontally,
-                        verticalArrangement = Arrangement.spacedBy(8.dp),
-                    ) {
-                        Icon(
-                            Icons.Default.Restaurant,
-                            null,
-                            tint = overlayIconColor,
-                            modifier = Modifier.size(48.dp),
-                        )
-                        Text(
-                            post.title,
-                            fontSize = 22.sp,
-                            fontWeight = FontWeight.Black,
-                            color = overlayTextColor,
-                            textAlign = TextAlign.Center,
-                            modifier = Modifier.padding(horizontal = 24.dp),
-                        )
-                    }
+                    Text(
+                        post.title,
+                        fontSize = 22.sp,
+                        fontWeight = FontWeight.Black,
+                        color = overlayTextColor,
+                        textAlign = TextAlign.Center,
+                        modifier = Modifier.padding(horizontal = 24.dp),
+                    )
                 }
             }
-            // NUTRICIÓN badge
             Box(
                 modifier = Modifier
                     .padding(10.dp)
@@ -816,7 +840,6 @@ private fun NutritionPostCard(
             HeartBurst(visible = showHeart)
         }
 
-        // Action bar
         InteractionBar(
             likes = post.likes,
             comments = post.comments,
@@ -824,6 +847,7 @@ private fun NutritionPostCard(
             isSaved = post.isSaved,
             onLikeClick = onLikeClick,
             onSaveClick = onSaveClick,
+            onCommentClick = onCommentClick,
             onShareClick = {
                 context.startActivity(
                     Intent(Intent.ACTION_SEND).apply {
@@ -834,7 +858,6 @@ private fun NutritionPostCard(
             },
         )
 
-        // Likes count
         if (post.likes > 0) {
             Text(
                 "${post.likes} me gusta",
@@ -845,7 +868,6 @@ private fun NutritionPostCard(
             )
         }
 
-        // Caption + description
         PostCaption(author = post.author, text = post.title)
         if (post.description.isNotBlank()) {
             Text(
@@ -858,7 +880,6 @@ private fun NutritionPostCard(
             )
         }
 
-        // Macro chips
         Row(
             modifier = Modifier.padding(horizontal = 14.dp, vertical = 4.dp),
             horizontalArrangement = Arrangement.spacedBy(6.dp),
@@ -868,17 +889,17 @@ private fun NutritionPostCard(
             MacroChip("${post.carbsG}g carbs", Tertiary)
         }
 
-        // Comments link
         if (post.comments > 0) {
             Text(
                 "Ver los ${post.comments} comentarios",
                 fontSize = 13.sp,
                 color = OnSurfaceVariant,
-                modifier = Modifier.padding(horizontal = 14.dp, vertical = 2.dp),
+                modifier = Modifier
+                    .padding(horizontal = 14.dp, vertical = 2.dp)
+                    .clickable(onClick = onCommentClick),
             )
         }
 
-        // Timestamp
         Text(
             post.timeAgo.uppercase(),
             fontSize = 10.sp,
@@ -886,28 +907,6 @@ private fun NutritionPostCard(
             letterSpacing = 0.5.sp,
             modifier = Modifier.padding(horizontal = 14.dp, vertical = 6.dp),
         )
-    }
-}
-
-
-@Composable
-private fun PostAuthorRow(
-    initials: String,
-    author: String,
-    meta: String,
-    initialsColor: Color,
-) {
-    Row(
-        modifier = Modifier.fillMaxWidth(),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        AuthorAvatar(initials = initials, size = 44, color = initialsColor)
-        Spacer(modifier = Modifier.width(12.dp))
-        Column(modifier = Modifier.weight(1f)) {
-            Text(author, fontWeight = FontWeight.Bold, fontSize = 15.sp, color = OnSurface)
-            Text(meta, fontSize = 12.sp, color = OnSurfaceVariant)
-        }
-        Icon(Icons.Default.MoreVert, null, tint = OnSurfaceVariant)
     }
 }
 
@@ -930,63 +929,6 @@ private fun AuthorAvatar(initials: String, size: Int, color: Color) {
 }
 
 @Composable
-private fun StatBadge(icon: @Composable () -> Unit, label: String, labelColor: Color) {
-    Row(
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(4.dp),
-    ) {
-        icon()
-        Text(label, fontSize = 13.sp, fontWeight = FontWeight.Bold, color = labelColor)
-    }
-}
-
-@Composable
-private fun ExerciseRow(exercise: ExerciseItem) {
-    Row(
-        modifier = Modifier.fillMaxWidth(),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(12.dp),
-    ) {
-        Box(
-            modifier = Modifier
-                .size(36.dp)
-                .clip(RoundedCornerShape(10.dp))
-                .background(SurfaceContainerHigh),
-            contentAlignment = Alignment.Center,
-        ) {
-        }
-        Column(modifier = Modifier.weight(1f)) {
-            Text(exercise.name, fontSize = 14.sp, fontWeight = FontWeight.SemiBold, color = OnSurface)
-            val detail = buildString {
-                append("${exercise.sets} series · ${exercise.reps} reps")
-                if (exercise.weightKg > 0.0) append(" · ${exercise.weightKg.toInt()} kg")
-            }
-            Text(detail, fontSize = 12.sp, color = OnSurfaceVariant)
-        }
-    }
-}
-
-@Composable
-private fun MacroPill(value: String, label: String, color: Color, modifier: Modifier = Modifier) {
-    Column(
-        modifier = modifier
-            .clip(RoundedCornerShape(12.dp))
-            .background(SurfaceContainerLow)
-            .padding(vertical = 10.dp),
-        horizontalAlignment = Alignment.CenterHorizontally,
-    ) {
-        Text(value, fontSize = 18.sp, fontWeight = FontWeight.Black, color = color)
-        Text(
-            label.uppercase(),
-            fontSize = 10.sp,
-            fontWeight = FontWeight.Bold,
-            letterSpacing = 1.sp,
-            color = OnSurfaceVariant,
-        )
-    }
-}
-
-@Composable
 private fun InteractionBar(
     likes: Int,
     comments: Int,
@@ -994,6 +936,7 @@ private fun InteractionBar(
     isSaved: Boolean,
     onLikeClick: () -> Unit,
     onSaveClick: () -> Unit,
+    onCommentClick: () -> Unit = {},
     onShareClick: () -> Unit = {},
 ) {
     val likeColor by animateColorAsState(
@@ -1013,10 +956,11 @@ private fun InteractionBar(
     )
 
     Row(
-        modifier = Modifier.fillMaxWidth().padding(top = 4.dp),
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(start = 14.dp, end = 4.dp, top = 4.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        // Left group: like + comment
         Row(
             horizontalArrangement = Arrangement.spacedBy(20.dp),
             modifier = Modifier.weight(1f),
@@ -1033,9 +977,7 @@ private fun InteractionBar(
                         if (isLiked) Icons.Default.Favorite else Icons.Default.FavoriteBorder,
                         contentDescription = "Me gusta",
                         tint = likeColor,
-                        modifier = Modifier
-                            .size(22.dp)
-                            .scale(likeScale),
+                        modifier = Modifier.size(22.dp).scale(likeScale),
                     )
                 }
                 Text("$likes", fontSize = 13.sp, fontWeight = FontWeight.Bold, color = OnSurface)
@@ -1045,7 +987,7 @@ private fun InteractionBar(
                 horizontalArrangement = Arrangement.spacedBy(5.dp),
             ) {
                 IconButton(
-                    onClick = { },
+                    onClick = onCommentClick,
                     modifier = Modifier.size(28.dp),
                 ) {
                     Icon(
@@ -1059,7 +1001,6 @@ private fun InteractionBar(
             }
         }
 
-        // Right group: share + bookmark
         Row(
             horizontalArrangement = Arrangement.spacedBy(4.dp),
             verticalAlignment = Alignment.CenterVertically,
@@ -1134,93 +1075,6 @@ private fun MacroChip(text: String, color: Color) {
 }
 
 @Composable
-private fun StoriesRow(userName: String?, photoUri: String?, onStoryClick: (String) -> Unit) {
-    LazyRow(
-        contentPadding = PaddingValues(horizontal = 16.dp, vertical = 12.dp),
-        horizontalArrangement = Arrangement.spacedBy(16.dp),
-        modifier = Modifier.fillMaxWidth().background(Surface),
-    ) {
-        item {
-            StoryBubble(
-                name = userName ?: "Tú",
-                photoUri = photoUri,
-                isOwn = true,
-                onClick = { onStoryClick(userName ?: "Tú") },
-            )
-        }
-    }
-}
-
-@Composable
-private fun StoryBubble(name: String, photoUri: String?, isOwn: Boolean, onClick: () -> Unit = {}) {
-    Column(
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.spacedBy(4.dp),
-        modifier = Modifier.clickable(onClick = onClick),
-    ) {
-        Box(modifier = Modifier.size(66.dp)) {
-            // Gradient ring
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .clip(CircleShape)
-                    .background(
-                        Brush.linearGradient(listOf(Primary, PrimaryContainer, Secondary))
-                    ),
-            )
-            // Avatar
-            Box(
-                modifier = Modifier
-                    .size(60.dp)
-                    .align(Alignment.Center)
-                    .clip(CircleShape)
-                    .background(Surface),
-                contentAlignment = Alignment.Center,
-            ) {
-                if (photoUri != null) {
-                    AsyncImage(
-                        model = photoUri,
-                        contentDescription = name,
-                        contentScale = ContentScale.Crop,
-                        modifier = Modifier.fillMaxSize().clip(CircleShape),
-                    )
-                } else {
-                    Text(
-                        name.firstOrNull()?.uppercaseChar()?.toString() ?: "?",
-                        fontSize = 22.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = Primary,
-                    )
-                }
-            }
-            // "+" badge for own story
-            if (isOwn) {
-                Box(
-                    modifier = Modifier
-                        .size(20.dp)
-                        .align(Alignment.BottomEnd)
-                        .clip(CircleShape)
-                        .background(Primary)
-                        .border(2.dp, Surface, CircleShape),
-                    contentAlignment = Alignment.Center,
-                ) {
-                    Icon(Icons.Default.Add, null, Modifier.size(12.dp), tint = Color.White)
-                }
-            }
-        }
-        Text(
-            if (isOwn) "Tu historia" else name,
-            fontSize = 11.sp,
-            color = OnSurfaceVariant,
-            maxLines = 1,
-            overflow = TextOverflow.Ellipsis,
-            modifier = Modifier.width(66.dp),
-            textAlign = TextAlign.Center,
-        )
-    }
-}
-
-@Composable
 private fun HeartBurst(visible: Boolean) {
     val alpha by animateFloatAsState(
         targetValue = if (visible) 1f else 0f,
@@ -1234,66 +1088,5 @@ private fun HeartBurst(visible: Boolean) {
             tint = Color.White.copy(alpha = alpha),
             modifier = Modifier.size(80.dp),
         )
-    }
-}
-
-@Composable
-private fun StoriesViewer(name: String, onDismiss: () -> Unit) {
-    Dialog(
-        onDismissRequest = onDismiss,
-        properties = DialogProperties(usePlatformDefaultWidth = false),
-    ) {
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .background(
-                    Brush.verticalGradient(listOf(SurfaceContainerLowest, Primary.copy(alpha = 0.3f)))
-                )
-                .clickable(onClick = onDismiss),
-            contentAlignment = Alignment.Center,
-        ) {
-            Column(
-                horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.spacedBy(20.dp),
-            ) {
-                Box(
-                    modifier = Modifier
-                        .size(100.dp)
-                        .clip(CircleShape)
-                        .background(
-                            Brush.linearGradient(listOf(Primary, PrimaryContainer, Secondary))
-                        ),
-                    contentAlignment = Alignment.Center,
-                ) {
-                    Box(
-                        modifier = Modifier
-                            .size(92.dp)
-                            .clip(CircleShape)
-                            .background(SurfaceContainerLow),
-                        contentAlignment = Alignment.Center,
-                    ) {
-                        Text(
-                            name.firstOrNull()?.uppercaseChar()?.toString() ?: "?",
-                            fontSize = 38.sp,
-                            fontWeight = FontWeight.Bold,
-                            color = Primary,
-                        )
-                    }
-                }
-                Text(name, fontSize = 18.sp, fontWeight = FontWeight.Bold, color = OnSurface)
-                Text(
-                    "No hay historias recientes",
-                    fontSize = 14.sp,
-                    color = OnSurfaceVariant,
-                    textAlign = TextAlign.Center,
-                )
-            }
-            IconButton(
-                onClick = onDismiss,
-                modifier = Modifier.align(Alignment.TopEnd).padding(16.dp),
-            ) {
-                Icon(Icons.Default.Close, "Cerrar", tint = OnSurface, modifier = Modifier.size(24.dp))
-            }
-        }
     }
 }

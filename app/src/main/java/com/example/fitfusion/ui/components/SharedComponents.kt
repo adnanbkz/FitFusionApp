@@ -310,22 +310,33 @@ fun FeedPost(
 }
 
 @Composable
-fun StatChip(value: String, label: String, modifier: Modifier = Modifier) {
+fun StatChip(value: String, label: String, color: Color = Primary, modifier: Modifier = Modifier) {
     Card(
         shape = RoundedCornerShape(20.dp),
-        colors = CardDefaults.cardColors(containerColor = SurfaceContainerLowest),
-        border = BorderStroke(1.dp, OutlineVariant.copy(alpha = 0.2f)),
+        colors = CardDefaults.cardColors(containerColor = color.copy(alpha = 0.07f)),
+        border = BorderStroke(1.dp, color.copy(alpha = 0.18f)),
         modifier = modifier
     ) {
         Column(
-            modifier = Modifier.fillMaxWidth().padding(vertical = 10.dp),
+            modifier = Modifier.fillMaxWidth().padding(vertical = 10.dp, horizontal = 4.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.spacedBy(2.dp)
+            verticalArrangement = Arrangement.spacedBy(3.dp)
         ) {
-            Text(value, fontSize = 18.sp, fontWeight = FontWeight.Bold, color = OnSurface)
             Text(
-                label, fontSize = 10.sp, fontWeight = FontWeight.SemiBold,
-                letterSpacing = 1.sp, color = OnSurfaceVariant
+                value,
+                fontSize = 13.sp,
+                fontWeight = FontWeight.Bold,
+                color = OnSurface,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+                textAlign = TextAlign.Center,
+            )
+            Text(
+                label,
+                fontSize = 10.sp,
+                fontWeight = FontWeight.Bold,
+                letterSpacing = 1.sp,
+                color = color,
             )
         }
     }

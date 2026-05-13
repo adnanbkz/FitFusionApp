@@ -68,6 +68,9 @@ object ActiveWorkoutManager {
     private val _elapsedSeconds = MutableStateFlow(0L)
     val elapsedSeconds: StateFlow<Long> = _elapsedSeconds.asStateFlow()
 
+    private val _uploadingWorkoutIds = MutableStateFlow<Set<String>>(emptySet())
+    val uploadingWorkoutIds: StateFlow<Set<String>> = _uploadingWorkoutIds.asStateFlow()
+
     val isActive: Boolean get() = _session.value != null
 
     fun init(context: Context) {
@@ -230,13 +233,18 @@ object ActiveWorkoutManager {
         uploader: suspend () -> List<String>,
     ) {
         if (uris.isEmpty()) return
+        _uploadingWorkoutIds.update { it + workoutId }
         scope.launch {
-            runCatching { uploader() }
-                .onSuccess { urls ->
-                    if (urls.isNotEmpty()) {
-                        runCatching { WorkoutRepository.updateWorkoutMedia(workoutId, urls) }
+            try {
+                runCatching { uploader() }
+                    .onSuccess { urls ->
+                        if (urls.isNotEmpty()) {
+                            runCatching { WorkoutRepository.updateWorkoutMedia(workoutId, urls) }
+                        }
                     }
-                }
+            } finally {
+                _uploadingWorkoutIds.update { it - workoutId }
+            }
         }
     }
 

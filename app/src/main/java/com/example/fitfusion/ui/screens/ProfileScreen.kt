@@ -329,16 +329,25 @@ fun PantallaProfile(
         // ── Tab content ───────────────────────────────────────────────────
         item {
             when (state.selectedTab) {
-                0 -> PostsTab(posts = state.filteredPosts, isSearching = state.searchQuery.isNotBlank())
-                1 -> SavedTab(items = state.savedFeedItems, onExplore = {
-                    navController.navigate(Screens.HomeScreen.name) {
-                        popUpTo(Screens.HomeScreen.name) { inclusive = true }
-                    }
-                })
+                0 -> PostsTab(
+                    posts      = state.filteredPosts,
+                    isSearching = state.searchQuery.isNotBlank(),
+                    onPostClick = { postId -> navController.navigate("${Screens.PostDetailScreen.name}/$postId") },
+                )
+                1 -> SavedTab(
+                    items       = state.savedFeedItems,
+                    onPostClick = { postId -> navController.navigate("${Screens.PostDetailScreen.name}/$postId") },
+                    onExplore   = {
+                        navController.navigate(Screens.HomeScreen.name) {
+                            popUpTo(Screens.HomeScreen.name) { inclusive = true }
+                        }
+                    },
+                )
                 2 -> LikedTab(
-                    items = state.likedFeedItems,
-                    isLoading = state.isLoadingLikedPosts,
-                    onExplore = {
+                    items       = state.likedFeedItems,
+                    isLoading   = state.isLoadingLikedPosts,
+                    onPostClick = { postId -> navController.navigate("${Screens.PostDetailScreen.name}/$postId") },
+                    onExplore   = {
                         navController.navigate(Screens.HomeScreen.name) {
                             popUpTo(Screens.HomeScreen.name) { inclusive = true }
                         }
@@ -384,8 +393,13 @@ private fun ProfileFitnessSummary(
         horizontalArrangement = Arrangement.spacedBy(8.dp)
     ) {
         items.forEach { (value, label) ->
-            val compactValue = if (value.length > 14) value.take(12) + "..." else value
-            StatChip(value = compactValue, label = label, modifier = Modifier.weight(1f))
+            val chipColor = when (label) {
+                "ALTURA"    -> Color(0xFF4A90D9)
+                "PESO"      -> Color(0xFFE0844A)
+                "OBJETIVO"  -> Primary
+                else        -> Tertiary
+            }
+            StatChip(value = value, label = label, color = chipColor, modifier = Modifier.weight(1f))
         }
     }
 }
@@ -450,7 +464,7 @@ private fun StreakCard(streakDays: Int, modifier: Modifier = Modifier) {
 
 // ─── PostsTab: 3-column Instagram grid ───────────────────────────────────────
 @Composable
-private fun PostsTab(posts: List<UserPost>, isSearching: Boolean) {
+private fun PostsTab(posts: List<UserPost>, isSearching: Boolean, onPostClick: (String) -> Unit) {
     if (posts.isEmpty()) {
         Box(
             modifier = Modifier.fillMaxWidth().padding(vertical = 48.dp),
@@ -482,7 +496,8 @@ private fun PostsTab(posts: List<UserPost>, isSearching: Boolean) {
                     row.forEach { post ->
                         PostGridCell(
                             post     = post,
-                            modifier = Modifier.weight(1f).aspectRatio(1f)
+                            modifier = Modifier.weight(1f).aspectRatio(1f),
+                            onClick  = { onPostClick(post.id) },
                         )
                     }
                     // Fill remaining slots to keep grid alignment
@@ -497,52 +512,82 @@ private fun PostsTab(posts: List<UserPost>, isSearching: Boolean) {
 
 // ─── PostGridCell ─────────────────────────────────────────────────────────────
 @Composable
-private fun PostGridCell(post: UserPost, modifier: Modifier = Modifier) {
+private fun PostGridCell(post: UserPost, modifier: Modifier = Modifier, onClick: () -> Unit = {}) {
+    val thumbnailUrl = when (post.type) {
+        UserPostType.WORKOUT   -> post.workoutMediaUrls.firstOrNull()
+        UserPostType.NUTRITION -> post.nutritionPhotoUri
+    }
     val bgBrush = when (post.type) {
         UserPostType.WORKOUT   -> GreenGradientBrush
         UserPostType.NUTRITION -> androidx.compose.ui.graphics.Brush.linearGradient(
             colors = listOf(Color(0xFFE65C00), Color(0xFFF9D423))
         )
     }
+    val badgeText = when (post.type) {
+        UserPostType.WORKOUT   -> "Entreno"
+        UserPostType.NUTRITION -> "Receta"
+    }
     Box(
-        modifier = modifier.background(bgBrush),
+        modifier = modifier
+            .background(bgBrush)
+            .clickable(onClick = onClick),
         contentAlignment = Alignment.Center
     ) {
-        Column(
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.Center,
-            modifier = Modifier.padding(4.dp)
-        ) {
-            Icon(
-                if (post.type == UserPostType.NUTRITION) Icons.Outlined.Restaurant else Icons.Outlined.FitnessCenter,
+        if (thumbnailUrl != null) {
+            AsyncImage(
+                model              = thumbnailUrl,
                 contentDescription = null,
-                tint = Color.White,
-                modifier = Modifier.size(28.dp),
+                contentScale       = ContentScale.Crop,
+                modifier           = Modifier.fillMaxSize(),
             )
-            // Type badge
-            val badgeText = when (post.type) {
-                UserPostType.WORKOUT   -> "Entreno"
-                UserPostType.NUTRITION -> "Receta"
-            }
-            Text(
-                badgeText,
-                fontSize   = 9.sp,
-                fontWeight = FontWeight.Bold,
-                color      = Color.White,
-                modifier   = Modifier
-                    .padding(top = 4.dp)
+            Box(
+                modifier = Modifier
+                    .align(Alignment.BottomStart)
+                    .padding(4.dp)
                     .clip(RoundedCornerShape(4.dp))
-                    .background(Color.Black.copy(alpha = 0.25f))
+                    .background(Color.Black.copy(alpha = 0.55f))
                     .padding(horizontal = 4.dp, vertical = 2.dp),
-                maxLines   = 1
-            )
+            ) {
+                Text(
+                    badgeText,
+                    fontSize   = 8.sp,
+                    fontWeight = FontWeight.Bold,
+                    color      = Color.White,
+                    maxLines   = 1,
+                )
+            }
+        } else {
+            Column(
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.Center,
+                modifier            = Modifier.padding(4.dp)
+            ) {
+                Icon(
+                    if (post.type == UserPostType.NUTRITION) Icons.Outlined.Restaurant else Icons.Outlined.FitnessCenter,
+                    contentDescription = null,
+                    tint               = Color.White,
+                    modifier           = Modifier.size(28.dp),
+                )
+                Text(
+                    badgeText,
+                    fontSize   = 9.sp,
+                    fontWeight = FontWeight.Bold,
+                    color      = Color.White,
+                    modifier   = Modifier
+                        .padding(top = 4.dp)
+                        .clip(RoundedCornerShape(4.dp))
+                        .background(Color.Black.copy(alpha = 0.25f))
+                        .padding(horizontal = 4.dp, vertical = 2.dp),
+                    maxLines   = 1,
+                )
+            }
         }
     }
 }
 
 // ─── SavedTab: 3-column grid of saved FeedItems ──────────────────────────────
 @Composable
-private fun SavedTab(items: List<FeedItem>, onExplore: () -> Unit) {
+private fun SavedTab(items: List<FeedItem>, onExplore: () -> Unit, onPostClick: (String) -> Unit) {
     if (items.isEmpty()) {
         Box(
             modifier = Modifier.fillMaxWidth().padding(horizontal = 24.dp, vertical = 48.dp),
@@ -580,9 +625,14 @@ private fun SavedTab(items: List<FeedItem>, onExplore: () -> Unit) {
                     horizontalArrangement = Arrangement.spacedBy(2.dp)
                 ) {
                     row.forEach { item ->
+                        val postId = when (item) {
+                            is FeedItem.Workout   -> item.post.id
+                            is FeedItem.Nutrition -> item.post.id
+                        }
                         SavedGridCell(
                             item     = item,
-                            modifier = Modifier.weight(1f).aspectRatio(1f)
+                            modifier = Modifier.weight(1f).aspectRatio(1f),
+                            onClick  = { onPostClick(postId) },
                         )
                     }
                     repeat(3 - row.size) {
@@ -596,7 +646,11 @@ private fun SavedTab(items: List<FeedItem>, onExplore: () -> Unit) {
 
 // ─── SavedGridCell ────────────────────────────────────────────────────────────
 @Composable
-private fun SavedGridCell(item: FeedItem, modifier: Modifier = Modifier) {
+private fun SavedGridCell(item: FeedItem, modifier: Modifier = Modifier, onClick: () -> Unit = {}) {
+    val thumbnailUrl = when (item) {
+        is FeedItem.Workout   -> item.post.mediaUrls.firstOrNull()
+        is FeedItem.Nutrition -> item.post.imageUrl
+    }
     val (icon, bgBrush, badgeText) = when (item) {
         is FeedItem.Workout   -> Triple(
             Icons.Outlined.FitnessCenter,
@@ -612,28 +666,56 @@ private fun SavedGridCell(item: FeedItem, modifier: Modifier = Modifier) {
         )
     }
     Box(
-        modifier = modifier.background(bgBrush),
+        modifier = modifier
+            .background(bgBrush)
+            .clickable(onClick = onClick),
         contentAlignment = Alignment.Center
     ) {
-        Column(
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.Center,
-            modifier = Modifier.padding(4.dp)
-        ) {
-            Icon(icon, contentDescription = null, tint = Color.White, modifier = Modifier.size(28.dp))
-            Text(
-                badgeText,
-                fontSize   = 9.sp,
-                fontWeight = FontWeight.Bold,
-                color      = Color.White,
-                modifier   = Modifier
-                    .padding(top = 4.dp)
-                    .clip(RoundedCornerShape(4.dp))
-                    .background(Color.Black.copy(alpha = 0.25f))
-                    .padding(horizontal = 4.dp, vertical = 2.dp),
-                maxLines   = 1,
-                overflow   = TextOverflow.Ellipsis
+        if (thumbnailUrl != null) {
+            AsyncImage(
+                model              = thumbnailUrl,
+                contentDescription = null,
+                contentScale       = ContentScale.Crop,
+                modifier           = Modifier.fillMaxSize(),
             )
+            Box(
+                modifier = Modifier
+                    .align(Alignment.BottomStart)
+                    .padding(4.dp)
+                    .clip(RoundedCornerShape(4.dp))
+                    .background(Color.Black.copy(alpha = 0.55f))
+                    .padding(horizontal = 4.dp, vertical = 2.dp),
+            ) {
+                Text(
+                    badgeText,
+                    fontSize   = 8.sp,
+                    fontWeight = FontWeight.Bold,
+                    color      = Color.White,
+                    maxLines   = 1,
+                    overflow   = TextOverflow.Ellipsis,
+                )
+            }
+        } else {
+            Column(
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.Center,
+                modifier            = Modifier.padding(4.dp)
+            ) {
+                Icon(icon, contentDescription = null, tint = Color.White, modifier = Modifier.size(28.dp))
+                Text(
+                    badgeText,
+                    fontSize   = 9.sp,
+                    fontWeight = FontWeight.Bold,
+                    color      = Color.White,
+                    modifier   = Modifier
+                        .padding(top = 4.dp)
+                        .clip(RoundedCornerShape(4.dp))
+                        .background(Color.Black.copy(alpha = 0.25f))
+                        .padding(horizontal = 4.dp, vertical = 2.dp),
+                    maxLines   = 1,
+                    overflow   = TextOverflow.Ellipsis,
+                )
+            }
         }
     }
 }
@@ -644,6 +726,7 @@ private fun LikedTab(
     items: List<FeedItem>,
     isLoading: Boolean,
     onExplore: () -> Unit,
+    onPostClick: (String) -> Unit,
 ) {
     when {
         isLoading && items.isEmpty() -> {
@@ -692,9 +775,14 @@ private fun LikedTab(
                         horizontalArrangement = Arrangement.spacedBy(2.dp)
                     ) {
                         row.forEach { item ->
+                            val postId = when (item) {
+                                is FeedItem.Workout   -> item.post.id
+                                is FeedItem.Nutrition -> item.post.id
+                            }
                             SavedGridCell(
                                 item     = item,
-                                modifier = Modifier.weight(1f).aspectRatio(1f)
+                                modifier = Modifier.weight(1f).aspectRatio(1f),
+                                onClick  = { onPostClick(postId) },
                             )
                         }
                         repeat(3 - row.size) {
