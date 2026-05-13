@@ -108,7 +108,7 @@ fun PantallaWorkoutPost(
                 colors = CardDefaults.cardColors(containerColor = SurfaceContainerLowest),
                 elevation = CardDefaults.cardElevation(0.dp),
             ) {
-                Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp), horizontalAlignment = Alignment.CenterHorizontally) {
                     Text(workout.name, fontSize = 22.sp, fontWeight = FontWeight.Bold, color = OnSurface)
                     Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
                         Stat(icon = Icons.Outlined.Schedule, text = "${workout.durationMinutes} min")

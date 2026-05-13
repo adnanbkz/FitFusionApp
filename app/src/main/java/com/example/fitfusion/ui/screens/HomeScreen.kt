@@ -77,6 +77,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalInspectionMode
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import kotlinx.coroutines.delay
@@ -89,8 +90,12 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavHostController
 import coil3.compose.AsyncImage
 import com.example.fitfusion.R
+import com.example.fitfusion.data.AppThemeStore
+import com.example.fitfusion.data.ThemeMode
 import com.example.fitfusion.data.repository.UserProfileStore
 import com.example.fitfusion.ui.components.CreatePostSheetHost
+import com.example.fitfusion.ui.theme.FitFusionColors
+import com.example.fitfusion.ui.theme.LocalFitFusionColors
 import com.example.fitfusion.ui.theme.OnSurface
 import com.example.fitfusion.ui.theme.OnSurfaceVariant
 import com.example.fitfusion.ui.theme.Primary
@@ -512,6 +517,16 @@ private fun WorkoutPostCard(
     onSaveClick: () -> Unit,
 ) {
     val context = LocalContext.current
+    val colors = LocalFitFusionColors.current
+    val isDark = colors.isDark
+    val overlayTextColor = if (isDark) Color.White else colors.onSurface
+    val overlaySubTextColor = if (isDark) Color.White.copy(alpha = 0.7f) else colors.onSurface.copy(alpha = 0.7f)
+    val overlayBadgeBg = if (isDark) Color.White.copy(alpha = 0.08f) else Color.Black.copy(alpha = 0.06f)
+    val gradientColors = if (isDark) {
+        listOf(SurfaceContainerLowest, SurfaceContainerLowest, Primary.copy(alpha = 0.75f))
+    } else {
+        listOf(Primary.copy(alpha = 0.12f), Primary.copy(alpha = 0.35f), Primary.copy(alpha = 0.75f))
+    }
     var showHeart by remember { mutableStateOf(false) }
     LaunchedEffect(showHeart) { if (showHeart) { delay(700); showHeart = false } }
 
@@ -535,14 +550,14 @@ private fun WorkoutPostCard(
             Icon(Icons.Default.MoreVert, null, tint = OnSurfaceVariant, modifier = Modifier.size(20.dp))
         }
 
-        // Media: dark green gradient with workout info overlaid
+        // Media: green gradient with workout info overlaid
         Box(
             modifier = Modifier
                 .fillMaxWidth()
                 .aspectRatio(4f / 3f)
                 .background(
                     Brush.linearGradient(
-                        colors = listOf(SurfaceContainerLowest, SurfaceContainerLowest, Primary.copy(alpha = 0.75f))
+                        colors = gradientColors
                     )
                 )
                 .pointerInput(post.isLiked) {
@@ -571,13 +586,15 @@ private fun WorkoutPostCard(
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
                     PostStatChip(
-                        icon = { Icon(Icons.Outlined.Schedule, null, Modifier.size(14.dp), tint = Color.White.copy(0.8f)) },
+                        icon = { Icon(Icons.Outlined.Schedule, null, Modifier.size(14.dp), tint = overlaySubTextColor) },
                         label = "${post.durationMin} min",
+                        textColor = overlayTextColor,
                     )
                     if (post.totalWeightKg > 0) {
                         PostStatChip(
-                            icon = { Icon(Icons.Outlined.FitnessCenter, null, Modifier.size(14.dp), tint = Color.White.copy(0.8f)) },
+                            icon = { Icon(Icons.Outlined.FitnessCenter, null, Modifier.size(14.dp), tint = overlaySubTextColor) },
                             label = "${post.totalWeightKg.toInt()} kg",
+                            textColor = overlayTextColor,
                         )
                     }
                 }
@@ -586,7 +603,7 @@ private fun WorkoutPostCard(
                         modifier = Modifier
                             .fillMaxWidth()
                             .clip(RoundedCornerShape(12.dp))
-                            .background(Color.White.copy(alpha = 0.08f))
+                            .background(overlayBadgeBg)
                             .padding(10.dp),
                         verticalArrangement = Arrangement.spacedBy(6.dp),
                     ) {
@@ -604,15 +621,19 @@ private fun WorkoutPostCard(
                                 Text(
                                     ex.name,
                                     fontSize = 12.sp,
-                                    color = Color.White.copy(alpha = 0.9f),
+                                    color = Color.White,
                                     modifier = Modifier.weight(1f),
                                     maxLines = 1,
                                     overflow = TextOverflow.Ellipsis,
                                 )
+                                val detail = buildString {
+                                    if (ex.weightKg > 0) append("${ex.weightKg.toInt()} kg · ")
+                                    if (ex.reps > 0) append("${ex.sets}×${ex.reps}") else append("${ex.sets} series")
+                                }
                                 Text(
-                                    if (ex.reps > 0) "${ex.sets}×${ex.reps}" else "${ex.sets} series",
+                                    detail,
                                     fontSize = 11.sp,
-                                    color = Color.White.copy(alpha = 0.6f),
+                                    color = overlaySubTextColor,
                                 )
                             }
                         }
@@ -620,7 +641,7 @@ private fun WorkoutPostCard(
                             Text(
                                 "+${post.exercises.size - 3} ejercicios más",
                                 fontSize = 11.sp,
-                                color = Color.White.copy(alpha = 0.55f),
+                                color = overlaySubTextColor,
                                 modifier = Modifier.padding(top = 2.dp),
                             )
                         }
@@ -692,6 +713,15 @@ private fun NutritionPostCard(
     onSaveClick: () -> Unit,
 ) {
     val context = LocalContext.current
+    val colors = LocalFitFusionColors.current
+    val isDark = colors.isDark
+    val fallbackGradientColors = if (isDark) {
+        listOf(SurfaceContainerLowest, Primary.copy(alpha = 0.4f), PrimaryContainer.copy(alpha = 0.6f))
+    } else {
+        listOf(Primary.copy(alpha = 0.12f), Primary.copy(alpha = 0.4f), PrimaryContainer.copy(alpha = 0.6f))
+    }
+    val overlayTextColor = if (isDark) Color.White else colors.onSurface
+    val overlayIconColor = if (isDark) Color.White.copy(alpha = 0.8f) else colors.onSurface.copy(alpha = 0.6f)
     var showHeart by remember { mutableStateOf(false) }
     LaunchedEffect(showHeart) { if (showHeart) { delay(700); showHeart = false } }
 
@@ -741,7 +771,7 @@ private fun NutritionPostCard(
                         .fillMaxSize()
                         .background(
                             Brush.linearGradient(
-                                colors = listOf(SurfaceContainerLowest, Primary.copy(alpha = 0.4f), PrimaryContainer.copy(alpha = 0.6f))
+                                colors = fallbackGradientColors
                             )
                         ),
                     contentAlignment = Alignment.Center,
@@ -753,14 +783,14 @@ private fun NutritionPostCard(
                         Icon(
                             Icons.Default.Restaurant,
                             null,
-                            tint = Color.White.copy(alpha = 0.8f),
+                            tint = overlayIconColor,
                             modifier = Modifier.size(48.dp),
                         )
                         Text(
                             post.title,
                             fontSize = 22.sp,
                             fontWeight = FontWeight.Black,
-                            color = Color.White,
+                            color = overlayTextColor,
                             textAlign = TextAlign.Center,
                             modifier = Modifier.padding(horizontal = 24.dp),
                         )
@@ -927,10 +957,9 @@ private fun ExerciseRow(exercise: ExerciseItem) {
         }
         Column(modifier = Modifier.weight(1f)) {
             Text(exercise.name, fontSize = 14.sp, fontWeight = FontWeight.SemiBold, color = OnSurface)
-            val detail = if (exercise.reps > 0) {
-                "${exercise.sets} series · ${exercise.reps} reps"
-            } else {
-                "${exercise.sets} series"
+            val detail = buildString {
+                append("${exercise.sets} series · ${exercise.reps} reps")
+                if (exercise.weightKg > 0.0) append(" · ${exercise.weightKg.toInt()} kg")
             }
             Text(detail, fontSize = 12.sp, color = OnSurfaceVariant)
         }
@@ -1062,13 +1091,13 @@ private fun InteractionBar(
 }
 
 @Composable
-private fun PostStatChip(icon: @Composable () -> Unit, label: String) {
+private fun PostStatChip(icon: @Composable () -> Unit, label: String, textColor: Color = Color.White) {
     Row(
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(4.dp),
     ) {
         icon()
-        Text(label, fontSize = 13.sp, fontWeight = FontWeight.Bold, color = Color.White)
+        Text(label, fontSize = 13.sp, fontWeight = FontWeight.Bold, color = textColor)
     }
 }
 

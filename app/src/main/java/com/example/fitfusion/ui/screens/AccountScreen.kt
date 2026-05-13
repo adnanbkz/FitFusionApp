@@ -268,49 +268,6 @@ fun PantallaAccount(
             }
 
             Spacer(modifier = Modifier.height(32.dp))
-
-            SettingsSectionHeader("ZONA PELIGROSA")
-            Card(
-                shape = RoundedCornerShape(20.dp),
-                colors = CardDefaults.cardColors(
-                    containerColor = Tertiary.copy(alpha = 0.06f)
-                ),
-                elevation = CardDefaults.cardElevation(0.dp),
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 24.dp)
-            ) {
-                Row(
-                    modifier = Modifier.padding(20.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Column(modifier = Modifier.weight(1f)) {
-                        Text(
-                            "Eliminar cuenta",
-                            fontWeight = FontWeight.Bold,
-                            fontSize = 15.sp,
-                            color = Tertiary
-                        )
-                        Text(
-                            "Esta acción es permanente e irreversible",
-                            fontSize = 12.sp,
-                            color = OnSurfaceVariant
-                        )
-                    }
-                    OutlinedButton(
-                        onClick = { },
-                        shape = RoundedCornerShape(10.dp),
-                        colors = ButtonDefaults.outlinedButtonColors(contentColor = Tertiary),
-                        border = androidx.compose.foundation.BorderStroke(
-                            1.dp, Tertiary.copy(alpha = 0.5f)
-                        )
-                    ) {
-                        Text("Eliminar", fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
-                    }
-                }
-            }
-
-            Spacer(modifier = Modifier.height(32.dp))
         }
     }
 }

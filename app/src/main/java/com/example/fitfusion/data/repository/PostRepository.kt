@@ -91,6 +91,7 @@ object PostRepository {
                     "name" to exercise.name,
                     "sets" to exercise.sets.size,
                     "reps" to exercise.sets.sumOf { it.reps },
+                    "weightKg" to (exercise.sets.firstOrNull()?.weightKg?.toDouble() ?: 0.0),
                 )
             },
             "nutritionPhotoUri" to nutritionPhotoUri,

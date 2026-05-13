@@ -241,6 +241,7 @@ object FeedRepository {
                     name = (map["name"] as? String).orEmpty().ifBlank { return@mapNotNull null },
                     sets = (map["sets"] as? Number)?.toInt() ?: 0,
                     reps = (map["reps"] as? Number)?.toInt() ?: 0,
+                    weightKg = (map["weightKg"] as? Number)?.toDouble() ?: 0.0,
                 )
             }
 

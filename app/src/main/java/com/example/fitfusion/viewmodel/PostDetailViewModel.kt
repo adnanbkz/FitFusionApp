@@ -166,7 +166,13 @@ class PostDetailViewModel : ViewModel() {
             description = if (post.exercises.isEmpty()) {
                 "Entrenamiento compartido en FitFusion."
             } else {
-                post.exercises.joinToString("\n") { "${it.name}: ${it.sets} series · ${it.reps} reps" }
+                post.exercises.joinToString("\n") { ex ->
+                    val detail = buildString {
+                        append("${ex.name}: ${ex.sets} series · ${ex.reps} reps")
+                        if (ex.weightKg > 0.0) append(" · ${ex.weightKg.toInt()} kg")
+                    }
+                    detail
+                }
             },
             hashtags = "#Workout  #FitFusion",
             mediaUri = post.mediaUrls.firstOrNull() ?: post.videoUri,

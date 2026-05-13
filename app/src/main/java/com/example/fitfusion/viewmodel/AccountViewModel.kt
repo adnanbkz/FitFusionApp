@@ -10,6 +10,7 @@ import com.example.fitfusion.data.repository.UserProfileStore
 import com.example.fitfusion.data.repository.UserRepository
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.auth.UserProfileChangeRequest
+import com.google.firebase.storage.FirebaseStorage
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -40,9 +41,12 @@ class AccountViewModel(
 
     private val auth: FirebaseAuth = FirebaseAuth.getInstance()
     private val userRepository: UserRepository = UserRepository()
+    private val storage: FirebaseStorage = FirebaseStorage.getInstance()
 
     private val _uiState = MutableStateFlow(AccountUiState())
     val uiState: StateFlow<AccountUiState> = _uiState.asStateFlow()
+
+    private var pendingPhotoUri: Uri? = null
 
     init {
         loadProfile()
@@ -70,6 +74,7 @@ class AccountViewModel(
                 uri, Intent.FLAG_GRANT_READ_URI_PERMISSION
             )
         } catch (_: Exception) { }
+        pendingPhotoUri = uri
         UserProfileStore.updatePhotoUri(getApplication(), uri)
         _uiState.update { it.copy(photoUrl = uri.toString(), saveSuccess = false) }
     }
@@ -91,7 +96,21 @@ class AccountViewModel(
         viewModelScope.launch {
             _uiState.update { it.copy(isSaving = true, saveSuccess = false, errorMessage = null) }
             try {
-                val photoUrl = state.photoUrl.ifBlank { user.photoUrl?.toString() }
+                var photoUrl = state.photoUrl.ifBlank { user.photoUrl?.toString() }
+                val localUri = pendingPhotoUri
+                if (localUri != null) {
+                    try {
+                        val stream = getApplication<Application>().contentResolver.openInputStream(localUri)
+                        if (stream != null) {
+                            val ref = storage.reference
+                                .child("profile_photos/${user.uid}/${System.currentTimeMillis()}.jpg")
+                            ref.putStream(stream).await()
+                            photoUrl = ref.downloadUrl.await().toString()
+                            UserProfileStore.updatePhotoUri(getApplication(), Uri.parse(photoUrl))
+                        }
+                    } catch (_: Exception) { }
+                    pendingPhotoUri = null
+                }
                 val profile = UserProfile(
                     uid = user.uid,
                     email = user.email.orEmpty(),
@@ -108,6 +127,7 @@ class AccountViewModel(
                 user.updateProfile(
                     UserProfileChangeRequest.Builder()
                         .setDisplayName(displayName)
+                        .setPhotoUri(if (photoUrl.isNullOrBlank()) null else Uri.parse(photoUrl))
                         .build()
                 ).await()
                 _uiState.update {
