@@ -56,6 +56,27 @@ import androidx.navigation.NavHostController
 import com.example.fitfusion.R
 import com.example.fitfusion.ui.screens.Screens
 import com.example.fitfusion.ui.theme.*
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.imePadding
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
+import androidx.compose.material.icons.automirrored.filled.Send
+import androidx.compose.material.icons.filled.Close
+import androidx.compose.material3.BottomSheetDefaults
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.ModalBottomSheet
+import androidx.compose.material3.rememberModalBottomSheetState
+import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
+import com.example.fitfusion.data.repository.FeedComment
+import com.example.fitfusion.data.repository.PostInteractionRepository
+import kotlinx.coroutines.launch
 
 @Composable
 fun GreenGradientButton(text: String, onClick: () -> Unit) {
@@ -441,7 +462,13 @@ fun StatCard(label: String, value: String, unit: String, modifier: Modifier = Mo
 }
 
 @Composable
-fun CommentItem(author: String, text: String, time: String, likes: Int) {
+fun CommentItem(
+    author: String,
+    text: String,
+    time: String,
+    likes: Int,
+    onReplyClick: () -> Unit = {},
+) {
     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
         Box(
             modifier = Modifier.size(36.dp).clip(CircleShape).background(SurfaceContainerHigh),
@@ -455,13 +482,171 @@ fun CommentItem(author: String, text: String, time: String, likes: Int) {
                 horizontalArrangement = Arrangement.spacedBy(12.dp)
             ) {
                 Text(time, fontSize = 11.sp, color = OnSurfaceVariant)
-                Text("Reply", fontSize = 11.sp, color = OnSurfaceVariant, fontWeight = FontWeight.SemiBold)
+                Text(
+                    "Responder",
+                    fontSize = 11.sp,
+                    color = OnSurfaceVariant,
+                    fontWeight = FontWeight.SemiBold,
+                    modifier = Modifier.clickable(onClick = onReplyClick)
+                )
                 Row(horizontalArrangement = Arrangement.spacedBy(2.dp), verticalAlignment = Alignment.CenterVertically) {
                     Icon(Icons.Default.Favorite, null, Modifier.size(12.dp), tint = Tertiary)
                     Text("$likes", fontSize = 11.sp, color = OnSurfaceVariant)
                 }
             }
         }
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun CommentsBottomSheet(postId: String, onDismiss: () -> Unit) {
+    val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+    val colors = com.example.fitfusion.ui.theme.LocalFitFusionColors.current
+    val scope = rememberCoroutineScope()
+
+    var comments by remember { mutableStateOf<List<FeedComment>>(emptyList()) }
+    var inputText by remember { mutableStateOf("") }
+    var isSending by remember { mutableStateOf(false) }
+    var replyTo by remember { mutableStateOf<FeedComment?>(null) }
+
+    DisposableEffect(postId) {
+        val reg = PostInteractionRepository.listenComments(postId) { comments = it }
+        onDispose { reg.remove() }
+    }
+
+    ModalBottomSheet(
+        onDismissRequest = onDismiss,
+        sheetState = sheetState,
+        containerColor = if (colors.isDark) colors.surfaceContainerLowest else colors.surfaceContainerLowest,
+        dragHandle = { BottomSheetDefaults.DragHandle() },
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .heightIn(min = 300.dp)
+                .imePadding()
+        ) {
+            Text(
+                "Comentarios",
+                fontWeight = FontWeight.Bold,
+                fontSize = 16.sp,
+                color = OnSurface,
+                modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
+            )
+            HorizontalDivider(color = OutlineVariant.copy(alpha = 0.3f))
+
+            if (comments.isEmpty()) {
+                Box(
+                    modifier = Modifier.fillMaxWidth().height(120.dp),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text("Sé el primero en comentar", fontSize = 14.sp, color = OnSurfaceVariant)
+                }
+            } else {
+                LazyColumn(
+                    modifier = Modifier
+                        .weight(1f, fill = false)
+                        .heightIn(max = 400.dp),
+                    contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
+                    verticalArrangement = Arrangement.spacedBy(16.dp)
+                ) {
+                    items(comments, key = { it.id }) { comment ->
+                        CommentItem(
+                            author = comment.authorName,
+                            text = comment.text,
+                            time = formatCommentTime(comment.createdAtMs),
+                            likes = comment.likesCount,
+                            onReplyClick = { replyTo = comment }
+                        )
+                    }
+                }
+            }
+
+            if (replyTo != null) {
+                HorizontalDivider(color = OutlineVariant.copy(alpha = 0.2f))
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .background(SurfaceContainerLow)
+                        .padding(horizontal = 16.dp, vertical = 6.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    Text(
+                        "Respondiendo a @${replyTo!!.authorName}",
+                        fontSize = 12.sp,
+                        color = OnSurfaceVariant
+                    )
+                    Icon(
+                        Icons.Default.Close,
+                        contentDescription = null,
+                        modifier = Modifier.size(16.dp).clickable { replyTo = null },
+                        tint = OnSurfaceVariant
+                    )
+                }
+            }
+
+            HorizontalDivider(color = OutlineVariant.copy(alpha = 0.3f))
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 12.dp, vertical = 8.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                OutlinedTextField(
+                    value = inputText,
+                    onValueChange = { inputText = it },
+                    placeholder = { Text("Añade un comentario…", color = OnSurfaceVariant, fontSize = 14.sp) },
+                    modifier = Modifier.weight(1f),
+                    shape = RoundedCornerShape(24.dp),
+                    colors = OutlinedTextFieldDefaults.colors(
+                        unfocusedContainerColor = SurfaceContainerLow,
+                        focusedContainerColor = SurfaceContainerLow,
+                        unfocusedBorderColor = Color.Transparent,
+                        focusedBorderColor = Primary
+                    ),
+                    singleLine = true,
+                    maxLines = 1,
+                )
+                val sendEnabled = inputText.isNotBlank() && !isSending
+                androidx.compose.material3.IconButton(
+                    onClick = {
+                        if (!sendEnabled) return@IconButton
+                        val textToSend = if (replyTo != null) "@${replyTo!!.authorName} $inputText" else inputText
+                        scope.launch {
+                            isSending = true
+                            runCatching { PostInteractionRepository.addComment(postId, textToSend) }
+                            inputText = ""
+                            replyTo = null
+                            isSending = false
+                        }
+                    },
+                    enabled = sendEnabled
+                ) {
+                    Icon(
+                        Icons.AutoMirrored.Filled.Send,
+                        contentDescription = "Enviar",
+                        tint = if (sendEnabled) Primary else OnSurfaceVariant.copy(alpha = 0.4f)
+                    )
+                }
+            }
+        }
+    }
+}
+
+private fun formatCommentTime(timestamp: Long): String {
+    val diff = System.currentTimeMillis() - timestamp
+    val minutes = diff / 60_000
+    val hours = minutes / 60
+    val days = hours / 24
+    return when {
+        minutes < 1  -> "Ahora"
+        minutes < 60 -> "Hace ${minutes}min"
+        hours < 24   -> "Hace ${hours}h"
+        days < 7     -> "Hace ${days}d"
+        else         -> "Hace ${days / 7}sem"
     }
 }
 
