@@ -76,6 +76,7 @@ object PostRepository {
             "authorId" to authorId,
             "authorName" to authorName,
             "authorInitials" to authorName.toInitials(),
+            "authorPhotoUrl" to auth.currentUser?.photoUrl?.toString(),
             "caption" to caption.trim().take(MAX_POST_CAPTION_LENGTH),
             "createdAtMs" to timestamp,
             "likesCount" to 0,

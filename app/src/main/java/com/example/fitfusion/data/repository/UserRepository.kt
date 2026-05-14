@@ -40,6 +40,7 @@ class UserRepository(
         val userDocument = hashMapOf<String, Any?>(
             "email" to email,
             "displayName" to displayName,
+            "displayNameLower" to displayName.lowercase(Locale.getDefault()),
             "username" to defaultUsername(displayName),
             "bio" to "",
             "createdAt" to FieldValue.serverTimestamp(),
@@ -70,10 +71,18 @@ class UserRepository(
         uid: String,
         fallbackEmail: String = "",
         onProfile: (UserProfile?) -> Unit,
+        onError: ((Exception) -> Unit)? = null,
     ): ListenerRegistration {
+        android.util.Log.d("UserRepository", "listenUserProfile setting up listener for uid='$uid'")
         return firestore.collection("users")
             .document(uid)
-            .addSnapshotListener { snapshot, _ ->
+            .addSnapshotListener { snapshot, error ->
+                if (error != null) {
+                    android.util.Log.e("UserRepository", "listenUserProfile error uid=$uid", error)
+                    onError?.invoke(error)
+                    return@addSnapshotListener
+                }
+                android.util.Log.d("UserRepository", "snapshot received: exists=${snapshot?.exists()} uid=$uid")
                 onProfile(snapshot?.toUserProfile(uid, fallbackEmail))
             }
     }
@@ -82,6 +91,7 @@ class UserRepository(
         val data = mapOf(
             "email" to profile.email,
             "displayName" to profile.displayName,
+            "displayNameLower" to profile.displayName.lowercase(Locale.getDefault()),
             "username" to normalizeUsername(profile.username, profile.displayName),
             "bio" to profile.bio,
             "photoUrl" to profile.photoUrl,
@@ -95,6 +105,45 @@ class UserRepository(
             .document(profile.uid)
             .set(data, SetOptions.merge())
             .await()
+    }
+
+    suspend fun searchUsers(query: String, currentUid: String? = null): List<UserProfile> {
+        val q = query.trim().lowercase(Locale.getDefault()).ifBlank { return emptyList() }
+        val end = q + ""
+
+        val usernameResults = runCatching {
+            firestore.collection("users")
+                .whereGreaterThanOrEqualTo("username", "@$q")
+                .whereLessThanOrEqualTo("username", "@$end")
+                .limit(10)
+                .get().await().documents
+        }.getOrDefault(emptyList())
+
+        val displayNameResults = runCatching {
+            firestore.collection("users")
+                .whereGreaterThanOrEqualTo("displayNameLower", q)
+                .whereLessThanOrEqualTo("displayNameLower", end)
+                .limit(10)
+                .get().await().documents
+        }.getOrDefault(emptyList())
+
+        if (usernameResults.isEmpty() && displayNameResults.isEmpty()) {
+            firestore.collection("users")
+                .whereGreaterThanOrEqualTo("username", "@$q")
+                .whereLessThanOrEqualTo("username", "@$end")
+                .limit(1)
+                .get().await()
+        }
+
+        val seen = mutableSetOf<String>()
+        return (usernameResults + displayNameResults)
+            .mapNotNull { doc ->
+                val uid = doc.id
+                if (uid == currentUid) return@mapNotNull null
+                if (!seen.add(uid)) return@mapNotNull null
+                doc.toUserProfile(uid, "")
+            }
+            .take(10)
     }
 
     suspend fun markOnboarded(uid: String) {

@@ -97,33 +97,33 @@ fun PantallaTracking(
                         fontSize = 11.sp, fontWeight = FontWeight.Bold,
                         letterSpacing = 3.sp, color = Primary
                     )
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    Text(
+                        "Seguimiento",
+                        fontSize = 22.sp, fontWeight = FontWeight.Black, color = OnSurface
+                    )
+                }
+                Column(
+                    horizontalAlignment = Alignment.End,
+                    verticalArrangement = Arrangement.spacedBy(8.dp),
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .clip(RoundedCornerShape(12.dp))
+                            .background(SurfaceContainerLow)
+                            .border(1.dp, SurfaceContainerHigh, RoundedCornerShape(12.dp))
+                            .padding(horizontal = 14.dp, vertical = 8.dp)
                     ) {
                         Text(
-                            "Seguimiento",
-                            fontSize = 22.sp, fontWeight = FontWeight.Black, color = OnSurface
-                        )
-                        AiMealPlanButton(
-                            backgroundColor = SurfaceContainerLow,
-                            borderColor     = SurfaceContainerHigh,
-                            accent          = Primary,
-                            textColor       = OnSurface,
-                            mutedTextColor  = OnSurfaceVariant,
+                            state.selectedDate.format(DateTimeFormatter.ofPattern("EEE d MMM", Locale.forLanguageTag("es"))),
+                            fontSize = 13.sp, fontWeight = FontWeight.SemiBold, color = OnSurfaceVariant
                         )
                     }
-                }
-                Box(
-                    modifier = Modifier
-                        .clip(RoundedCornerShape(12.dp))
-                        .background(SurfaceContainerLow)
-                        .border(1.dp, SurfaceContainerHigh, RoundedCornerShape(12.dp))
-                        .padding(horizontal = 14.dp, vertical = 8.dp)
-                ) {
-                    Text(
-                        state.selectedDate.format(DateTimeFormatter.ofPattern("EEE d MMM", Locale.forLanguageTag("es"))),
-                        fontSize = 13.sp, fontWeight = FontWeight.SemiBold, color = OnSurfaceVariant
+                    AiMealPlanButton(
+                        backgroundColor = SurfaceContainerLow,
+                        borderColor     = SurfaceContainerHigh,
+                        accent          = Primary,
+                        textColor       = OnSurface,
+                        mutedTextColor  = OnSurfaceVariant,
                     )
                 }
             }

@@ -249,6 +249,20 @@ class MainActivity : ComponentActivity() {
                                 backStackEntry.arguments?.getString("documentId") ?: ""
                             )
                         }
+
+                        composable(Screens.UserSearchScreen.name) {
+                            PantallaUserSearch(navController = navController)
+                        }
+
+                        composable(
+                            route = "${Screens.UserScreen.name}/{uid}",
+                            arguments = listOf(navArgument("uid") { type = NavType.StringType })
+                        ) { backStackEntry ->
+                            PantallaUserScreen(
+                                navController = navController,
+                                uid = backStackEntry.arguments?.getString("uid") ?: "",
+                            )
+                        }
                     }
                 }
             }

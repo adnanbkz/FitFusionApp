@@ -2,6 +2,7 @@ package com.example.fitfusion.viewmodel
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.example.fitfusion.data.repository.FeedComment
 import com.example.fitfusion.data.repository.FeedRepository
 import com.example.fitfusion.data.repository.PostInteractionRepository
 import com.google.firebase.firestore.ListenerRegistration
@@ -14,7 +15,9 @@ import kotlinx.coroutines.launch
 
 data class PostDetailUiState(
     val authorName: String = "FitFusion",
-    val authorSubtitle: String = "Publicación",
+    val authorSubtitle: String = "",
+    val authorPhotoUrl: String? = null,
+    val authorId: String = "",
     val title: String = "Cargando publicación",
     val description: String = "",
     val mediaUri: String? = null,
@@ -35,6 +38,7 @@ data class PostDetailUiState(
     val proteinG: Int = 0,
     val carbsG: Int = 0,
     val cookTimeMinutes: Int = 0,
+    val previewComments: List<FeedComment> = emptyList(),
 )
 
 class PostDetailViewModel : ViewModel() {
@@ -73,7 +77,8 @@ class PostDetailViewModel : ViewModel() {
                 }
                 if (item != null) {
                     val currentCommentCount = _uiState.value.commentCount
-                    _uiState.value = item.toDetailState(currentCommentCount)
+                    val currentPreview = _uiState.value.previewComments
+                    _uiState.value = item.toDetailState(currentCommentCount, currentPreview)
                 } else if (items.isNotEmpty()) {
                     _uiState.update { it.copy(title = "Publicación no encontrada") }
                 }
@@ -93,14 +98,24 @@ class PostDetailViewModel : ViewModel() {
 
     private fun attachCommentsListener(postId: String) {
         commentsListenerRegistration = PostInteractionRepository.listenComments(postId) { comments ->
-            _uiState.update { it.copy(commentCount = comments.size.toString()) }
+            _uiState.update {
+                it.copy(
+                    commentCount = comments.size.toString(),
+                    previewComments = comments.take(3),
+                )
+            }
         }
     }
 
-    private fun FeedItem.toDetailState(commentCount: String): PostDetailUiState = when (this) {
+    private fun FeedItem.toDetailState(
+        commentCount: String,
+        previewComments: List<FeedComment>,
+    ): PostDetailUiState = when (this) {
         is FeedItem.Workout -> PostDetailUiState(
             authorName      = post.author,
-            authorSubtitle  = "${post.workoutType} · ${post.timeAgo}",
+            authorSubtitle  = post.timeAgo,
+            authorPhotoUrl  = post.authorPhotoUrl,
+            authorId        = post.authorId,
             title           = post.workoutName,
             mediaUri        = post.mediaUrls.firstOrNull() ?: post.videoUri,
             mediaUrls       = post.mediaUrls,
@@ -118,13 +133,17 @@ class PostDetailViewModel : ViewModel() {
             isWorkout       = true,
             exercises       = post.exercises,
             kcal            = post.kcal,
+            previewComments = previewComments,
         )
         is FeedItem.Nutrition -> PostDetailUiState(
             authorName      = post.author,
-            authorSubtitle  = "Nutrición · ${post.timeAgo}",
+            authorSubtitle  = post.timeAgo,
+            authorPhotoUrl  = post.authorPhotoUrl,
+            authorId        = post.authorId,
             title           = post.title,
             description     = post.description.ifBlank { "Receta compartida en FitFusion." },
             mediaUri        = post.imageUrl,
+            mediaUrls       = listOfNotNull(post.imageUrl),
             statOneValue    = "${post.kcal}",
             statOneLabel    = "KCAL",
             statTwoValue    = if (post.cookTimeMinutes > 0) "${post.cookTimeMinutes}m" else "—",
@@ -140,6 +159,7 @@ class PostDetailViewModel : ViewModel() {
             proteinG        = post.proteinG,
             carbsG          = post.carbsG,
             cookTimeMinutes = post.cookTimeMinutes,
+            previewComments = previewComments,
         )
     }
 

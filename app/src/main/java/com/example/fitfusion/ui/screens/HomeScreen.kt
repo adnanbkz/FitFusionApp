@@ -33,6 +33,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Bookmark
 import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.FavoriteBorder
@@ -180,6 +181,8 @@ fun PantallaHome(
                     onLikeClick = homeViewModel::toggleLike,
                     onFilterSelect = homeViewModel::setFilter,
                     onSaveClick = homeViewModel::toggleSave,
+                    onSearchClick = { navController.navigate(Screens.UserSearchScreen.name) },
+                    onAuthorClick = { uid -> navController.navigate("${Screens.UserScreen.name}/$uid") },
                 )
                 1 -> PantallaTracking(navController = navController)
                 2 -> PantallaAddWorkout(navController = navController, isLogMode = true)
@@ -221,6 +224,8 @@ private fun HomeFeedPage(
     onLikeClick: (String) -> Unit,
     onFilterSelect: (FeedFilter) -> Unit,
     onSaveClick: (String) -> Unit,
+    onSearchClick: () -> Unit = {},
+    onAuthorClick: (String) -> Unit = {},
 ) {
     val filtered = state.filteredItems
     var commentPostId by remember { mutableStateOf<String?>(null) }
@@ -240,6 +245,7 @@ private fun HomeFeedPage(
                     photoUri = photoUri,
                     userName = userName,
                     onAvatarClick = onAvatarClick,
+                    onSearchClick = onSearchClick,
                 )
             }
             item {
@@ -276,18 +282,20 @@ private fun HomeFeedPage(
                 ) { item ->
                     when (item) {
                         is FeedItem.Workout -> WorkoutPostCard(
-                            post          = item.post,
-                            onLikeClick   = { onLikeClick(item.post.id) },
-                            onCardClick   = { onPostClick(item.post.id) },
-                            onSaveClick   = { onSaveClick(item.post.id) },
+                            post           = item.post,
+                            onLikeClick    = { onLikeClick(item.post.id) },
+                            onCardClick    = { onPostClick(item.post.id) },
+                            onSaveClick    = { onSaveClick(item.post.id) },
                             onCommentClick = { commentPostId = item.post.id },
+                            onAuthorClick  = { if (item.post.authorId.isNotBlank()) onAuthorClick(item.post.authorId) },
                         )
                         is FeedItem.Nutrition -> NutritionPostCard(
-                            post          = item.post,
-                            onLikeClick   = { onLikeClick(item.post.id) },
-                            onCardClick   = { onPostClick(item.post.id) },
-                            onSaveClick   = { onSaveClick(item.post.id) },
+                            post           = item.post,
+                            onLikeClick    = { onLikeClick(item.post.id) },
+                            onCardClick    = { onPostClick(item.post.id) },
+                            onSaveClick    = { onSaveClick(item.post.id) },
                             onCommentClick = { commentPostId = item.post.id },
+                            onAuthorClick  = { if (item.post.authorId.isNotBlank()) onAuthorClick(item.post.authorId) },
                         )
                     }
                     HorizontalDivider(color = SurfaceContainerHigh, thickness = 0.5.dp)
@@ -396,6 +404,7 @@ private fun FeedTopBar(
     photoUri: String?,
     userName: String?,
     onAvatarClick: () -> Unit,
+    onSearchClick: () -> Unit = {},
 ) {
     Box(
         modifier = Modifier
@@ -416,12 +425,20 @@ private fun FeedTopBar(
             )
         }
 
-        Box(
+        Row(
             modifier = Modifier
                 .height(56.dp)
                 .align(Alignment.CenterEnd),
-            contentAlignment = Alignment.Center,
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(4.dp),
         ) {
+            IconButton(onClick = onSearchClick) {
+                Icon(
+                    Icons.Default.Search,
+                    contentDescription = "Buscar usuarios",
+                    tint = OnSurface,
+                )
+            }
             ProfileAvatarButton(
                 photoUri = photoUri,
                 userName = userName,
@@ -487,6 +504,7 @@ private fun WorkoutPostCard(
     onCardClick: () -> Unit,
     onSaveClick: () -> Unit,
     onCommentClick: () -> Unit = {},
+    onAuthorClick: () -> Unit = {},
 ) {
     val context = LocalContext.current
     val colors = LocalFitFusionColors.current
@@ -512,7 +530,13 @@ private fun WorkoutPostCard(
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(10.dp),
         ) {
-            AuthorAvatar(initials = post.authorInitials, size = 36, color = Primary)
+            AuthorAvatar(
+                initials = post.authorInitials,
+                size = 36,
+                color = Primary,
+                photoUrl = post.authorPhotoUrl,
+                onClick = onAuthorClick,
+            )
             Column(modifier = Modifier.weight(1f)) {
                 Text(post.author, fontWeight = FontWeight.SemiBold, fontSize = 14.sp, color = OnSurface)
                 Text(post.workoutType, fontSize = 12.sp, color = OnSurfaceVariant)
@@ -750,6 +774,7 @@ private fun NutritionPostCard(
     onCardClick: () -> Unit,
     onSaveClick: () -> Unit,
     onCommentClick: () -> Unit = {},
+    onAuthorClick: () -> Unit = {},
 ) {
     val context = LocalContext.current
     val colors = LocalFitFusionColors.current
@@ -771,7 +796,13 @@ private fun NutritionPostCard(
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(10.dp),
         ) {
-            AuthorAvatar(initials = post.authorInitials, size = 36, color = Secondary)
+            AuthorAvatar(
+                initials = post.authorInitials,
+                size = 36,
+                color = Secondary,
+                photoUrl = post.authorPhotoUrl,
+                onClick = onAuthorClick,
+            )
             Column(modifier = Modifier.weight(1f)) {
                 Text(post.author, fontWeight = FontWeight.SemiBold, fontSize = 14.sp, color = OnSurface)
                 Text("Receta · ${post.timeAgo}", fontSize = 12.sp, color = OnSurfaceVariant)
@@ -911,20 +942,36 @@ private fun NutritionPostCard(
 }
 
 @Composable
-private fun AuthorAvatar(initials: String, size: Int, color: Color) {
+private fun AuthorAvatar(
+    initials: String,
+    size: Int,
+    color: Color,
+    photoUrl: String? = null,
+    onClick: () -> Unit = {},
+) {
     Box(
         modifier = Modifier
             .size(size.dp)
             .clip(CircleShape)
-            .background(color.copy(alpha = 0.12f)),
+            .background(color.copy(alpha = 0.12f))
+            .clickable(onClick = onClick),
         contentAlignment = Alignment.Center,
     ) {
-        Text(
-            initials,
-            fontSize = (size * 0.35f).sp,
-            fontWeight = FontWeight.Bold,
-            color = color,
-        )
+        if (!photoUrl.isNullOrBlank()) {
+            AsyncImage(
+                model = photoUrl,
+                contentDescription = null,
+                contentScale = ContentScale.Crop,
+                modifier = Modifier.fillMaxSize().clip(CircleShape),
+            )
+        } else {
+            Text(
+                initials,
+                fontSize = (size * 0.35f).sp,
+                fontWeight = FontWeight.Bold,
+                color = color,
+            )
+        }
     }
 }
 

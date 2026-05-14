@@ -241,22 +241,23 @@ class ProfileViewModel(application: Application) : AndroidViewModel(application)
         profileListenerRegistration = userRepository.listenUserProfile(
             uid = user.uid,
             fallbackEmail = user.email.orEmpty(),
-        ) { profile ->
-            if (profile == null) return@listenUserProfile
-            _uiState.update {
-                it.copy(
-                    displayName = profile.displayName,
-                    handle = profile.username,
-                    bio = profile.bio.ifBlank { "Edita tu perfil para contar tus objetivos y progreso." },
-                    heightCm = profile.heightCm,
-                    weightKg = profile.weightKg,
-                    goalType = profile.goalType,
-                    activityLevel = profile.activityLevel,
-                    followers = compactCount(profile.followersCount),
-                    following = compactCount(profile.followingCount),
-                )
-            }
-        }
+            onProfile = { profile ->
+                if (profile == null) return@listenUserProfile
+                _uiState.update {
+                    it.copy(
+                        displayName = profile.displayName,
+                        handle = profile.username,
+                        bio = profile.bio.ifBlank { "Edita tu perfil para contar tus objetivos y progreso." },
+                        heightCm = profile.heightCm,
+                        weightKg = profile.weightKg,
+                        goalType = profile.goalType,
+                        activityLevel = profile.activityLevel,
+                        followers = compactCount(profile.followersCount),
+                        following = compactCount(profile.followingCount),
+                    )
+                }
+            },
+        )
     }
 
     fun onTabSelected(index: Int) {

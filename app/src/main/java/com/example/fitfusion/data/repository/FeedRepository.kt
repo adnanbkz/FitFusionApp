@@ -184,6 +184,8 @@ object FeedRepository {
         val id = id
         val authorName = getString("authorName").orEmpty().ifBlank { "Usuario FitFusion" }
         val authorInitials = getString("authorInitials").orEmpty().ifBlank { authorName.toInitials() }
+        val authorId = getString("authorId").orEmpty()
+        val authorPhotoUrl = getString("authorPhotoUrl")
         val timestamp = getLong("createdAtMs") ?: 0L
         val likes = getLong("likesCount")?.toInt() ?: 0
         val comments = getLong("commentsCount")?.toInt() ?: 0
@@ -194,6 +196,8 @@ object FeedRepository {
                     id = id,
                     author = authorName,
                     authorInitials = authorInitials,
+                    authorId = authorId,
+                    authorPhotoUrl = authorPhotoUrl,
                     workoutType = "Entreno",
                     workoutName = getString("workoutName").orEmpty().ifBlank {
                         getString("caption").orEmpty().ifBlank { "Entrenamiento" }
@@ -214,6 +218,8 @@ object FeedRepository {
                     id = id,
                     author = authorName,
                     authorInitials = authorInitials,
+                    authorId = authorId,
+                    authorPhotoUrl = authorPhotoUrl,
                     imageUrl = getString("nutritionPhotoUri"),
                     title = getString("caption").orEmpty().ifBlank { "Receta FitFusion" },
                     description = getString("nutritionIngredients")
