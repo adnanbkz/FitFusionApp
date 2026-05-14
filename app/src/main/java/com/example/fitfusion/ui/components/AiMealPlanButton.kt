@@ -5,14 +5,12 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.layout.FlowRow
-import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AutoAwesome
-import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.BottomSheetDefaults
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -58,9 +56,9 @@ fun AiMealPlanButton(
     accent: Color,
     textColor: Color,
     mutedTextColor: Color,
+    onPlanGenerated: (AiMealPlanResponse) -> Unit,
 ) {
     var showForm by remember { mutableStateOf(false) }
-    var result by remember { mutableStateOf<AiMealPlanResponse?>(null) }
 
     Box(
         modifier = Modifier
@@ -85,13 +83,9 @@ fun AiMealPlanButton(
             onDismiss = { showForm = false },
             onResult = {
                 showForm = false
-                result = it
+                onPlanGenerated(it)
             },
         )
-    }
-
-    result?.let { plan ->
-        MealPlanResultDialog(plan = plan, onDismiss = { result = null })
     }
 }
 
@@ -108,7 +102,6 @@ private fun MealPlanFormSheet(
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
     var targetKcal by remember { mutableStateOf("2000") }
     var mealsPerDay by remember { mutableStateOf(4) }
-    var daysCount by remember { mutableStateOf(7) }
     val restrictions = remember { mutableStateListOf<String>() }
     var isGenerating by remember { mutableStateOf(false) }
     var error by remember { mutableStateOf<String?>(null) }
@@ -130,7 +123,7 @@ private fun MealPlanFormSheet(
             verticalArrangement = Arrangement.spacedBy(14.dp),
         ) {
             Text("Plan de comidas con IA", fontWeight = FontWeight.Bold, fontSize = 18.sp, color = textColor)
-            Text("Genera un plan semanal según tus calorías y restricciones.", fontSize = 12.sp, color = mutedTextColor)
+            Text("Genera un plan de hoy y se añadirá directamente a tus comidas.", fontSize = 12.sp, color = mutedTextColor)
 
             OutlinedTextField(
                 value         = targetKcal,
@@ -150,22 +143,13 @@ private fun MealPlanFormSheet(
                 ),
             )
 
-            Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                StepperField(
-                    label = "COMIDAS / DÍA", value = mealsPerDay,
-                    onChange = { mealsPerDay = it.coerceIn(2, 6) },
-                    min = 2, max = 6,
-                    accent = accent, textColor = textColor, mutedTextColor = mutedTextColor,
-                    modifier = Modifier.weight(1f),
-                )
-                StepperField(
-                    label = "DÍAS", value = daysCount,
-                    onChange = { daysCount = it.coerceIn(1, 7) },
-                    min = 1, max = 7,
-                    accent = accent, textColor = textColor, mutedTextColor = mutedTextColor,
-                    modifier = Modifier.weight(1f),
-                )
-            }
+            StepperField(
+                label = "COMIDAS / DÍA", value = mealsPerDay,
+                onChange = { mealsPerDay = it.coerceIn(2, 4) },
+                min = 2, max = 4,
+                accent = accent, textColor = textColor, mutedTextColor = mutedTextColor,
+                modifier = Modifier.fillMaxWidth(),
+            )
 
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 Text(
@@ -210,7 +194,7 @@ private fun MealPlanFormSheet(
                             AiMealPlanRequest(
                                 targetKcal   = kcal,
                                 mealsPerDay  = mealsPerDay,
-                                daysCount    = daysCount,
+                                daysCount    = 1,
                                 restrictions = restrictions.toList(),
                             )
                         )
@@ -275,39 +259,3 @@ private fun StepperField(
     }
 }
 
-@Composable
-private fun MealPlanResultDialog(
-    plan: AiMealPlanResponse,
-    onDismiss: () -> Unit,
-) {
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        title = { Text("Plan generado", fontWeight = FontWeight.Bold) },
-        text = {
-            LazyColumn(
-                modifier = Modifier.heightIn(max = 420.dp),
-                verticalArrangement = Arrangement.spacedBy(12.dp),
-            ) {
-                items(plan.days.size) { dayIndex ->
-                    val day = plan.days[dayIndex]
-                    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                        Text(
-                            day.dayName,
-                            fontWeight = FontWeight.Bold,
-                            fontSize = 14.sp,
-                        )
-                        day.meals.forEach { meal ->
-                            Text(
-                                "${meal.slotName}: " + meal.dishes.joinToString(", ") { "${it.name} (${it.kcal} kcal)" },
-                                fontSize = 12.sp,
-                            )
-                        }
-                    }
-                }
-            }
-        },
-        confirmButton = {
-            TextButton(onClick = onDismiss) { Text("Cerrar", fontWeight = FontWeight.SemiBold) }
-        },
-    )
-}

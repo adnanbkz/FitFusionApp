@@ -2,6 +2,8 @@ package com.example.fitfusion.viewmodel
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.example.fitfusion.data.ai.AiMealPlanDish
+import com.example.fitfusion.data.ai.AiMealPlanResponse
 import com.example.fitfusion.data.health.DailyHealthData
 import com.example.fitfusion.data.models.*
 import com.example.fitfusion.data.repository.DailySummary
@@ -33,8 +35,6 @@ data class TrackingUiState(
         emptyList()
     ),
     val expandedMeals: Set<String> = setOf(MealSlot.fromCurrentHour().id),
-    val showAddMealDialog: Boolean = false,
-    val addMealName: String = "",
     val showRenameMealDialog: Boolean = false,
     val renameMealId: String = "",
     val renameMealName: String = "",
@@ -136,28 +136,50 @@ class TrackingViewModel : ViewModel() {
         viewModelScope.launch { FoodRepository.removeFood(id, date) }
     }
 
-    fun showAddMealDialog() {
-        _uiState.update { it.copy(showAddMealDialog = true, addMealName = "") }
+    fun applyAiMealPlan(plan: AiMealPlanResponse) {
+        val date = _uiState.value.selectedDate
+        val day = plan.days.firstOrNull() ?: return
+        viewModelScope.launch {
+            day.meals.forEach { meal ->
+                val slot = resolveSlot(meal.slotName)
+                meal.dishes.forEach { dish ->
+                    FoodRepository.addFood(dish.toLoggedFood(slot, date))
+                }
+            }
+        }
     }
 
-    fun dismissAddMealDialog() {
-        _uiState.update { it.copy(showAddMealDialog = false, addMealName = "") }
+    private fun resolveSlot(slotName: String): MealSlot {
+        val key = slotName.trim().lowercase()
+        return when {
+            "desayuno"      in key                                   -> MealSlot.BREAKFAST
+            "media"         in key || "media mañana" in key           -> MealSlot.MORNING_SNACK
+            "almuerzo"      in key || "comida" in key                 -> MealSlot.LUNCH
+            "merienda"      in key || key == "snack"                  -> MealSlot.AFTERNOON_SNACK
+            "cena"          in key                                   -> MealSlot.DINNER
+            "noche"         in key                                   -> MealSlot.EVENING_SNACK
+            else                                                     -> MealSlot.LUNCH
+        }
     }
 
-    fun onAddMealNameChange(name: String) {
-        _uiState.update { it.copy(addMealName = name) }
-    }
-
-    fun confirmAddMeal() {
-        val name = _uiState.value.addMealName.trim()
-        if (name.isBlank()) return
-        val meal = MealSlot(
-            id       = java.util.UUID.randomUUID().toString(),
-            name     = name,
-            isCustom = true
+    private fun AiMealPlanDish.toLoggedFood(slot: MealSlot, date: LocalDate): LoggedFood {
+        val serving = Serving("1 porción", 100f)
+        val food = Food(
+            id              = "ai-${java.util.UUID.randomUUID()}",
+            name            = name,
+            kcalPer100g     = kcal.toFloat(),
+            proteinPer100g  = proteinG.toFloat(),
+            carbsPer100g    = carbsG.toFloat(),
+            fatsPer100g     = fatG.toFloat(),
+            servingOptions  = listOf(serving),
         )
-        FoodRepository.addMealToDay(_uiState.value.selectedDate, meal)
-        _uiState.update { it.copy(showAddMealDialog = false, addMealName = "") }
+        return LoggedFood(
+            food     = food,
+            serving  = serving,
+            quantity = 1,
+            mealSlot = slot,
+            date     = date,
+        )
     }
 
     fun removeMeal(mealId: String) {

@@ -33,7 +33,7 @@ data class MealSlot(
         val EVENING_SNACK   = MealSlot("evening_snack",   "Snack noche")
 
         val PREDEFINED = listOf(BREAKFAST, MORNING_SNACK, LUNCH, AFTERNOON_SNACK, DINNER, EVENING_SNACK)
-        val DEFAULT    = listOf(BREAKFAST, LUNCH, DINNER)
+        val DEFAULT    = listOf(BREAKFAST, LUNCH, AFTERNOON_SNACK, DINNER)
 
         fun predefinedById(id: String): MealSlot? = PREDEFINED.find { it.id == id }
 

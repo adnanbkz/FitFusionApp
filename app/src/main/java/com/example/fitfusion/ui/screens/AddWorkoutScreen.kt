@@ -188,7 +188,7 @@ fun PantallaAddWorkout(
                     ) {
                         Column {
                             Text(
-                                if (state.isRemoteSearchMode) "Resultados de Algolia" else "Catálogo de Firestore",
+                                if (state.isRemoteSearchMode) "Ejercicios" else "Catálogo",
                                 fontWeight = FontWeight.Bold,
                                 color = OnSurface
                             )

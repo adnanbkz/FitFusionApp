@@ -10,6 +10,8 @@ import com.example.fitfusion.data.ai.AiMealPlanRequest
 import com.example.fitfusion.data.ai.AiMealPlanResponse
 import com.example.fitfusion.data.ai.AiRefineRecipeRequest
 import com.example.fitfusion.data.ai.AiRefineRecipeResponse
+import com.example.fitfusion.data.ai.AiWorkoutEstimateRequest
+import com.example.fitfusion.data.ai.AiWorkoutEstimateResponse
 import com.google.firebase.auth.FirebaseAuth
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.tasks.await
@@ -50,6 +52,9 @@ object AiRepository {
 
     suspend fun generateWeeklyMealPlan(request: AiMealPlanRequest): Result<AiMealPlanResponse> =
         post(AiEndpoints.MEAL_PLAN, request, AiMealPlanRequest.serializer(), AiMealPlanResponse.serializer())
+
+    suspend fun estimateWorkoutKcal(request: AiWorkoutEstimateRequest): Result<AiWorkoutEstimateResponse> =
+        post(AiEndpoints.WORKOUT_ESTIMATE, request, AiWorkoutEstimateRequest.serializer(), AiWorkoutEstimateResponse.serializer())
 
     private suspend fun <Req, Res> post(
         path: String,

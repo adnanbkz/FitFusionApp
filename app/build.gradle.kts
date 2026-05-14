@@ -36,7 +36,7 @@ val algoliaSearchApiKey = configValue("ALGOLIA_SEARCH_API_KEY")
 val algoliaExercisesIndexName = configValue("ALGOLIA_EXERCISES_INDEX_NAME")
     .ifBlank { "fitfusion_exercises_algolia" }
 val aiApiBaseUrl = configValue("AI_API_BASE_URL")
-    .ifBlank { "http://10.0.2.2:5000" }
+    .ifBlank { "http://10.0.2.2:5158" }
 
 android {
     namespace = "com.example.fitfusion"

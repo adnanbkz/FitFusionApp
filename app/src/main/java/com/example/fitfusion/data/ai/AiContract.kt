@@ -45,10 +45,11 @@ import kotlinx.serialization.Serializable
  */
 
 object AiEndpoints {
-    const val RECIPE_KCAL    = "/api/ai/recipe/kcal"
-    const val PLATE_ESTIMATE = "/api/ai/plate/estimate"
-    const val ROUTINE        = "/api/ai/routine/generate"
-    const val MEAL_PLAN      = "/api/ai/meal-plan/generate"
+    const val RECIPE_KCAL      = "/api/ai/recipe/kcal"
+    const val PLATE_ESTIMATE   = "/api/ai/plate/estimate"
+    const val ROUTINE          = "/api/ai/routine/generate"
+    const val MEAL_PLAN        = "/api/ai/meal-plan/generate"
+    const val WORKOUT_ESTIMATE = "/api/ai/workout/estimate"
 }
 
 // ---------- Recipe kcal refinement ----------
@@ -168,6 +169,34 @@ data class AiMealPlanDish(
     val carbsG: Int,
     val fatG: Int,
     val descriptionShort: String? = null,
+)
+
+// ---------- Workout MET estimator (AI-assisted) ----------
+
+@Serializable
+data class AiWorkoutEstimateRequest(
+    val durationMin: Int,
+    val exercises: List<AiWorkoutEstimateExercise>,
+    val weightKgOverride: Float? = null,
+)
+
+@Serializable
+data class AiWorkoutEstimateExercise(
+    val name: String,
+    val sets: Int? = null,
+    val reps: Int? = null,
+    val weightKg: Float? = null,
+)
+
+@Serializable
+data class AiWorkoutEstimateResponse(
+    val category: String,
+    val intensity: String,
+    val estimatedMet: Float,
+    val kcal: Int,
+    val weightKgUsed: Float,
+    val confidence: Float,
+    val explanation: String? = null,
 )
 
 // ---------- Error envelope ----------

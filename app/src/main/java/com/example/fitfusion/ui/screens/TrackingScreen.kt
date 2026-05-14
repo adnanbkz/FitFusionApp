@@ -97,10 +97,23 @@ fun PantallaTracking(
                         fontSize = 11.sp, fontWeight = FontWeight.Bold,
                         letterSpacing = 3.sp, color = Primary
                     )
-                    Text(
-                        "Seguimiento",
-                        fontSize = 22.sp, fontWeight = FontWeight.Black, color = OnSurface
-                    )
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    ) {
+                        Text(
+                            "Seguimiento",
+                            fontSize = 22.sp, fontWeight = FontWeight.Black, color = OnSurface
+                        )
+                        AiMealPlanButton(
+                            backgroundColor   = SurfaceContainerLow,
+                            borderColor       = SurfaceContainerHigh,
+                            accent            = Primary,
+                            textColor         = OnSurface,
+                            mutedTextColor    = OnSurfaceVariant,
+                            onPlanGenerated   = trackingViewModel::applyAiMealPlan,
+                        )
+                    }
                 }
                 Column(
                     horizontalAlignment = Alignment.End,
@@ -124,6 +137,7 @@ fun PantallaTracking(
                         accent          = Primary,
                         textColor       = OnSurface,
                         mutedTextColor  = OnSurfaceVariant,
+                        onPlanGenerated = trackingViewModel::applyAiMealPlan,
                     )
                 }
             }
@@ -291,15 +305,6 @@ fun PantallaTracking(
                     Box(modifier = Modifier.size(8.dp).clip(CircleShape).background(Secondary))
                     Text("MIS COMIDAS HOY", fontSize = 10.sp, fontWeight = FontWeight.Bold, letterSpacing = 2.sp, color = Secondary)
                 }
-                Box(
-                    modifier = Modifier
-                        .clip(RoundedCornerShape(20.dp))
-                        .background(Primary.copy(alpha = 0.12f))
-                        .clickable(onClick = trackingViewModel::showAddMealDialog)
-                        .padding(horizontal = 14.dp, vertical = 6.dp)
-                ) {
-                    Text("+ Comida", fontSize = 12.sp, color = Primary, fontWeight = FontWeight.Bold)
-                }
             }
         }
 
@@ -321,15 +326,6 @@ fun PantallaTracking(
     }
 
     // ── Dialogs ───────────────────────────────────────────────────────────────
-    if (state.showAddMealDialog) {
-        AddMealDialog(
-            name         = state.addMealName,
-            onNameChange = trackingViewModel::onAddMealNameChange,
-            onConfirm    = trackingViewModel::confirmAddMeal,
-            onDismiss    = trackingViewModel::dismissAddMealDialog
-        )
-    }
-
     if (state.showRenameMealDialog) {
         RenameMealDialog(
             name         = state.renameMealName,
@@ -682,43 +678,6 @@ private fun NeonLoggedFoodRow(
 }
 
 // ── Dialogs (dark-themed) ─────────────────────────────────────────────────────
-
-@Composable
-private fun AddMealDialog(name: String, onNameChange: (String) -> Unit, onConfirm: () -> Unit, onDismiss: () -> Unit) {
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        containerColor   = SurfaceContainerLow,
-        title = { Text("Nueva comida", fontWeight = FontWeight.Bold, fontSize = 18.sp, color = OnSurface) },
-        text = {
-            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                Text("Ponle un nombre a esta comida.", fontSize = 14.sp, color = OnSurfaceVariant)
-                OutlinedTextField(
-                    value = name, onValueChange = onNameChange,
-                    placeholder = { Text("Ej: Post-entreno, Snack...", color = OnSurfaceVariant, fontSize = 14.sp) },
-                    singleLine = true,
-                    shape = RoundedCornerShape(12.dp),
-                    colors = OutlinedTextFieldDefaults.colors(
-                        unfocusedContainerColor = SurfaceContainerLowest,
-                        focusedContainerColor   = SurfaceContainerLowest,
-                        unfocusedBorderColor    = SurfaceContainerHigh,
-                        focusedBorderColor      = Primary,
-                        focusedTextColor        = OnSurface,
-                        unfocusedTextColor      = OnSurface,
-                    ),
-                    modifier = Modifier.fillMaxWidth()
-                )
-            }
-        },
-        confirmButton = {
-            TextButton(onClick = onConfirm, enabled = name.isNotBlank()) {
-                Text("Añadir", color = Primary, fontWeight = FontWeight.Bold)
-            }
-        },
-        dismissButton = {
-            TextButton(onClick = onDismiss) { Text("Cancelar", color = OnSurfaceVariant) }
-        }
-    )
-}
 
 @Composable
 private fun RenameMealDialog(name: String, onNameChange: (String) -> Unit, onConfirm: () -> Unit, onDismiss: () -> Unit) {
