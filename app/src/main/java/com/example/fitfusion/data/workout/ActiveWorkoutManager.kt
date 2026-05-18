@@ -81,6 +81,9 @@ object ActiveWorkoutManager {
     private val _uploadingWorkoutIds = MutableStateFlow<Set<String>>(emptySet())
     val uploadingWorkoutIds: StateFlow<Set<String>> = _uploadingWorkoutIds.asStateFlow()
 
+    private val _failedUploadWorkoutIds = MutableStateFlow<Set<String>>(emptySet())
+    val failedUploadWorkoutIds: StateFlow<Set<String>> = _failedUploadWorkoutIds.asStateFlow()
+
     private val _recordEvents = MutableSharedFlow<SetRecordEvent>(extraBufferCapacity = 4)
     val recordEvents: SharedFlow<SetRecordEvent> = _recordEvents.asSharedFlow()
 
@@ -300,13 +303,19 @@ object ActiveWorkoutManager {
     ) {
         if (uris.isEmpty()) return
         _uploadingWorkoutIds.update { it + workoutId }
+        _failedUploadWorkoutIds.update { it - workoutId }
         scope.launch {
             try {
                 runCatching { uploader() }
                     .onSuccess { urls ->
                         if (urls.isNotEmpty()) {
                             runCatching { WorkoutRepository.updateWorkoutMedia(workoutId, urls) }
+                        } else {
+                            _failedUploadWorkoutIds.update { it + workoutId }
                         }
+                    }
+                    .onFailure {
+                        _failedUploadWorkoutIds.update { it + workoutId }
                     }
             } finally {
                 _uploadingWorkoutIds.update { it - workoutId }

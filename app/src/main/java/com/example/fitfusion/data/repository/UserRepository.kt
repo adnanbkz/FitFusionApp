@@ -160,8 +160,10 @@ class UserRepository(
         activityLevel: String?,
         birthDate: String?,
         goalType: String?,
+        username: String? = null,
+        photoUrl: String? = null,
     ) {
-        val data = mapOf(
+        val data = mutableMapOf<String, Any?>(
             "heightCm"       to heightCm,
             "weightKg"       to weightKg,
             "activityLevel"  to activityLevel,
@@ -170,6 +172,8 @@ class UserRepository(
             "isOnboarded"    to true,
             "updatedAt"      to FieldValue.serverTimestamp(),
         )
+        username?.let { data["username"] = it }
+        photoUrl?.let { data["photoUrl"] = it }
         firestore.collection("users")
             .document(uid)
             .set(data, SetOptions.merge())

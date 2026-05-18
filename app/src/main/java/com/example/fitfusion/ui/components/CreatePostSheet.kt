@@ -20,6 +20,8 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -27,6 +29,7 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.CameraAlt
+import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.FitnessCenter
@@ -74,6 +77,7 @@ import com.example.fitfusion.viewmodel.ProfileViewModel
 fun CreatePostSheetHost(
     profileViewModel: ProfileViewModel,
     onNavigateToAddWorkout: () -> Unit,
+    onNavigateToEditWorkout: (workoutId: String) -> Unit,
 ) {
     val state by profileViewModel.uiState.collectAsState()
     if (!state.showCreatePostSheet) return
@@ -87,12 +91,16 @@ fun CreatePostSheetHost(
         modifier         = Modifier.imePadding(),
     ) {
         CreatePostSheetContent(
-            state        = state,
-            viewModel    = profileViewModel,
-            onAddWorkout = {
+            state            = state,
+            viewModel        = profileViewModel,
+            onAddWorkout     = {
                 profileViewModel.dismissCreatePost()
                 onNavigateToAddWorkout()
-            }
+            },
+            onEditAndPublish = { workoutId ->
+                profileViewModel.dismissCreatePost()
+                onNavigateToEditWorkout(workoutId)
+            },
         )
     }
 }
@@ -102,10 +110,12 @@ private fun CreatePostSheetContent(
     state: ProfileUiState,
     viewModel: ProfileViewModel,
     onAddWorkout: () -> Unit,
+    onEditAndPublish: (workoutId: String) -> Unit,
 ) {
     Column(
         modifier = Modifier
             .fillMaxWidth()
+            .verticalScroll(rememberScrollState())
             .padding(horizontal = 24.dp)
             .padding(bottom = 32.dp),
         verticalArrangement = Arrangement.spacedBy(20.dp)
@@ -163,7 +173,7 @@ private fun CreatePostSheetContent(
         }
 
         when (state.createPostType) {
-            UserPostType.WORKOUT   -> WorkoutPostForm(state = state, viewModel = viewModel, onAddWorkout = onAddWorkout)
+            UserPostType.WORKOUT   -> WorkoutPostForm(state = state, viewModel = viewModel, onAddWorkout = onAddWorkout, onEditAndPublish = onEditAndPublish)
             UserPostType.NUTRITION -> NutritionPostForm(state = state, viewModel = viewModel)
         }
 
@@ -202,6 +212,7 @@ private fun WorkoutPostForm(
     state: ProfileUiState,
     viewModel: ProfileViewModel,
     onAddWorkout: () -> Unit,
+    onEditAndPublish: (workoutId: String) -> Unit,
 ) {
     Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
         if (state.capturedVideoUri != null) {
@@ -294,6 +305,23 @@ private fun WorkoutPostForm(
                         Icon(Icons.Default.Check, null, Modifier.size(18.dp), tint = Primary)
                     }
                 }
+            }
+        }
+
+        state.selectedWorkout?.let { selected ->
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clip(RoundedCornerShape(12.dp))
+                    .background(Primary.copy(alpha = 0.08f))
+                    .clickable { onEditAndPublish(selected.id) }
+                    .padding(horizontal = 16.dp, vertical = 12.dp),
+                horizontalArrangement = Arrangement.Center,
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Icon(Icons.Default.Edit, null, Modifier.size(15.dp), tint = Primary)
+                Spacer(Modifier.width(8.dp))
+                Text("Editar y publicar", fontSize = 14.sp, fontWeight = FontWeight.SemiBold, color = Primary)
             }
         }
 

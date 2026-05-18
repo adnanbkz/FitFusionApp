@@ -66,24 +66,10 @@ data class ProfileUiState(
     val totalMinutesThisWeek: Int = 0,
     val totalKcalThisWeek: Int = 0,
     val recentWorkouts: List<LoggedWorkout> = emptyList(),
-    val showSearchBar: Boolean = false,
-    val searchQuery: String = "",
     val likedFeedItems: List<FeedItem> = emptyList(),
     val isLoadingLikedPosts: Boolean = false,
 ) {
     val postCount: String get() = userPosts.size.toString()
-
-    val filteredPosts: List<UserPost> get() =
-        if (searchQuery.isBlank()) userPosts
-        else userPosts.filter { p ->
-            val q = searchQuery.trim().lowercase()
-            p.caption.lowercase().contains(q) ||
-            p.workoutName?.lowercase()?.contains(q) == true
-        }
-
-    val filteredDayWorkouts: List<LoggedWorkout> get() =
-        if (searchQuery.isBlank()) selectedDayWorkouts
-        else selectedDayWorkouts.filter { it.name.lowercase().contains(searchQuery.trim().lowercase()) }
 
     val weeklyChange: String get() {
         val cur  = currentWeekMinutes.sum()
@@ -205,6 +191,9 @@ class ProfileViewModel(application: Application) : AndroidViewModel(application)
                         recentWorkouts        = recent,
                         currentStreak         = streak,
                         selectedDayWorkouts   = workoutMap[s.selectedWorkoutDay] ?: emptyList(),
+                        selectedWorkout       = s.selectedWorkout?.let { sel ->
+                            recent.firstOrNull { it.id == sel.id } ?: sel
+                        },
                     )
                 }
             }
@@ -291,17 +280,6 @@ class ProfileViewModel(application: Application) : AndroidViewModel(application)
 
     fun onTabSelected(index: Int) {
         _uiState.update { it.copy(selectedTab = index) }
-    }
-
-    fun toggleSearchBar() {
-        _uiState.update { it.copy(
-            showSearchBar = !it.showSearchBar,
-            searchQuery   = if (it.showSearchBar) "" else it.searchQuery
-        ) }
-    }
-
-    fun onSearchQueryChange(value: String) {
-        _uiState.update { it.copy(searchQuery = value) }
     }
 
     fun showCreatePost() {

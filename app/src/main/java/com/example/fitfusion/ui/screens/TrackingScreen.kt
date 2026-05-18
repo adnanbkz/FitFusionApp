@@ -20,6 +20,7 @@ import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.KeyboardArrowUp
+import androidx.compose.material.icons.filled.DateRange
 import androidx.compose.material.icons.filled.Restaurant
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -58,7 +59,9 @@ import com.example.fitfusion.ui.components.AiMealPlanButton
 import com.example.fitfusion.ui.theme.Tertiary
 import com.example.fitfusion.viewmodel.TrackingViewModel
 import java.time.DayOfWeek
+import java.time.Instant
 import java.time.LocalDate
+import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 import java.time.temporal.TemporalAdjusters
 import java.util.Locale
@@ -71,6 +74,7 @@ fun PantallaTracking(
     trackingViewModel: TrackingViewModel = viewModel(),
 ) {
     val state by trackingViewModel.uiState.collectAsState()
+    var showDatePicker by remember { mutableStateOf(false) }
 
     LazyColumn(
         modifier = Modifier
@@ -111,12 +115,24 @@ fun PantallaTracking(
                             .clip(RoundedCornerShape(12.dp))
                             .background(SurfaceContainerLow)
                             .border(1.dp, SurfaceContainerHigh, RoundedCornerShape(12.dp))
+                            .clickable { showDatePicker = true }
                             .padding(horizontal = 14.dp, vertical = 8.dp)
                     ) {
-                        Text(
-                            state.selectedDate.format(DateTimeFormatter.ofPattern("EEE d MMM", Locale.forLanguageTag("es"))),
-                            fontSize = 13.sp, fontWeight = FontWeight.SemiBold, color = OnSurfaceVariant
-                        )
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(6.dp),
+                        ) {
+                            Icon(
+                                Icons.Default.DateRange,
+                                contentDescription = "Abrir calendario",
+                                tint = Primary,
+                                modifier = Modifier.size(14.dp),
+                            )
+                            Text(
+                                state.selectedDate.format(DateTimeFormatter.ofPattern("EEE d MMM", Locale.forLanguageTag("es"))),
+                                fontSize = 13.sp, fontWeight = FontWeight.SemiBold, color = OnSurfaceVariant,
+                            )
+                        }
                     }
                     AiMealPlanButton(
                         backgroundColor = SurfaceContainerLow,
@@ -362,6 +378,39 @@ fun PantallaTracking(
                 onConfirm       = trackingViewModel::confirmEdit,
                 confirmLabel    = "Actualizar",
             )
+        }
+    }
+
+    // ── Date picker ───────────────────────────────────────────────────────────
+    if (showDatePicker) {
+        val datePickerState = rememberDatePickerState(
+            initialSelectedDateMillis = state.selectedDate
+                .atStartOfDay(ZoneId.of("UTC"))
+                .toInstant()
+                .toEpochMilli(),
+        )
+        DatePickerDialog(
+            onDismissRequest = { showDatePicker = false },
+            confirmButton = {
+                TextButton(onClick = {
+                    datePickerState.selectedDateMillis?.let { millis ->
+                        val picked = Instant.ofEpochMilli(millis)
+                            .atZone(ZoneId.of("UTC"))
+                            .toLocalDate()
+                        if (!picked.isAfter(LocalDate.now())) {
+                            trackingViewModel.selectDate(picked)
+                        }
+                    }
+                    showDatePicker = false
+                }) { Text("Aceptar", color = Primary, fontWeight = FontWeight.Bold) }
+            },
+            dismissButton = {
+                TextButton(onClick = { showDatePicker = false }) {
+                    Text("Cancelar", color = OnSurfaceVariant)
+                }
+            },
+        ) {
+            DatePicker(state = datePickerState)
         }
     }
 }

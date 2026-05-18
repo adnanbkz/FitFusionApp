@@ -33,6 +33,7 @@ object FeedRepository {
     private val commentListenerRegistrations = mutableMapOf<String, ListenerRegistration>()
     private var feedListenerRegistration: ListenerRegistration? = null
     private var savesListenerRegistration: ListenerRegistration? = null
+    private var userLikesListenerRegistration: ListenerRegistration? = null
     private var authListenerRegistered = false
     private var currentUid: String? = null
 
@@ -81,22 +82,25 @@ object FeedRepository {
             .document(itemId)
             .collection("likes")
             .document(uid)
+        val userLikeRef = firestore.collection("users")
+            .document(uid)
+            .collection("likes")
+            .document(itemId)
 
         val wasLiked = itemId in likedPostIds
         val previousCount = currentLikeCount(itemId)
         setOptimisticLikeState(itemId, liked = !wasLiked, previousCount = previousCount)
 
-        val task = if (wasLiked) {
-            likeRef.delete()
+        val now = System.currentTimeMillis()
+        val batch = firestore.batch()
+        if (wasLiked) {
+            batch.delete(likeRef)
+            batch.delete(userLikeRef)
         } else {
-            likeRef.set(
-                mapOf(
-                    "userId" to uid,
-                    "createdAtMs" to System.currentTimeMillis(),
-                )
-            )
+            batch.set(likeRef, mapOf("userId" to uid, "createdAtMs" to now))
+            batch.set(userLikeRef, mapOf("postId" to itemId, "likedAtMs" to now))
         }
-        task.addOnFailureListener {
+        batch.commit().addOnFailureListener {
             setOptimisticLikeState(itemId, liked = wasLiked, previousCount = previousCount)
         }
     }
@@ -266,6 +270,8 @@ object FeedRepository {
         likeListenerRegistrations.clear()
         likeCountsByPostId.clear()
         likedPostIds.clear()
+        userLikesListenerRegistration?.remove()
+        userLikesListenerRegistration = null
         clearCommentCountListeners()
     }
 

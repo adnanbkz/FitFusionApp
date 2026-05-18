@@ -6,12 +6,15 @@ import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.fitfusion.data.ai.AiWorkoutEstimateExercise
 import com.example.fitfusion.data.ai.AiWorkoutEstimateRequest
+import com.example.fitfusion.data.models.LoggedWorkout
 import com.example.fitfusion.data.repository.AiRepository
+import com.example.fitfusion.data.repository.WorkoutRepository
 import com.example.fitfusion.data.workout.ActiveWorkoutManager
 import com.example.fitfusion.data.workout.ActiveWorkoutSession
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.storage.FirebaseStorage
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -32,6 +35,7 @@ data class WorkoutFinishUiState(
     val savedWorkoutId: String? = null,
     val session: ActiveWorkoutSession? = null,
     val elapsedSeconds: Long = 0L,
+    val editWorkout: LoggedWorkout? = null,
 )
 
 class WorkoutFinishViewModel(app: Application) : AndroidViewModel(app) {
@@ -43,6 +47,7 @@ class WorkoutFinishViewModel(app: Application) : AndroidViewModel(app) {
     val uiState: StateFlow<WorkoutFinishUiState> = _uiState.asStateFlow()
 
     private var publishMode = false
+    private var loadEditJob: Job? = null
 
     init {
         val current = ActiveWorkoutManager.session.value
@@ -64,6 +69,14 @@ class WorkoutFinishViewModel(app: Application) : AndroidViewModel(app) {
     }
 
     fun onMediaPicked(uris: List<Uri>) {
+        val ctx = getApplication<Application>().applicationContext
+        uris.forEach { uri ->
+            runCatching {
+                ctx.contentResolver.takePersistableUriPermission(
+                    uri, android.content.Intent.FLAG_GRANT_READ_URI_PERMISSION
+                )
+            }
+        }
         _uiState.update { current ->
             val combined = (current.mediaUris + uris).distinct().take(5)
             current.copy(mediaUris = combined, errorMessage = null)
@@ -72,6 +85,25 @@ class WorkoutFinishViewModel(app: Application) : AndroidViewModel(app) {
 
     fun removeMedia(uri: Uri) {
         _uiState.update { it.copy(mediaUris = it.mediaUris.filter { item -> item != uri }) }
+    }
+
+    fun loadExistingWorkout(workoutId: String) {
+        if (loadEditJob?.isActive == true) return
+        _uiState.update { it.copy(session = null, title = "", elapsedSeconds = 0L) }
+        loadEditJob = viewModelScope.launch {
+            WorkoutRepository.workouts.collect { map ->
+                val workout = map.values.flatten().firstOrNull { it.id == workoutId }
+                if (workout != null) {
+                    _uiState.update { current ->
+                        current.copy(
+                            editWorkout = workout,
+                            title = current.title.ifBlank { workout.name },
+                            description = current.description.ifBlank { workout.description },
+                        )
+                    }
+                }
+            }
+        }
     }
 
     fun save(onDone: (String) -> Unit) {
@@ -86,7 +118,17 @@ class WorkoutFinishViewModel(app: Application) : AndroidViewModel(app) {
 
     private fun performSave(onDone: (String) -> Unit) {
         val state = _uiState.value
-        if (state.isSaving || state.session == null) return
+        if (state.isSaving) return
+        if (state.editWorkout != null) {
+            performEditSave(state.editWorkout, onDone)
+        } else {
+            performNewSave(onDone)
+        }
+    }
+
+    private fun performNewSave(onDone: (String) -> Unit) {
+        val state = _uiState.value
+        if (state.session == null) return
         val sessionId = state.session.id
         val title = state.title.trim().ifBlank { state.session.name }
 
@@ -146,6 +188,44 @@ class WorkoutFinishViewModel(app: Application) : AndroidViewModel(app) {
             ).getOrNull()?.kcal?.takeIf { it > 0 }
         }
 
+    private fun performEditSave(editWorkout: LoggedWorkout, onDone: (String) -> Unit) {
+        val state = _uiState.value
+        val title = state.title.trim().ifBlank { editWorkout.name }
+
+        viewModelScope.launch {
+            _uiState.update { it.copy(isSaving = true, errorMessage = null) }
+            runCatching {
+                WorkoutRepository.updateWorkout(
+                    editWorkout.copy(name = title, description = state.description.trim())
+                )
+            }.fold(
+                onSuccess = {
+                    _uiState.update { it.copy(isSaving = false, savedWorkoutId = editWorkout.id) }
+                    onDone(editWorkout.id)
+                    if (state.mediaUris.isNotEmpty()) {
+                        val existingUrls = editWorkout.mediaUrls
+                        ActiveWorkoutManager.uploadMediaInBackground(
+                            workoutId = editWorkout.id,
+                            uris      = state.mediaUris,
+                            uploader  = {
+                                val newUrls = uploadMedia(editWorkout.id, state.mediaUris)
+                                existingUrls + newUrls
+                            },
+                        )
+                    }
+                },
+                onFailure = { error ->
+                    _uiState.update {
+                        it.copy(
+                            isSaving = false,
+                            errorMessage = error.localizedMessage ?: "No se pudieron guardar los cambios",
+                        )
+                    }
+                },
+            )
+        }
+    }
+
     private suspend fun uploadMedia(workoutId: String, uris: List<Uri>): List<String> = withContext(Dispatchers.IO) {
         val uid = auth.currentUser?.uid ?: return@withContext emptyList()
         val ctx = getApplication<Application>().applicationContext
@@ -161,6 +241,8 @@ class WorkoutFinishViewModel(app: Application) : AndroidViewModel(app) {
                     .child("users/$uid/workouts/$workoutId/media/${System.currentTimeMillis()}_$index.$ext")
                 ref.putFile(uri).await()
                 ref.downloadUrl.await().toString()
+            }.onFailure { e ->
+                android.util.Log.e("WorkoutUpload", "Error subiendo URI $index: ${e.message}", e)
             }.getOrNull()
         }
     }

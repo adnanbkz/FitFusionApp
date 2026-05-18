@@ -1,15 +1,21 @@
 package com.example.fitfusion.ui.screens
 
+import android.net.Uri
 import androidx.activity.compose.BackHandler
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.PickVisualMediaRequest
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.CameraAlt
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
@@ -28,12 +34,17 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
+import coil3.compose.AsyncImage
 import com.example.fitfusion.ui.theme.OnSurface
 import com.example.fitfusion.ui.theme.OnSurfaceVariant
 import com.example.fitfusion.ui.theme.Primary
@@ -59,8 +70,11 @@ fun PantallaOnboarding(
 
     BackHandler {
         if (state.step > 0) viewModel.previousStep()
-        // step == 0: bloquear back; el usuario completa el wizard o mata la app.
     }
+
+    val photoLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.PickVisualMedia()
+    ) { uri -> uri?.let { viewModel.onPhotoPicked(it) } }
 
     Scaffold(
         containerColor = Surface,
@@ -76,11 +90,11 @@ fun PantallaOnboarding(
                     Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Atrás")
                 }
                 LinearProgressIndicator(
-                    progress = { (state.step + 1) / 5f },
+                    progress = { (state.step + 1) / 7f },
                     color = Primary,
                     modifier = Modifier.weight(1f).padding(horizontal = 16.dp),
                 )
-                Text("${state.step + 1}/5", fontSize = 13.sp, color = OnSurfaceVariant)
+                Text("${state.step + 1}/7", fontSize = 13.sp, color = OnSurfaceVariant)
                 Spacer(Modifier.width(12.dp))
             }
         },
@@ -95,17 +109,26 @@ fun PantallaOnboarding(
             verticalArrangement = Arrangement.spacedBy(24.dp),
         ) {
             when (state.step) {
-                0 -> StepHeight(state.heightCm, viewModel::onHeightChange)
-                1 -> StepWeight(state.weightKg, viewModel::onWeightChange)
-                2 -> StepChips(
+                0 -> StepUsername(state.username, viewModel::onUsernameChange)
+                1 -> StepPhoto(
+                    photoUri = state.photoUri,
+                    onPickPhoto = {
+                        photoLauncher.launch(
+                            PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)
+                        )
+                    },
+                )
+                2 -> StepHeight(state.heightCm, viewModel::onHeightChange)
+                3 -> StepWeight(state.weightKg, viewModel::onWeightChange)
+                4 -> StepChips(
                     title = "¿Cuál es tu nivel de actividad?",
                     subtitle = "Esto nos ayuda a calibrar tus calorías diarias.",
                     options = ACTIVITY_LEVELS,
                     selected = state.activityLevel,
                     onSelect = viewModel::onActivityLevelChange,
                 )
-                3 -> StepBirthDate(state.birthDate, viewModel::onBirthDateChange)
-                4 -> StepChips(
+                5 -> StepBirthDate(state.birthDate, viewModel::onBirthDateChange)
+                6 -> StepChips(
                     title = "¿Cuál es tu objetivo?",
                     subtitle = "Lo guardamos como referencia. No se mostrará en tu perfil público.",
                     options = GOAL_TYPES,
@@ -131,12 +154,89 @@ fun PantallaOnboarding(
                     CircularProgressIndicator(modifier = Modifier.size(20.dp), color = Color.White, strokeWidth = 2.dp)
                 } else {
                     Text(
-                        if (state.step >= 4) "Empezar" else "Continuar",
+                        if (state.step >= 6) "Empezar" else "Continuar",
                         fontWeight = FontWeight.Bold, fontSize = 16.sp,
                     )
                 }
             }
             Spacer(Modifier.height(16.dp))
+        }
+    }
+}
+
+@Composable
+private fun StepUsername(value: String, onChange: (String) -> Unit) {
+    StepHeader(
+        title = "Elige tu nombre de usuario",
+        subtitle = "Será tu identidad en FitFusion. Solo letras, números, puntos y guiones bajos.",
+    )
+    OutlinedTextField(
+        value = value,
+        onValueChange = onChange,
+        label = { Text("Nombre de usuario") },
+        placeholder = { Text("tu_usuario") },
+        prefix = { Text("@", color = OnSurfaceVariant) },
+        singleLine = true,
+        keyboardOptions = KeyboardOptions(
+            keyboardType = KeyboardType.Text,
+            capitalization = KeyboardCapitalization.None,
+        ),
+        shape = RoundedCornerShape(12.dp),
+        colors = OutlinedTextFieldDefaults.colors(
+            unfocusedContainerColor = SurfaceContainerLow,
+            focusedContainerColor = SurfaceContainerLow,
+            unfocusedBorderColor = Color.Transparent,
+            focusedBorderColor = Primary,
+        ),
+        modifier = Modifier.fillMaxWidth(),
+    )
+    Text(
+        "${value.length}/20",
+        fontSize = 11.sp,
+        color = OnSurfaceVariant,
+        modifier = Modifier.fillMaxWidth(),
+        textAlign = TextAlign.End,
+    )
+}
+
+@Composable
+private fun StepPhoto(photoUri: Uri?, onPickPhoto: () -> Unit) {
+    StepHeader(
+        title = "Añade una foto de perfil",
+        subtitle = "Opcional. Puedes cambiarla cuando quieras desde tu perfil.",
+    )
+    Column(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.spacedBy(16.dp),
+    ) {
+        Box(
+            modifier = Modifier
+                .size(120.dp)
+                .clip(CircleShape)
+                .background(SurfaceContainerLow)
+                .clickable { onPickPhoto() },
+            contentAlignment = Alignment.Center,
+        ) {
+            if (photoUri != null) {
+                AsyncImage(
+                    model = photoUri,
+                    contentDescription = "Foto de perfil",
+                    contentScale = ContentScale.Crop,
+                    modifier = Modifier.fillMaxSize(),
+                )
+            } else {
+                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    Icon(
+                        Icons.Default.CameraAlt,
+                        contentDescription = null,
+                        tint = OnSurfaceVariant,
+                        modifier = Modifier.size(32.dp),
+                    )
+                    Spacer(Modifier.height(4.dp))
+                    Text("Añadir foto", fontSize = 12.sp, color = OnSurfaceVariant)
+                }
+            }
         }
     }
 }

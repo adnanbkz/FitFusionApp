@@ -36,12 +36,19 @@ import com.example.fitfusion.viewmodel.formatElapsed
 @Composable
 fun PantallaWorkoutFinish(
     navController: NavHostController,
+    workoutId: String? = null,
     workoutFinishViewModel: WorkoutFinishViewModel = viewModel(),
 ) {
     val state by workoutFinishViewModel.uiState.collectAsState()
 
-    LaunchedEffect(state.session) {
-        if (state.session == null && state.savedWorkoutId == null) {
+    LaunchedEffect(workoutId) {
+        if (!workoutId.isNullOrBlank()) {
+            workoutFinishViewModel.loadExistingWorkout(workoutId)
+        }
+    }
+
+    LaunchedEffect(state.session, state.savedWorkoutId) {
+        if (workoutId == null && state.session == null && state.savedWorkoutId == null) {
             navController.popBackStack()
         }
     }
@@ -54,7 +61,7 @@ fun PantallaWorkoutFinish(
         containerColor = Surface,
         topBar = {
             TopAppBar(
-                title = { Text("Finalizar entrenamiento", fontWeight = FontWeight.Bold, fontSize = 18.sp) },
+                title = { Text(if (workoutId != null) "Editar entrenamiento" else "Finalizar entrenamiento", fontWeight = FontWeight.Bold, fontSize = 18.sp) },
                 navigationIcon = {
                     IconButton(onClick = { navController.popBackStack() }) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Volver")
@@ -74,34 +81,69 @@ fun PantallaWorkoutFinish(
         ) {
             Spacer(Modifier.height(4.dp))
 
-            state.session?.let { session ->
-                Card(
-                    shape  = RoundedCornerShape(20.dp),
-                    colors = CardDefaults.cardColors(containerColor = SurfaceContainerLowest),
-                    elevation = CardDefaults.cardElevation(0.dp),
-                    modifier = Modifier.fillMaxWidth(),
-                ) {
-                    Row(
-                        modifier = Modifier.padding(20.dp).fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically,
+            if (workoutId != null) {
+                state.editWorkout?.let { workout ->
+                    Card(
+                        shape = RoundedCornerShape(20.dp),
+                        colors = CardDefaults.cardColors(containerColor = SurfaceContainerLowest),
+                        elevation = CardDefaults.cardElevation(0.dp),
+                        modifier = Modifier.fillMaxWidth(),
                     ) {
-                        Column {
-                            Text(
-                                "RESUMEN", fontSize = 11.sp, fontWeight = FontWeight.Bold,
-                                letterSpacing = 1.5.sp, color = Primary,
-                            )
-                            Text(
-                                formatElapsed(state.elapsedSeconds),
-                                fontSize = 28.sp, fontWeight = FontWeight.Bold, color = OnSurface,
-                                modifier = Modifier.padding(top = 4.dp),
-                            )
+                        Row(
+                            modifier = Modifier.padding(20.dp).fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically,
+                        ) {
+                            Column {
+                                Text(
+                                    "RESUMEN", fontSize = 11.sp, fontWeight = FontWeight.Bold,
+                                    letterSpacing = 1.5.sp, color = Primary,
+                                )
+                                Text(
+                                    "${workout.durationMinutes} min",
+                                    fontSize = 28.sp, fontWeight = FontWeight.Bold, color = OnSurface,
+                                    modifier = Modifier.padding(top = 4.dp),
+                                )
+                            }
+                            Column(horizontalAlignment = Alignment.End) {
+                                Text("${workout.exerciseCount}", fontSize = 22.sp, fontWeight = FontWeight.Bold, color = OnSurface)
+                                Text("EJERCICIOS", fontSize = 11.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.5.sp, color = OnSurfaceVariant)
+                                Spacer(Modifier.height(4.dp))
+                                Text("${workout.totalSets} series", fontSize = 12.sp, color = OnSurfaceVariant)
+                            }
                         }
-                        Column(horizontalAlignment = Alignment.End) {
-                            Text("${session.exerciseCount}", fontSize = 22.sp, fontWeight = FontWeight.Bold, color = OnSurface)
-                            Text("EJERCICIOS", fontSize = 11.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.5.sp, color = OnSurfaceVariant)
-                            Spacer(Modifier.height(4.dp))
-                            Text("${session.totalSets} series", fontSize = 12.sp, color = OnSurfaceVariant)
+                    }
+                }
+            } else {
+                state.session?.let { session ->
+                    Card(
+                        shape  = RoundedCornerShape(20.dp),
+                        colors = CardDefaults.cardColors(containerColor = SurfaceContainerLowest),
+                        elevation = CardDefaults.cardElevation(0.dp),
+                        modifier = Modifier.fillMaxWidth(),
+                    ) {
+                        Row(
+                            modifier = Modifier.padding(20.dp).fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically,
+                        ) {
+                            Column {
+                                Text(
+                                    "RESUMEN", fontSize = 11.sp, fontWeight = FontWeight.Bold,
+                                    letterSpacing = 1.5.sp, color = Primary,
+                                )
+                                Text(
+                                    formatElapsed(state.elapsedSeconds),
+                                    fontSize = 28.sp, fontWeight = FontWeight.Bold, color = OnSurface,
+                                    modifier = Modifier.padding(top = 4.dp),
+                                )
+                            }
+                            Column(horizontalAlignment = Alignment.End) {
+                                Text("${session.exerciseCount}", fontSize = 22.sp, fontWeight = FontWeight.Bold, color = OnSurface)
+                                Text("EJERCICIOS", fontSize = 11.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.5.sp, color = OnSurfaceVariant)
+                                Spacer(Modifier.height(4.dp))
+                                Text("${session.totalSets} series", fontSize = 12.sp, color = OnSurfaceVariant)
+                            }
                         }
                     }
                 }
@@ -137,13 +179,39 @@ fun PantallaWorkoutFinish(
                 maxLines      = 5,
             )
 
+            if (workoutId != null) {
+                state.editWorkout?.mediaUrls?.takeIf { it.isNotEmpty() }?.let { existingUrls ->
+                    Text(
+                        "FOTOS ACTUALES",
+                        fontSize = 11.sp, fontWeight = FontWeight.Bold,
+                        letterSpacing = 1.5.sp, color = Primary,
+                    )
+                    LazyRow(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(10.dp),
+                    ) {
+                        items(existingUrls) { url ->
+                            AsyncImage(
+                                model = url,
+                                contentDescription = null,
+                                contentScale = ContentScale.Crop,
+                                modifier = Modifier
+                                    .size(96.dp)
+                                    .clip(RoundedCornerShape(14.dp))
+                                    .background(SurfaceContainerLow),
+                            )
+                        }
+                    }
+                }
+            }
+
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 Text(
-                    "ADJUNTAR FOTOS O VÍDEOS",
+                    "AÑADIR FOTOS O VÍDEOS",
                     fontSize = 11.sp, fontWeight = FontWeight.Bold,
                     letterSpacing = 1.5.sp, color = Primary,
                 )
@@ -221,7 +289,8 @@ fun PantallaWorkoutFinish(
             Button(
                 onClick = {
                     workoutFinishViewModel.save {
-                        navController.popBackStack(Screens.HomeScreen.name, inclusive = false)
+                        if (workoutId != null) navController.popBackStack()
+                        else navController.popBackStack(Screens.HomeScreen.name, inclusive = false)
                     }
                 },
                 enabled  = !state.isSaving,
@@ -235,14 +304,17 @@ fun PantallaWorkoutFinish(
                         color = Color.White, strokeWidth = 2.dp,
                     )
                 } else {
-                    Text("Guardar entrenamiento", fontSize = 16.sp, fontWeight = FontWeight.SemiBold)
+                    Text(
+                        if (workoutId != null) "Guardar cambios" else "Guardar entrenamiento",
+                        fontSize = 16.sp, fontWeight = FontWeight.SemiBold,
+                    )
                 }
             }
 
             OutlinedButton(
                 onClick = {
-                    workoutFinishViewModel.saveAndPublish { workoutId ->
-                        navController.navigate("${Screens.WorkoutPostScreen.name}/$workoutId") {
+                    workoutFinishViewModel.saveAndPublish { savedId ->
+                        navController.navigate("${Screens.WorkoutPostScreen.name}/$savedId") {
                             popUpTo(Screens.HomeScreen.name) { inclusive = false }
                         }
                     }

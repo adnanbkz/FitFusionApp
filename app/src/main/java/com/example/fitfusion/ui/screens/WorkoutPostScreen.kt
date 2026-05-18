@@ -120,34 +120,53 @@ fun PantallaWorkoutPost(
                 }
             }
 
-            if (workout.mediaUrls.isNotEmpty() || state.isMediaUploading) {
+            if (workout.mediaUrls.isNotEmpty() || state.isMediaUploading || state.uploadFailed) {
                 Text("FOTOS DEL ENTRENAMIENTO", fontSize = 11.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.5.sp, color = Primary)
-                if (state.isMediaUploading && workout.mediaUrls.isEmpty()) {
-                    Box(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .height(120.dp)
-                            .clip(RoundedCornerShape(12.dp))
-                            .background(SurfaceContainerLow),
-                        contentAlignment = Alignment.Center,
-                    ) {
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(10.dp),
+                when {
+                    state.isMediaUploading && workout.mediaUrls.isEmpty() -> {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(120.dp)
+                                .clip(RoundedCornerShape(12.dp))
+                                .background(SurfaceContainerLow),
+                            contentAlignment = Alignment.Center,
                         ) {
-                            CircularProgressIndicator(modifier = Modifier.size(20.dp), strokeWidth = 2.dp, color = Primary)
-                            Text("Subiendo imágenes...", fontSize = 13.sp, color = OnSurfaceVariant)
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(10.dp),
+                            ) {
+                                CircularProgressIndicator(modifier = Modifier.size(20.dp), strokeWidth = 2.dp, color = Primary)
+                                Text("Subiendo imágenes...", fontSize = 13.sp, color = OnSurfaceVariant)
+                            }
                         }
                     }
-                } else {
-                    LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        items(workout.mediaUrls) { url ->
-                            AsyncImage(
-                                model = url,
-                                contentDescription = null,
-                                contentScale = ContentScale.Crop,
-                                modifier = Modifier.size(120.dp).clip(RoundedCornerShape(12.dp)).background(SurfaceContainerLow),
+                    state.uploadFailed && workout.mediaUrls.isEmpty() -> {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(120.dp)
+                                .clip(RoundedCornerShape(12.dp))
+                                .background(SurfaceContainerLow),
+                            contentAlignment = Alignment.Center,
+                        ) {
+                            Text(
+                                "No se pudieron subir las fotos",
+                                fontSize = 13.sp,
+                                color = Tertiary,
                             )
+                        }
+                    }
+                    else -> {
+                        LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            items(workout.mediaUrls) { url ->
+                                AsyncImage(
+                                    model = url,
+                                    contentDescription = null,
+                                    contentScale = ContentScale.Crop,
+                                    modifier = Modifier.size(120.dp).clip(RoundedCornerShape(12.dp)).background(SurfaceContainerLow),
+                                )
+                            }
                         }
                     }
                 }
@@ -185,6 +204,8 @@ fun PantallaWorkoutPost(
                     CircularProgressIndicator(color = Color.White, strokeWidth = 2.dp, modifier = Modifier.size(20.dp))
                 } else if (state.isMediaUploading) {
                     Text("Esperando subida...", fontWeight = FontWeight.Bold, fontSize = 16.sp)
+                } else if (state.uploadFailed && workout.mediaUrls.isEmpty()) {
+                    Text("Publicar sin fotos", fontWeight = FontWeight.Bold, fontSize = 16.sp)
                 } else {
                     Text("Publicar", fontWeight = FontWeight.Bold, fontSize = 16.sp)
                 }

@@ -22,6 +22,7 @@ data class WorkoutPostUiState(
     val caption: String = "",
     val isPublishing: Boolean = false,
     val isMediaUploading: Boolean = false,
+    val uploadFailed: Boolean = false,
     val errorMessage: String? = null,
     val published: Boolean = false,
 )
@@ -35,11 +36,13 @@ class WorkoutPostViewModel(application: Application) : AndroidViewModel(applicat
 
     private var loadJob: Job? = null
     private var uploadObserveJob: Job? = null
+    private var failedObserveJob: Job? = null
 
     fun loadWorkout(workoutId: String) {
         if (_uiState.value.workout?.id == workoutId && loadJob?.isActive == true) return
         loadJob?.cancel()
         uploadObserveJob?.cancel()
+        failedObserveJob?.cancel()
         loadJob = viewModelScope.launch {
             WorkoutRepository.workouts.collect { workoutMap ->
                 val workout = workoutMap.values.flatten().firstOrNull { it.id == workoutId }
@@ -56,6 +59,11 @@ class WorkoutPostViewModel(application: Application) : AndroidViewModel(applicat
         uploadObserveJob = viewModelScope.launch {
             ActiveWorkoutManager.uploadingWorkoutIds.collect { uploadingIds ->
                 _uiState.update { it.copy(isMediaUploading = workoutId in uploadingIds) }
+            }
+        }
+        failedObserveJob = viewModelScope.launch {
+            ActiveWorkoutManager.failedUploadWorkoutIds.collect { failedIds ->
+                _uiState.update { it.copy(uploadFailed = workoutId in failedIds) }
             }
         }
     }

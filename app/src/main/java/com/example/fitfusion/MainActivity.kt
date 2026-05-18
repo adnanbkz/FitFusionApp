@@ -14,6 +14,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.statusBars
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -108,7 +109,7 @@ class MainActivity : ComponentActivity() {
                     NavHost(
                         navController = navController,
                         startDestination = startDestination,
-                        modifier = Modifier.fillMaxSize(),
+                        modifier = Modifier.fillMaxSize().navigationBarsPadding(),
                     ) {
                         composable(Screens.LoginScreen.name) {
                             PantallaLogin(
@@ -254,6 +255,16 @@ class MainActivity : ComponentActivity() {
 
                         composable(Screens.WorkoutFinishScreen.name) {
                             PantallaWorkoutFinish(navController)
+                        }
+
+                        composable(
+                            route = "${Screens.WorkoutFinishScreen.name}/{workoutId}",
+                            arguments = listOf(navArgument("workoutId") { type = NavType.StringType })
+                        ) { backStackEntry ->
+                            PantallaWorkoutFinish(
+                                navController = navController,
+                                workoutId = backStackEntry.arguments?.getString("workoutId"),
+                            )
                         }
 
                         composable(

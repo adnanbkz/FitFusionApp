@@ -3,9 +3,6 @@ package com.example.fitfusion.ui.screens
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.PickVisualMediaRequest
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.expandVertically
-import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -22,7 +19,6 @@ import androidx.compose.material.icons.filled.FavoriteBorder
 import androidx.compose.material.icons.filled.GridView
 import androidx.compose.material.icons.filled.LocalFireDepartment
 import androidx.compose.material.icons.filled.Person
-import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.outlined.BookmarkBorder
 import androidx.compose.material.icons.outlined.FitnessCenter
@@ -91,13 +87,6 @@ fun PantallaProfile(
                     fontSize = 18.sp, fontWeight = FontWeight.Bold, color = OnSurface
                 )
                 Row {
-                    IconButton(onClick = profileViewModel::toggleSearchBar) {
-                        Icon(
-                            Icons.Default.Search,
-                            contentDescription = "Buscar",
-                            tint = if (state.showSearchBar) Primary else OnSurface
-                        )
-                    }
                     IconButton(onClick = { navController.navigate(Screens.HelpSupportScreen.name) }) {
                         Icon(Icons.AutoMirrored.Filled.HelpOutline, "Dudas", tint = OnSurface)
                     }
@@ -105,41 +94,6 @@ fun PantallaProfile(
                         Icon(Icons.Default.Settings, "Ajustes", tint = OnSurface)
                     }
                 }
-            }
-        }
-
-        // ── Search bar (animated) ─────────────────────────────────────────
-        item {
-            AnimatedVisibility(
-                visible = state.showSearchBar,
-                enter   = expandVertically(),
-                exit    = shrinkVertically()
-            ) {
-                OutlinedTextField(
-                    value         = state.searchQuery,
-                    onValueChange = profileViewModel::onSearchQueryChange,
-                    leadingIcon   = { Icon(Icons.Default.Search, null, tint = OnSurfaceVariant) },
-                    placeholder   = {
-                        Text(
-                            when (state.selectedTab) {
-                                0    -> "Buscar en tus posts"
-                                else -> "Buscar"
-                            },
-                            color = OnSurfaceVariant, fontSize = 14.sp
-                        )
-                    },
-                    singleLine    = true,
-                    shape         = RoundedCornerShape(16.dp),
-                    modifier      = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 24.dp, vertical = 4.dp),
-                    colors        = OutlinedTextFieldDefaults.colors(
-                        unfocusedContainerColor = SurfaceContainerLow,
-                        focusedContainerColor   = SurfaceContainerLow,
-                        unfocusedBorderColor    = Color.Transparent,
-                        focusedBorderColor      = Primary,
-                    )
-                )
             }
         }
 
@@ -330,8 +284,7 @@ fun PantallaProfile(
         item {
             when (state.selectedTab) {
                 0 -> PostsTab(
-                    posts      = state.filteredPosts,
-                    isSearching = state.searchQuery.isNotBlank(),
+                    posts      = state.userPosts,
                     onPostClick = { postId -> navController.navigate("${Screens.PostDetailScreen.name}/$postId") },
                 )
                 1 -> SavedTab(
@@ -464,7 +417,7 @@ private fun StreakCard(streakDays: Int, modifier: Modifier = Modifier) {
 
 // ─── PostsTab: 3-column Instagram grid ───────────────────────────────────────
 @Composable
-private fun PostsTab(posts: List<UserPost>, isSearching: Boolean, onPostClick: (String) -> Unit) {
+private fun PostsTab(posts: List<UserPost>, onPostClick: (String) -> Unit) {
     if (posts.isEmpty()) {
         Box(
             modifier = Modifier.fillMaxWidth().padding(vertical = 48.dp),
@@ -474,13 +427,8 @@ private fun PostsTab(posts: List<UserPost>, isSearching: Boolean, onPostClick: (
                 horizontalAlignment = Alignment.CenterHorizontally,
                 verticalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-                if (isSearching) {
-                    Text("Sin resultados", fontSize = 15.sp, fontWeight = FontWeight.SemiBold, color = OnSurface, textAlign = TextAlign.Center)
-                    Text("Prueba con otro término", fontSize = 13.sp, color = OnSurfaceVariant, textAlign = TextAlign.Center)
-                } else {
-                    Text("Sin publicaciones aún", fontSize = 15.sp, fontWeight = FontWeight.SemiBold, color = OnSurface, textAlign = TextAlign.Center)
-                    Text("Comparte tus entrenos desde el feed", fontSize = 13.sp, color = OnSurfaceVariant, textAlign = TextAlign.Center)
-                }
+                Text("Sin publicaciones aún", fontSize = 15.sp, fontWeight = FontWeight.SemiBold, color = OnSurface, textAlign = TextAlign.Center)
+                Text("Comparte tus entrenos desde el feed", fontSize = 13.sp, color = OnSurfaceVariant, textAlign = TextAlign.Center)
             }
         }
     } else {

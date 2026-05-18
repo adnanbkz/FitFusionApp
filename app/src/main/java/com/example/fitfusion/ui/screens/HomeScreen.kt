@@ -208,6 +208,9 @@ fun PantallaHome(
         onNavigateToAddWorkout = {
             navController.navigate("${Screens.AddWorkoutScreen.name}?logMode=true")
         },
+        onNavigateToEditWorkout = { workoutId ->
+            navController.navigate("${Screens.WorkoutFinishScreen.name}/$workoutId")
+        },
     )
 }
 
@@ -529,7 +532,8 @@ private fun WorkoutPostCard(
     LaunchedEffect(showHeart) { if (showHeart) { delay(700); showHeart = false } }
 
     val mediaUrls = post.mediaUrls
-    val imagePagerState = rememberPagerState(pageCount = { mediaUrls.size.coerceAtLeast(1) })
+    val totalPages = mediaUrls.size + 1
+    val imagePagerState = rememberPagerState(pageCount = { totalPages })
 
     Column(
         modifier = Modifier
@@ -562,65 +566,13 @@ private fun WorkoutPostCard(
                 .aspectRatio(4f / 3f),
             contentAlignment = Alignment.Center,
         ) {
-            when {
-                mediaUrls.size > 1 -> {
-                    HorizontalPager(
-                        state = imagePagerState,
-                        modifier = Modifier.fillMaxSize(),
-                    ) { page ->
-                        AsyncImage(
-                            model = mediaUrls[page],
-                            contentDescription = null,
-                            contentScale = ContentScale.Crop,
-                            modifier = Modifier
-                                .fillMaxSize()
-                                .pointerInput(post.isLiked) {
-                                    detectTapGestures(
-                                        onTap = { onCardClick() },
-                                        onDoubleTap = { if (!post.isLiked) onLikeClick(); showHeart = true },
-                                    )
-                                },
-                        )
-                    }
-                    Row(
-                        modifier = Modifier
-                            .align(Alignment.BottomCenter)
-                            .padding(bottom = 10.dp)
-                            .clip(RoundedCornerShape(8.dp))
-                            .background(Color.Black.copy(alpha = 0.4f))
-                            .padding(horizontal = 7.dp, vertical = 4.dp),
-                        horizontalArrangement = Arrangement.spacedBy(5.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                    ) {
-                        repeat(mediaUrls.size) { index ->
-                            val isSelected = imagePagerState.currentPage == index
-                            Box(
-                                modifier = Modifier
-                                    .size(if (isSelected) 7.dp else 5.dp)
-                                    .clip(CircleShape)
-                                    .background(if (isSelected) Color.White else Color.White.copy(alpha = 0.55f))
-                            )
-                        }
-                    }
-                    Box(
-                        modifier = Modifier
-                            .align(Alignment.TopEnd)
-                            .padding(top = 8.dp, end = 8.dp)
-                            .clip(RoundedCornerShape(10.dp))
-                            .background(Color.Black.copy(alpha = 0.45f))
-                            .padding(horizontal = 8.dp, vertical = 3.dp),
-                    ) {
-                        Text(
-                            "${imagePagerState.currentPage + 1}/${mediaUrls.size}",
-                            fontSize = 12.sp,
-                            fontWeight = FontWeight.SemiBold,
-                            color = Color.White,
-                        )
-                    }
-                }
-                mediaUrls.size == 1 -> {
+            HorizontalPager(
+                state = imagePagerState,
+                modifier = Modifier.fillMaxSize(),
+            ) { page ->
+                if (page < mediaUrls.size) {
                     AsyncImage(
-                        model = mediaUrls[0],
+                        model = mediaUrls[page],
                         contentDescription = null,
                         contentScale = ContentScale.Crop,
                         modifier = Modifier
@@ -632,8 +584,7 @@ private fun WorkoutPostCard(
                                 )
                             },
                     )
-                }
-                else -> {
+                } else {
                     Box(
                         modifier = Modifier
                             .fillMaxSize()
@@ -722,6 +673,43 @@ private fun WorkoutPostCard(
                             }
                         }
                     }
+                }
+            }
+            if (mediaUrls.isNotEmpty()) {
+                Row(
+                    modifier = Modifier
+                        .align(Alignment.BottomCenter)
+                        .padding(bottom = 10.dp)
+                        .clip(RoundedCornerShape(8.dp))
+                        .background(Color.Black.copy(alpha = 0.4f))
+                        .padding(horizontal = 7.dp, vertical = 4.dp),
+                    horizontalArrangement = Arrangement.spacedBy(5.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    repeat(totalPages) { index ->
+                        val isSelected = imagePagerState.currentPage == index
+                        Box(
+                            modifier = Modifier
+                                .size(if (isSelected) 7.dp else 5.dp)
+                                .clip(CircleShape)
+                                .background(if (isSelected) Color.White else Color.White.copy(alpha = 0.55f))
+                        )
+                    }
+                }
+                Box(
+                    modifier = Modifier
+                        .align(Alignment.TopEnd)
+                        .padding(top = 8.dp, end = 8.dp)
+                        .clip(RoundedCornerShape(10.dp))
+                        .background(Color.Black.copy(alpha = 0.45f))
+                        .padding(horizontal = 8.dp, vertical = 3.dp),
+                ) {
+                    Text(
+                        "${imagePagerState.currentPage + 1}/$totalPages",
+                        fontSize = 12.sp,
+                        fontWeight = FontWeight.SemiBold,
+                        color = Color.White,
+                    )
                 }
             }
             HeartBurst(visible = showHeart)
