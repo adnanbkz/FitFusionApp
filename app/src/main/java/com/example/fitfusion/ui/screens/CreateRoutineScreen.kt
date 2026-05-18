@@ -39,9 +39,14 @@ import com.example.fitfusion.viewmodel.CreateRoutineViewModel
 @Composable
 fun PantallaCreateRoutine(
     navController: NavHostController,
+    openAiOnStart: Boolean = false,
     viewModel: CreateRoutineViewModel = viewModel(),
 ) {
     val state by viewModel.uiState.collectAsState()
+
+    LaunchedEffect(openAiOnStart) {
+        if (openAiOnStart) viewModel.openAiSheet()
+    }
 
     Scaffold(
         containerColor = Surface,

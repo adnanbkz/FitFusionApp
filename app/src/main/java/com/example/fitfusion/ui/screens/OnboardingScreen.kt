@@ -201,6 +201,7 @@ private fun StepBirthDate(value: String, onChange: (String) -> Unit) {
         label = { Text("Fecha de nacimiento") },
         placeholder = { Text("DD/MM/AAAA") },
         singleLine = true,
+        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
         shape = RoundedCornerShape(12.dp),
         colors = OutlinedTextFieldDefaults.colors(
             unfocusedContainerColor = SurfaceContainerLow,

@@ -163,6 +163,10 @@ class MainActivity : ComponentActivity() {
                             )
                         }
 
+                        composable(Screens.TrackingScreen.name) {
+                            PantallaTracking(navController = navController)
+                        }
+
                         composable(Screens.ProfileScreen.name) {
                             PantallaProfile(
                                 navController = navController,
@@ -212,13 +216,35 @@ class MainActivity : ComponentActivity() {
                             PantallaWeeklyLog(navController)
                         }
 
+                        composable(Screens.PlannerScreen.name) {
+                            PantallaPlanner(navController)
+                        }
+
                         composable(
-                            route = "${Screens.AddWorkoutScreen.name}?logMode={logMode}",
-                            arguments = listOf(navArgument("logMode") { type = NavType.BoolType; defaultValue = false })
+                            route = "${Screens.CreateRoutineScreen.name}?openAi={openAi}",
+                            arguments = listOf(navArgument("openAi") { type = NavType.BoolType; defaultValue = false })
+                        ) { backStackEntry ->
+                            PantallaCreateRoutine(
+                                navController = navController,
+                                openAiOnStart = backStackEntry.arguments?.getBoolean("openAi") ?: false,
+                            )
+                        }
+
+                       composable(Screens.CreateWeeklyPlanScreen.name) {
+                            PantallaCreateWeeklyPlan(navController)
+                        }
+
+                        composable(
+                            route = "${Screens.AddWorkoutScreen.name}?logMode={logMode}&pickerMode={pickerMode}",
+                            arguments = listOf(
+                                navArgument("logMode") { type = NavType.BoolType; defaultValue = false },
+                                navArgument("pickerMode") { type = NavType.BoolType; defaultValue = false },
+                            )
                         ) { backStackEntry ->
                             PantallaAddWorkout(
                                 navController = navController,
-                                isLogMode = backStackEntry.arguments?.getBoolean("logMode") ?: false
+                                isLogMode = backStackEntry.arguments?.getBoolean("logMode") ?: false,
+                                isPickerMode = backStackEntry.arguments?.getBoolean("pickerMode") ?: false,
                             )
                         }
 

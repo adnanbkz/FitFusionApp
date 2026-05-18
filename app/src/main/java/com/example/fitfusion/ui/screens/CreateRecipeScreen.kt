@@ -411,20 +411,10 @@ private fun KcalReadonlyField(
                             color       = Primary,
                         )
                     } else {
-                        Box(
-                            modifier = Modifier
-                                .size(22.dp)
-                                .clip(RoundedCornerShape(11.dp))
-                                .background(Primary.copy(alpha = 0.12f))
-                                .clickable(onClick = onRefine),
-                            contentAlignment = Alignment.Center,
-                        ) {
-                            Icon(
-                                Icons.Default.AutoAwesome,
-                                contentDescription = "Verificar con IA",
-                                tint = Primary,
-                                modifier = Modifier.size(13.dp),
-                            )
+                        TextButton(onClick = onRefine, contentPadding = PaddingValues(horizontal = 6.dp)) {
+                            Icon(Icons.Default.AutoAwesome, contentDescription = null, tint = Primary, modifier = Modifier.size(14.dp))
+                            Spacer(Modifier.width(4.dp))
+                            Text("IA", color = Primary, fontSize = 12.sp, fontWeight = FontWeight.Bold)
                         }
                     }
                 }

@@ -40,6 +40,13 @@ import kotlinx.serialization.Serializable
  *     Response: AiMealPlanResponse
  *     Semántica: genera un plan semanal (1..7 días) con N comidas/día.
  *
+ *   POST {AI_API_BASE_URL}/api/nutrition/calorie-goal
+ *     Request:  AiCalorieGoalRequest
+ *     Response: AiCalorieGoalResponse
+ *     Semántica: calcula el objetivo calórico y de macros diario a partir de
+ *                las métricas del usuario (Mifflin-St Jeor + nivel de actividad
+ *                + objetivo). Cálculo determinista, sin IA.
+ *
  * Errores: el backend devuelve {"error": "mensaje"} con 4xx/5xx. El cliente
  * Android los expone como excepciones via Result.failure(IOException(message)).
  */
@@ -50,6 +57,7 @@ object AiEndpoints {
     const val ROUTINE          = "/api/ai/routine/generate"
     const val MEAL_PLAN        = "/api/ai/meal-plan/generate"
     const val WORKOUT_ESTIMATE = "/api/ai/workout/estimate"
+    const val CALORIE_GOAL     = "/api/nutrition/calorie-goal"
 }
 
 // ---------- Recipe kcal refinement ----------
@@ -197,6 +205,28 @@ data class AiWorkoutEstimateResponse(
     val weightKgUsed: Float,
     val confidence: Float,
     val explanation: String? = null,
+)
+
+// ---------- Daily calorie goal ----------
+
+@Serializable
+data class AiCalorieGoalRequest(
+    val heightCm: Int,
+    val weightKg: Float,
+    val age: Int,
+    val activityLevel: String,
+    val goalType: String,
+    val sex: String? = null,
+)
+
+@Serializable
+data class AiCalorieGoalResponse(
+    val bmr: Int,
+    val maintenanceKcal: Int,
+    val targetKcal: Int,
+    val proteinG: Int,
+    val carbsG: Int,
+    val fatG: Int,
 )
 
 // ---------- Error envelope ----------

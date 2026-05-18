@@ -174,6 +174,7 @@ object FoodRepository {
 
     suspend fun removeMealFromDay(date: LocalDate, mealId: String) {
         if (MealSlot.predefinedById(mealId) != null) return
+        if (rawEntries.any { it.date == date && it.mealSlot.id == mealId }) return
         customMealsByDate[date]?.removeAll { it.id == mealId }
         rebuildDayLogs()
         auth.currentUser?.uid?.let { uid ->

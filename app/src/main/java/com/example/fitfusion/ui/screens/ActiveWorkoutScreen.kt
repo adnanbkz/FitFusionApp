@@ -165,13 +165,17 @@ fun PantallaActiveWorkout(
             }
             item {
                 OutlinedButton(
-                    onClick  = {  },
+                    onClick  = {
+                        navController.navigate(
+                            "${Screens.AddWorkoutScreen.name}?logMode=true&pickerMode=true"
+                        )
+                    },
                     modifier = Modifier.fillMaxWidth().height(48.dp),
                     shape    = RoundedCornerShape(12.dp),
-                    colors   = ButtonDefaults.outlinedButtonColors(
-                        contentColor = MaterialTheme.colorScheme.primary,
-                        containerColor = MaterialTheme.colorScheme.primary),
+                    colors   = ButtonDefaults.outlinedButtonColors(contentColor = Primary),
                 ) {
+                    Icon(Icons.Default.Add, contentDescription = null, modifier = Modifier.size(18.dp))
+                    Spacer(Modifier.width(8.dp))
                     Text("Añadir ejercicio", fontSize = 14.sp, fontWeight = FontWeight.SemiBold)
                 }
             }

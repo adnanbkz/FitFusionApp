@@ -39,6 +39,7 @@ import com.example.fitfusion.viewmodel.AddWorkoutViewModel
 fun PantallaAddWorkout(
     navController: NavHostController,
     isLogMode: Boolean = false,
+    isPickerMode: Boolean = false,
     addWorkoutViewModel: AddWorkoutViewModel = viewModel()
 ) {
     val state by addWorkoutViewModel.uiState.collectAsState()
@@ -48,8 +49,10 @@ fun PantallaAddWorkout(
         addWorkoutViewModel.setLogMode(isLogMode)
     }
 
+    // En modo picker (añadir ejercicios a una sesión ya activa) NO redirigimos a
+    // ActiveWorkoutScreen: el usuario viene precisamente a elegir ejercicios.
     LaunchedEffect(activeSession?.id) {
-        if (activeSession != null) {
+        if (activeSession != null && !isPickerMode) {
             navController.navigate(Screens.ActiveWorkoutScreen.name) {
                 popUpTo(Screens.AddWorkoutScreen.name) { inclusive = true }
             }
@@ -63,7 +66,10 @@ fun PantallaAddWorkout(
                 if (state.selectedExercises.isNotEmpty()) {
                     ExtendedFloatingActionButton(
                         onClick        = {
-                            if (addWorkoutViewModel.startSession()) {
+                            if (isPickerMode) {
+                                state.selectedExercises.forEach { ActiveWorkoutManager.addExercise(it) }
+                                navController.popBackStack()
+                            } else if (addWorkoutViewModel.startSession()) {
                                 navController.navigate(Screens.ActiveWorkoutScreen.name) {
                                     popUpTo(Screens.AddWorkoutScreen.name) { inclusive = true }
                                 }
@@ -71,10 +77,16 @@ fun PantallaAddWorkout(
                         },
                         containerColor = Primary,
                         contentColor   = Color.White,
-                        icon           = { Icon(Icons.Default.PlayArrow, contentDescription = null) },
+                        icon           = {
+                            Icon(
+                                if (isPickerMode) Icons.Default.Add else Icons.Default.PlayArrow,
+                                contentDescription = null,
+                            )
+                        },
                         text           = {
                             Text(
-                                "Iniciar · ${state.selectedExercises.size}",
+                                if (isPickerMode) "Añadir · ${state.selectedExercises.size}"
+                                else "Iniciar · ${state.selectedExercises.size}",
                                 fontWeight = FontWeight.SemiBold,
                             )
                         }
@@ -103,7 +115,11 @@ fun PantallaAddWorkout(
                 TopAppBar(
                     title = {
                         Text(
-                            if (state.isLogMode) "Nuevo entrenamiento" else "Catálogo de ejercicios",
+                            when {
+                                isPickerMode    -> "Añadir ejercicios"
+                                state.isLogMode -> "Nuevo entrenamiento"
+                                else            -> "Catálogo de ejercicios"
+                            },
                             fontWeight = FontWeight.Bold, fontSize = 18.sp
                         )
                     },
@@ -118,10 +134,11 @@ fun PantallaAddWorkout(
 
             item {
                 Text(
-                    if (state.isLogMode)
-                        "Selecciona los ejercicios y pulsa iniciar; el cronómetro arranca automáticamente."
-                    else
-                        "Explora el catálogo global de Firestore.",
+                    when {
+                        isPickerMode    -> "Selecciona los ejercicios para añadirlos a tu sesión activa."
+                        state.isLogMode -> "Selecciona los ejercicios y pulsa iniciar; el cronómetro arranca automáticamente."
+                        else            -> "Explora el catálogo global de Firestore."
+                    },
                     modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp),
                     fontSize = 14.sp,
                     color = OnSurfaceVariant

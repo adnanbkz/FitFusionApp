@@ -366,6 +366,22 @@ private fun AlimentosContent(
 
         if (state.searchQuery.isBlank()) {
             item {
+                OutlinedButton(
+                    onClick = viewModel::openPlateDialog,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp, vertical = 8.dp)
+                        .height(48.dp),
+                    shape = RoundedCornerShape(14.dp),
+                    colors = ButtonDefaults.outlinedButtonColors(contentColor = Primary),
+                ) {
+                    Icon(Icons.Default.AutoAwesome, contentDescription = null, modifier = Modifier.size(18.dp))
+                    Spacer(Modifier.width(8.dp))
+                    Text("Estimar plato con IA", fontWeight = FontWeight.SemiBold)
+                }
+            }
+
+            item {
                 SectionLabel("FAVORITOS", modifier = Modifier.padding(start = 16.dp, top = 8.dp, bottom = 8.dp))
             }
             item {

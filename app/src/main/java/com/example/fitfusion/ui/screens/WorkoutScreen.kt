@@ -24,6 +24,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.AutoAwesome
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.KeyboardArrowDown
@@ -44,6 +45,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.rememberModalBottomSheetState
@@ -62,6 +64,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
@@ -69,6 +72,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavHostController
+import coil3.compose.AsyncImage
 import com.example.fitfusion.data.models.LoggedWorkout
 import com.example.fitfusion.data.models.WorkoutExercise
 import com.example.fitfusion.data.models.WorkoutSet
@@ -150,6 +154,32 @@ fun PantallaWorkout(
                 Icon(Icons.Outlined.FitnessCenter, contentDescription = null, modifier = Modifier.size(20.dp))
                 Spacer(Modifier.width(8.dp))
                 Text("Empezar entrenamiento", fontWeight = FontWeight.Bold, fontSize = 15.sp)
+            }
+        }
+
+        item {
+            Row(
+                modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp),
+                horizontalArrangement = Arrangement.spacedBy(10.dp),
+            ) {
+                OutlinedButton(
+                    onClick = { navController.navigate("${Screens.CreateRoutineScreen.name}?openAi=true") },
+                    modifier = Modifier.weight(1f).height(48.dp),
+                    shape = RoundedCornerShape(14.dp),
+                ) {
+                    Icon(Icons.Default.AutoAwesome, contentDescription = null, modifier = Modifier.size(18.dp), tint = Primary)
+                    Spacer(Modifier.width(6.dp))
+                    Text("Rutina IA", fontWeight = FontWeight.SemiBold, fontSize = 13.sp, color = Primary)
+                }
+                OutlinedButton(
+                    onClick = { navController.navigate(Screens.PlannerScreen.name) },
+                    modifier = Modifier.weight(1f).height(48.dp),
+                    shape = RoundedCornerShape(14.dp),
+                ) {
+                    Icon(Icons.Outlined.FitnessCenter, contentDescription = null, modifier = Modifier.size(18.dp), tint = Primary)
+                    Spacer(Modifier.width(6.dp))
+                    Text("Planificador", fontWeight = FontWeight.SemiBold, fontSize = 13.sp, color = Primary)
+                }
             }
         }
 
@@ -424,6 +454,10 @@ private fun WorkoutHistoryCard(
             WorkoutChip("${workout.exerciseCount} ejercicios")
             WorkoutChip("${workout.totalVolumeKg.toInt()} kg")
         }
+        if (workout.mediaUrls.isNotEmpty()) {
+            Spacer(Modifier.height(12.dp))
+            WorkoutMediaCover(mediaUrls = workout.mediaUrls)
+        }
         AnimatedVisibility(visible = expanded) {
             Column(
                 modifier = Modifier.padding(top = 12.dp),
@@ -465,6 +499,42 @@ private fun WorkoutHistoryCard(
                         Text(exercise.summary, fontSize = 12.sp, color = OnSurfaceVariant)
                     }
                 }
+            }
+        }
+    }
+}
+
+/** Portada con la primera foto del entreno; badge "+N" si hay varias. */
+@Composable
+private fun WorkoutMediaCover(mediaUrls: List<String>) {
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(170.dp)
+            .clip(RoundedCornerShape(12.dp))
+            .background(SurfaceContainerLow),
+    ) {
+        AsyncImage(
+            model = mediaUrls.first(),
+            contentDescription = "Foto del entrenamiento",
+            contentScale = ContentScale.Crop,
+            modifier = Modifier.fillMaxSize(),
+        )
+        if (mediaUrls.size > 1) {
+            Box(
+                modifier = Modifier
+                    .align(Alignment.BottomEnd)
+                    .padding(8.dp)
+                    .clip(RoundedCornerShape(8.dp))
+                    .background(Color.Black.copy(alpha = 0.55f))
+                    .padding(horizontal = 8.dp, vertical = 3.dp),
+            ) {
+                Text(
+                    "+${mediaUrls.size - 1}",
+                    fontSize = 11.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = Color.White,
+                )
             }
         }
     }

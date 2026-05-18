@@ -75,7 +75,10 @@ data class DayLog(
     val totalProtein: Int get() = entries.sumOf { it.protein }
     val totalCarbs:   Int get() = entries.sumOf { it.carbs }
     val totalFat:     Int get() = entries.sumOf { it.fat }
-    val byMeal: Map<MealSlot, List<LoggedFood>> get() = entries.groupBy { it.mealSlot }
+    val byMeal: Map<MealSlot, List<LoggedFood>>
+        get() = entries.groupBy { entry ->
+            meals.firstOrNull { it.id == entry.mealSlot.id } ?: entry.mealSlot
+        }
     val progress: Float get() = (totalKcal.toFloat() / kcalGoal).coerceIn(0f, 1f)
     val isOnTrack: Boolean
         get() = entries.isNotEmpty() && totalKcal in (kcalGoal * 0.85).toInt()..(kcalGoal * 1.1).toInt()

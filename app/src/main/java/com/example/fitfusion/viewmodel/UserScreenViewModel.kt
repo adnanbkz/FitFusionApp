@@ -20,6 +20,8 @@ data class UserScreenUiState(
     val posts: List<UserPost> = emptyList(),
     val isLoading: Boolean = true,
     val isFollowing: Boolean = false,
+    val followersCount: Int = 0,
+    val followingCount: Int = 0,
     val errorMessage: String? = null,
 )
 
@@ -34,6 +36,8 @@ class UserScreenViewModel(application: Application) : AndroidViewModel(applicati
 
     private var profileListener: ListenerRegistration? = null
     private var postsListener: ListenerRegistration? = null
+    private var followersListener: ListenerRegistration? = null
+    private var followingListener: ListenerRegistration? = null
 
     fun load(uid: String) {
         android.util.Log.d("UserScreenVM", "load() called with uid='$uid'")
@@ -49,6 +53,8 @@ class UserScreenViewModel(application: Application) : AndroidViewModel(applicati
 
         profileListener?.remove()
         postsListener?.remove()
+        followersListener?.remove()
+        followingListener?.remove()
 
         profileListener = repo.listenUserProfile(
             uid = uid,
@@ -77,6 +83,21 @@ class UserScreenViewModel(application: Application) : AndroidViewModel(applicati
                 _uiState.update { it.copy(posts = posts) }
             }
 
+        // Contadores en vivo desde el tamaño de las subcolecciones, en vez de
+        // confiar en followersCount/followingCount del doc (nadie los mantenía).
+        // TODO: requiere que las reglas de Firestore permitan leer
+        //  users/{uid}/followers y users/{uid}/following de otros usuarios.
+        followersListener = firestore.collection("users").document(uid)
+            .collection("followers")
+            .addSnapshotListener { snapshot, _ ->
+                if (snapshot != null) _uiState.update { it.copy(followersCount = snapshot.size()) }
+            }
+        followingListener = firestore.collection("users").document(uid)
+            .collection("following")
+            .addSnapshotListener { snapshot, _ ->
+                if (snapshot != null) _uiState.update { it.copy(followingCount = snapshot.size()) }
+            }
+
         if (currentUid != null) {
             firestore.collection("users")
                 .document(currentUid)
@@ -101,19 +122,25 @@ class UserScreenViewModel(application: Application) : AndroidViewModel(applicati
         val theirFollowersRef = firestore.collection("users").document(targetUid)
             .collection("followers").document(myUid)
 
+        // Si la escritura cruzada (subcolección de otro usuario) falla, revertimos
+        // el estado optimista para que el botón refleje la realidad.
         if (isNowFollowing) {
             val ts = mapOf("followedAtMs" to System.currentTimeMillis())
             myFollowingRef.set(ts)
             theirFollowersRef.set(ts)
+                .addOnFailureListener { _uiState.update { s -> s.copy(isFollowing = !isNowFollowing) } }
         } else {
             myFollowingRef.delete()
             theirFollowersRef.delete()
+                .addOnFailureListener { _uiState.update { s -> s.copy(isFollowing = !isNowFollowing) } }
         }
     }
 
     override fun onCleared() {
         profileListener?.remove()
         postsListener?.remove()
+        followersListener?.remove()
+        followingListener?.remove()
         super.onCleared()
     }
 }

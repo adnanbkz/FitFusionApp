@@ -605,11 +605,15 @@ private fun NeonMealSection(
                 }
             }
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(2.dp)) {
-                IconButton(onClick = onRename, modifier = Modifier.size(32.dp)) {
-                    Icon(Icons.Default.Edit, null, tint = OnSurfaceVariant, modifier = Modifier.size(15.dp))
+                if (slot.isCustom) {
+                    IconButton(onClick = onRename, modifier = Modifier.size(32.dp)) {
+                        Icon(Icons.Default.Edit, null, tint = OnSurfaceVariant, modifier = Modifier.size(15.dp))
+                    }
                 }
-                IconButton(onClick = onDelete, modifier = Modifier.size(32.dp)) {
-                    Icon(Icons.Default.Close, null, tint = OnSurfaceVariant, modifier = Modifier.size(16.dp))
+                if (slot.isCustom && entries.isEmpty()) {
+                    IconButton(onClick = onDelete, modifier = Modifier.size(32.dp)) {
+                        Icon(Icons.Default.Close, null, tint = OnSurfaceVariant, modifier = Modifier.size(16.dp))
+                    }
                 }
                 IconButton(onClick = onAdd, modifier = Modifier.size(32.dp)) {
                     Icon(Icons.Default.Add, null, tint = Primary, modifier = Modifier.size(20.dp))

@@ -266,6 +266,7 @@ object ActiveWorkoutManager {
         title: String,
         description: String,
         mediaUrls: List<String>,
+        kcalBurnedOverride: Int? = null,
     ): LoggedWorkout? {
         val current = _session.value ?: return null
         val now = System.currentTimeMillis()
@@ -277,7 +278,7 @@ object ActiveWorkoutManager {
             date            = LocalDate.now(),
             name            = resolvedTitle,
             durationMinutes = durationMinutes,
-            kcalBurned      = (durationMinutes * 6.5f).toInt(),
+            kcalBurned      = kcalBurnedOverride ?: (durationMinutes * 6.5f).toInt(),
             startedAtMs     = current.startedAtMs,
             endedAtMs       = now,
             createdAtMs     = now,

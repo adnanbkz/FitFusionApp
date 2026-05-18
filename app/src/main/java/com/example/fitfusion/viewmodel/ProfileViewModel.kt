@@ -14,6 +14,7 @@ import com.example.fitfusion.data.repository.UserProfileStore
 import com.example.fitfusion.data.repository.UserRepository
 import com.example.fitfusion.data.repository.WorkoutRepository
 import com.google.firebase.auth.FirebaseAuth
+import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.ListenerRegistration
 import com.google.firebase.storage.FirebaseStorage
 import kotlinx.coroutines.Dispatchers
@@ -110,9 +111,12 @@ class ProfileViewModel(application: Application) : AndroidViewModel(application)
 
     private val prefs = application.getSharedPreferences(PREFS_NAME, android.content.Context.MODE_PRIVATE)
     private val auth = FirebaseAuth.getInstance()
+    private val firestore = FirebaseFirestore.getInstance()
     private val storage = FirebaseStorage.getInstance()
     private val userRepository = UserRepository()
     private var profileListenerRegistration: ListenerRegistration? = null
+    private var followersListenerRegistration: ListenerRegistration? = null
+    private var followingListenerRegistration: ListenerRegistration? = null
 
     private var workoutsByDay: Map<LocalDate, List<LoggedWorkout>> = emptyMap()
 
@@ -162,6 +166,7 @@ class ProfileViewModel(application: Application) : AndroidViewModel(application)
     init {
         UserProfileStore.ensureInitialized(application)
         attachUserProfileListener()
+        attachFollowCountListeners()
 
         viewModelScope.launch {
             WorkoutRepository.workouts.collect { workoutMap ->
@@ -228,7 +233,6 @@ class ProfileViewModel(application: Application) : AndroidViewModel(application)
             }
         }
         _uiState.update { it.copy(isLoadingLikedPosts = true) }
-        FeedRepository.refreshLikedPosts()
     }
 
     fun updateFromUser(userName: String?) {
@@ -254,12 +258,35 @@ class ProfileViewModel(application: Application) : AndroidViewModel(application)
                         weightKg = profile.weightKg,
                         goalType = profile.goalType,
                         activityLevel = profile.activityLevel,
-                        followers = compactCount(profile.followersCount),
-                        following = compactCount(profile.followingCount),
                     )
                 }
             },
         )
+    }
+
+    /**
+     * Contadores de seguidores/seguidos en vivo: cuenta el tamaño de las
+     * subcolecciones followers/following. El doc de usuario tiene
+     * followersCount/followingCount pero nadie los mantiene al día.
+     */
+    private fun attachFollowCountListeners() {
+        val uid = auth.currentUser?.uid ?: return
+        followersListenerRegistration?.remove()
+        followingListenerRegistration?.remove()
+        followersListenerRegistration = firestore.collection("users").document(uid)
+            .collection("followers")
+            .addSnapshotListener { snapshot, _ ->
+                if (snapshot != null) {
+                    _uiState.update { it.copy(followers = compactCount(snapshot.size())) }
+                }
+            }
+        followingListenerRegistration = firestore.collection("users").document(uid)
+            .collection("following")
+            .addSnapshotListener { snapshot, _ ->
+                if (snapshot != null) {
+                    _uiState.update { it.copy(following = compactCount(snapshot.size())) }
+                }
+            }
     }
 
     fun onTabSelected(index: Int) {
@@ -459,6 +486,8 @@ class ProfileViewModel(application: Application) : AndroidViewModel(application)
     override fun onCleared() {
         profileListenerRegistration?.remove()
         profileListenerRegistration = null
+        followersListenerRegistration?.remove()
+        followingListenerRegistration?.remove()
         super.onCleared()
     }
 }

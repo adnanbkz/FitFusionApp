@@ -25,7 +25,7 @@ data class OnboardingUiState(
         0    -> heightCm.toIntOrNull()?.let { it in 80..260 } == true
         1    -> weightKg.toFloatOrNull()?.let { it in 25f..300f } == true
         2    -> activityLevel.isNotBlank()
-        3    -> birthDate.isNotBlank()
+        3    -> birthDate.length == 10
         4    -> goalType.isNotBlank()
         else -> false
     }
@@ -55,8 +55,20 @@ class OnboardingViewModel(
         _uiState.update { it.copy(activityLevel = value, errorMessage = null) }
     }
 
+    /**
+     * Auto-formatea la fecha mientras se escribe: el usuario teclea solo dígitos
+     * y las barras "/" se insertan solas → DD/MM/AAAA. Así no depende de que el
+     * usuario ponga las barras a mano.
+     */
     fun onBirthDateChange(value: String) {
-        _uiState.update { it.copy(birthDate = value, errorMessage = null) }
+        val digits = value.filter { it.isDigit() }.take(8)
+        val formatted = buildString {
+            digits.forEachIndexed { index, digit ->
+                if (index == 2 || index == 4) append('/')
+                append(digit)
+            }
+        }
+        _uiState.update { it.copy(birthDate = formatted, errorMessage = null) }
     }
 
     fun onGoalTypeChange(value: String) {

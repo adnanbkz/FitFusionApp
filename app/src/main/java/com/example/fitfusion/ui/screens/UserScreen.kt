@@ -176,8 +176,8 @@ fun PantallaUserScreen(
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
                         UserStatBlock(value = state.posts.size.toString(), label = "Publicaciones")
-                        UserStatBlock(value = compactCount(profile.followersCount), label = "Seguidores")
-                        UserStatBlock(value = compactCount(profile.followingCount), label = "Siguiendo")
+                        UserStatBlock(value = compactCount(state.followersCount), label = "Seguidores")
+                        UserStatBlock(value = compactCount(state.followingCount), label = "Siguiendo")
                     }
                 }
 

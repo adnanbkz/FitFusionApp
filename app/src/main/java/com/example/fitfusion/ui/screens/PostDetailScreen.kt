@@ -78,7 +78,14 @@ fun PantallaPostDetail(
         contentWindowInsets = WindowInsets(0.dp),
         bottomBar = {
             if (!postId.isNullOrBlank()) {
-                Column(modifier = Modifier.imePadding()) {
+                // El teclado (ime) lo sube cuando se escribe; navigationBars lo
+                // mantiene por encima de la barra de gestos/botones del sistema.
+                // union → cuando el teclado está abierto su inset ya cubre la barra.
+                Column(
+                    modifier = Modifier.windowInsetsPadding(
+                        WindowInsets.navigationBars.union(WindowInsets.ime),
+                    ),
+                ) {
                     HorizontalDivider(color = SurfaceContainerHigh)
                     Row(
                         modifier = Modifier

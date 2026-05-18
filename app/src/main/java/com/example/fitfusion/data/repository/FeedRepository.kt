@@ -7,12 +7,9 @@ import com.example.fitfusion.viewmodel.WorkoutPost
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.ListenerRegistration
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.launch
 import kotlinx.coroutines.tasks.await
 
 object FeedRepository {
@@ -102,7 +99,6 @@ object FeedRepository {
         task.addOnFailureListener {
             setOptimisticLikeState(itemId, liked = wasLiked, previousCount = previousCount)
         }
-        task.addOnCompleteListener { refreshLikedPosts() }
     }
 
     private fun attachFeedListener(uid: String?) {
@@ -143,41 +139,6 @@ object FeedRepository {
                 savedPostIds.addAll(snapshot.documents.map { it.id })
                 emitItems()
             }
-        refreshLikedPosts()
-    }
-
-    fun refreshLikedPosts() {
-        val uid = auth.currentUser?.uid ?: return
-        CoroutineScope(Dispatchers.IO).launch {
-            try {
-                val queryUid = uid
-                val likedDocs = firestore.collectionGroup("likes")
-                    .whereEqualTo("userId", uid)
-                    .get()
-                    .await()
-                if (currentUid != queryUid) return@launch
-                val likedPostIds = likedDocs.documents
-                    .mapNotNull { it.reference.parent.parent?.id }
-                    .distinct()
-                if (likedPostIds.isEmpty()) {
-                    _likedPosts.value = emptyList()
-                    return@launch
-                }
-                val posts = likedPostIds.chunked(10).flatMap { batch ->
-                    firestore.collection(POSTS_COLLECTION)
-                        .whereIn(com.google.firebase.firestore.FieldPath.documentId(), batch)
-                        .get()
-                        .await()
-                        .documents
-                        .mapNotNull { it.toFeedItemOrNull() }
-                }
-                if (currentUid == queryUid) {
-                    _likedPosts.value = posts
-                        .sortedByDescending { it.timestamp }
-                        .map { it.withPersistedInteractionState() }
-                }
-            } catch (_: Exception) { }
-        }
     }
 
     suspend fun getPostById(postId: String): FeedItem? = firestore.collection(POSTS_COLLECTION)
@@ -336,7 +297,13 @@ object FeedRepository {
     }
 
     private fun emitItems() {
-        _items.value = baseItems.map { it.withPersistedInteractionState() }
+        val itemsWithState = baseItems.map { it.withPersistedInteractionState() }
+        _items.value = itemsWithState
+        // Los posts con "me gusta" se derivan del feed completo filtrado por
+        // likedPostIds (que mantienen los listeners por post). Antes se usaba una
+        // query collectionGroup("likes") que exigía un índice de Firestore y, si
+        // no existía, fallaba en silencio dejando la pestaña "Me gusta" vacía.
+        _likedPosts.value = itemsWithState.filter { it.postId in likedPostIds }
     }
 
     private fun setOptimisticLikeState(itemId: String, liked: Boolean, previousCount: Int) {

@@ -4,6 +4,98 @@ Aquí voy apuntando los marrones que me he ido encontrando y cómo los he resuel
 
 ---
 
+## Siete arreglos en una sesión: onboarding, entreno, social y calorías (18 may 2026)
+
+Otra tanda larga de una tacada: que la fecha de nacimiento se formatee sola, implementar el botón "Añadir ejercicio" (estaba muerto), enseñar la foto de los entrenos en el historial, arreglar la pestaña "Me gusta" del perfil, que el campo de comentar no quede tapado por la barra del sistema, que los contadores de seguidores se actualicen de verdad, y calcular las calorías diarias en el backend de C#.
+
+### 1 · La fecha de nacimiento se formatea sola
+
+Antes el usuario tenía que escribir las barras a mano. Ahora `OnboardingViewModel.onBirthDateChange` filtra solo los dígitos, corta a 8 y mete las `/` en las posiciones 2 y 4 — tecleas `12031990` y ves `12/03/1990`. El campo pasa a teclado numérico y el wizard solo deja avanzar con la fecha completa (10 caracteres), así no se guarda un `12/0` a medias.
+
+### 2 · El botón "Añadir ejercicio" que no hacía nada
+
+En `ActiveWorkoutScreen` había un `OutlinedButton` con `onClick = { }` — vacío. Y de regalo, `contentColor` y `containerColor` ambos a `primary`: texto del color del fondo, invisible.
+
+El marrón no era el `onClick`, era el flujo. `AddWorkoutScreen` (el catálogo) tiene un `LaunchedEffect` que, si hay sesión activa, te redirige a `ActiveWorkoutScreen`. Reusarlo tal cual para añadir ejercicios me redirigía solo antes de elegir nada. Solución: un `pickerMode` que viaja por la ruta de navegación. En modo picker no redirige, y el FAB pasa de "Iniciar" a "Añadir · N" — por cada ejercicio elegido llama `ActiveWorkoutManager.addExercise()` y hace `popBackStack()`. El `addExercise` ya dedup-aba por `documentId`, así que reañadir uno que ya está es inofensivo.
+
+### 3 · Fotos de los entrenos en el historial
+
+Los entrenos guardan `mediaUrls` pero `WorkoutHistoryCard` solo enseñaba nombre, fecha y chips. Añadí una portada con la primera foto (`AsyncImage`, `ContentScale.Crop`) y un badge `+N` si hay varias. El dato ya venía de Firestore, era puro UI.
+
+### 4 · La pestaña "Me gusta" siempre vacía
+
+El bug bonito. `FeedRepository.refreshLikedPosts` hacía:
+
+```kotlin
+firestore.collectionGroup("likes").whereEqualTo("userId", uid).get()
+```
+
+Una query de *collection group* necesita un índice declarado explícitamente en Firestore — el de campo único no se autocrea para scope de grupo. Sin el índice, la query revienta con `FAILED_PRECONDITION`. ¿Y dónde acababa el error? En un `catch (_: Exception) { }`. Otra vez el catch silencioso (ya me mordió con FatSecret, más abajo). La pestaña quedaba vacía sin un solo log.
+
+En vez de pelearme con el índice, quité la query entera. `FeedRepository` ya carga todos los posts en `baseItems` y mantiene `likedPostIds` con un listener por post. Así que los "me gusta" son `baseItems.filter { it.postId in likedPostIds }`, calculado en `emitItems()`. Cero índices y encima reactivo: das like y aparece en la pestaña al instante.
+
+### 5 · El campo de comentar tapado por la barra de navegación
+
+`PostDetailScreen` tenía la barra de comentar con `Modifier.imePadding()` — eso la sube por encima del teclado, pero no por encima de la barra de gestos/botones del sistema. Cambiado a `windowInsetsPadding(WindowInsets.navigationBars.union(WindowInsets.ime))`: el `union` coge el inset mayor, así que con teclado cerrado respeta la barra de navegación y con teclado abierto usa el del IME (que ya cubre esa zona). Sin doble margen.
+
+### 6 · Seguir / Siguiendo que no se actualizaba
+
+`toggleFollow` escribía los docs en las subcolecciones `following`/`followers` pero nunca tocaba los campos `followersCount`/`followingCount` del documento de usuario — que es justo lo que pintaban las pantallas. Un contador que nadie mantiene.
+
+En vez de ponerme a incrementar campos en el doc de otro usuario (lío de permisos), los contadores ahora se derivan del tamaño real de las subcolecciones: un listener sobre `users/{uid}/followers` y otro sobre `following`, y `snapshot.size()` al estado. Siempre cuadra con la verdad, en `UserScreenViewModel` y en `ProfileViewModel`. El botón además revierte el estado optimista si la escritura falla.
+
+Caveat: leer la subcolección `followers` de otro usuario depende de que las reglas de Firestore lo permitan. Dejé un `TODO` en el código; si las reglas lo bloquean, el contador se queda en 0 sin petar.
+
+### 7 · Calorías diarias calculadas en el backend C#
+
+El objetivo de calorías estaba clavado a 2000 (`DayLog.kcalGoal`) y los macros hardcodeados (160/210/65). El encargo: calcularlos según las métricas del usuario, y a poder ser en el backend de C#.
+
+El backend existe (`FitFusion.Api`, fuera de este repo). Añadí ahí:
+
+- `CalorieCalculator` — Mifflin-St Jeor para el metabolismo basal, multiplicador por nivel de actividad para el mantenimiento (TDEE), ajuste por objetivo (déficit 20 % / superávit 12 % / mantener) y reparto de macros.
+- `NutritionController` con `POST /api/nutrition/calorie-goal`.
+
+Como la app no recoge el sexo, uso una constante neutra en Mifflin-St Jeor (-78, la media de +5 hombres / -161 mujeres). El cálculo es determinista, sin IA — por eso va en su propio controller, no en `AiController`.
+
+Lado Android: contrato en `AiContract.kt`, `AiRepository.calculateCalorieGoal`, y `TrackingViewModel` lo llama al abrir Seguimiento con altura/peso/edad/actividad/objetivo del perfil. Si el backend no responde, se queda en los valores por defecto — degradación limpia, la pantalla no se bloquea.
+
+### Revisión posterior: bugs reales y la IA que estaba escondida
+
+Después revisé los dos últimos commits como diff cerrado (`HEAD~2..HEAD`) y apareció una cosa importante: varias piezas estaban técnicamente implementadas, pero o tenían un bug de estado o no había una ruta clara para llegar a ellas.
+
+1. **Comidas custom: renombrar ocultaba alimentos.**
+   `DayLog.byMeal` agrupaba por el objeto completo `MealSlot`. Al renombrar una comida custom, el slot nuevo tenía el mismo `id` pero otro `name`, mientras los `foodLogs` seguían guardados con el nombre antiguo. Resultado: las kcal contaban, pero los alimentos desaparecían de la sección. Ahora se agrupa por `mealSlot.id` usando el slot canónico del día.
+
+2. **Comidas custom: borrar con alimentos era incoherente.**
+   Si borrabas una comida custom vacía, desaparecía. Si tenía alimentos, `rebuildDayLogs()` la reañadía desde los `foodLogs`, así que parecía que el botón no funcionaba. Decisión simple: solo se muestra borrar en comidas custom vacías y `FoodRepository.removeMealFromDay()` ignora slots con entradas.
+
+3. **Perfil: altura/peso no se podían limpiar.**
+   `UserRepository.updateUserProfile()` omitía `heightCm` y `weightKg` cuando eran `null`; con `SetOptions.merge()` eso conserva el valor viejo en Firestore. Vuelve a escribir esos campos aunque sean `null`, para que limpiar el formulario limpie el dato real.
+
+4. **IA de workout: estaba hecha, pero sin puerta de entrada.**
+   `AiContract`, `AiRepository.generateRoutine()` y toda la hoja IA de `CreateRoutineScreen` ya existían. El problema era navegación: `PlannerScreen`, `CreateRoutineScreen` y `CreateWeeklyPlanScreen` estaban en `Screens.kt`, pero no registrados en `MainActivity` ni enlazados desde el hub de entreno. Añadí las rutas y dos accesos en `WorkoutScreen`: `Rutina IA` (abre directamente la hoja IA) y `Planificador`.
+
+5. **Kcal de entreno por IA: contrato muerto.**
+   `AiWorkoutEstimate` también existía, pero nadie lo llamaba. `WorkoutFinishViewModel` ahora intenta estimar kcal al guardar el entreno. Tiene timeout corto y fallback al cálculo local (`duración * 6.5`) para no bloquear si el backend IA no está levantado o el usuario no está autenticado.
+
+6. **Segundo barrido de alcanzabilidad IA.**
+   No quedaba ningún método público de `AiRepository` sin caller, pero dos estaban demasiado escondidos: `estimatePlate()` era solo un icono en el top bar de Añadir alimento, y `refineRecipeKcal()` era un icono minúsculo dentro del campo kcal de receta. Añadí un botón visible `Estimar plato con IA` y cambié el refinado de kcal a un botón textual `IA`. También registré la ruta standalone `TrackingScreen`, aunque Seguimiento ya se ve embebido desde Home.
+
+### Verificación
+
+`./gradlew :app:assembleDebug` verde y `git diff --check` limpio tras los cambios Android. El backend `FitFusion.Api` se publicó en Azure App Service (`fitfusion-api`) con `Gemini__ApiKey` en app settings; la API ya responde `401 {"error":"No autenticado"}` en endpoints protegidos, que es lo esperado sin token Firebase.
+
+### Lo que me llevo
+
+- El `catch (_: Exception) { }` vuelve a morder. Si una feature en desarrollo falla en silencio, pierdes una tarde. Loguea o relanza, nunca te lo tragues.
+- Las queries de *collection group* necesitan índice explícito. Si puedes resolver lo mismo con datos que ya tienes en memoria, te ahorras el índice y encima sale reactivo.
+- Un campo contador que se escribe en un sitio y se lee en otro siempre se desincroniza. Si puedes contar la fuente de verdad (el tamaño de una subcolección), cuéntala.
+- `imePadding()` sube cosas por encima del teclado, no por encima de la barra de navegación. Para las dos, `navigationBars.union(ime)`.
+- Para un cálculo determinista (Mifflin-St Jeor) el backend está bien: centraliza la fórmula y se afina sin tocar la app. Distinto de la campanita de récord, que va en cliente porque es feedback inmediato.
+- Que exista contrato + ViewModel no significa que la feature exista para el usuario. Hay que comprobar ruta, botón visible y fallback si el backend IA no está disponible.
+
+---
+
 ## Las cinco features del navbar de entreno y social (17 may 2026)
 
 Cinco cosas pedidas de una tacada: poder entrar a cada ejercicio, notificación de entreno más estética, cambiar la UI de entreno para que enseñe historial y progreso, una campanita de récord de serie dentro del entreno, y que los botones de compartir posts manden un link de verdad. Lo primero, mirar qué estaba ya hecho antes de picar nada.
@@ -103,7 +195,7 @@ El último commit había tocado integración IA de plan de comidas, Tracking, po
 
 ### Pendiente real detectado
 
-- No hay backend .NET dentro de este repo; Android solo tiene contrato/cliente `AiRepository` y espera `AI_API_BASE_URL`. Para producción falta asegurar despliegue HTTPS real del backend IA y configuración de `local.properties`/variables.
+- No hay backend .NET dentro de este repo; Android solo tiene contrato/cliente `AiRepository` y espera `AI_API_BASE_URL`. El despliegue inicial HTTPS ya quedó en Azure App Service; en local `AI_API_BASE_URL` apunta a esa URL desde `local.properties` (ignorado por git). Falta probarlo end-to-end desde la app con token Firebase real.
 - No hay `functions/` ni Cloud Functions actuales; la documentación vieja de FatSecret quedó obsoleta. La ruta vigente es Open Food Facts directo desde Android.
 - Falta probar en dispositivo real el flujo completo: cambiar foto de perfil, publicar workout con series heterogéneas, abrir detalle del post y aplicar plan IA a Tracking.
 
@@ -119,13 +211,15 @@ Las Cloud Functions (`searchFoods`, `getFoodDetail`) quedan borradas del proyect
 
 ### Nota de implementación Open Food Facts
 
-La búsqueda de texto no debe usar `/api/v2/search?q=...`: ese endpoint v2 es para filtros estructurados y devuelve resultados generales si se le pasa `q`. Para buscar por nombre/marca usamos:
+La búsqueda de texto no debe usar `/api/v2/search?q=...`: ese endpoint v2 es para filtros estructurados y devuelve resultados generales si se le pasa `q`.
+
+La primera integración usaba `cgi/search.pl`, pero desde la app se volvió demasiado lento/inestable (`503` y respuestas de ~27s para búsquedas normales como `yogur`). Se cambió a Search-a-licious, el buscador oficial de Open Food Facts:
 
 ```text
-https://es.openfoodfacts.org/cgi/search.pl?search_terms=<query>&search_simple=1&action=process&json=1
+https://search.openfoodfacts.org/search?q=<query>&langs=es,en&page_size=20&fields=...
 ```
 
-La integración Android limita `fields`, prioriza `product_name_es`, ordena por popularidad cuando el endpoint lo permite, cachea resultados en memoria y evita llamadas con menos de 3 caracteres para no chocar con los rate limits públicos de Open Food Facts.
+La integración Android limita `fields`, prioriza `product_name_es`, cachea resultados en memoria, evita llamadas con menos de 3 caracteres y serializa búsquedas externas con una espera local para no convertirlo en search-as-you-type agresivo.
 
 ---
 

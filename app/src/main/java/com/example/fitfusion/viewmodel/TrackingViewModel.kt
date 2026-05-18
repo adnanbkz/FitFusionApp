@@ -2,14 +2,17 @@ package com.example.fitfusion.viewmodel
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.example.fitfusion.data.ai.AiCalorieGoalRequest
 import com.example.fitfusion.data.ai.AiMealPlanDish
 import com.example.fitfusion.data.ai.AiMealPlanResponse
 import com.example.fitfusion.data.health.DailyHealthData
 import com.example.fitfusion.data.models.*
+import com.example.fitfusion.data.repository.AiRepository
 import com.example.fitfusion.data.repository.DailySummary
 import com.example.fitfusion.data.repository.DailySummaryRepository
 import com.example.fitfusion.data.repository.FoodRepository
 import com.example.fitfusion.data.repository.HealthRepository
+import com.example.fitfusion.data.repository.UserRepository
 import com.example.fitfusion.data.repository.WorkoutRepository
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FirebaseFirestore
@@ -18,6 +21,8 @@ import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
 import java.time.DayOfWeek
 import java.time.LocalDate
+import java.time.Period
+import java.time.format.DateTimeFormatter
 import java.time.temporal.TemporalAdjusters
 
 data class EditFoodState(
@@ -44,12 +49,12 @@ data class TrackingUiState(
     val healthData: DailyHealthData? = null,
     val dailySummary: DailySummary? = null,
     val editFoodState: EditFoodState? = null,
+    val kcalGoal:    Int = 2000,
     val proteinGoal: Int = 160,
     val carbsGoal:   Int = 210,
     val fatsGoal:    Int = 65,
     val aiTip: String = "Llevas el 60% del objetivo proteico. Un batido post-entreno te ayudaria a cerrarlo.",
 ) {
-    val kcalGoal:    Int   get() = dayLog.kcalGoal
     val kcalEaten:   Int   get() = dayLog.totalKcal
     val workoutKcalBurned: Int get() = workouts.sumOf { it.kcalBurned }
     val stepKcalBurned: Int get() = healthData?.stepCaloriesEstimated ?: 0
@@ -65,6 +70,7 @@ class TrackingViewModel : ViewModel() {
         FirebaseFirestore.getInstance(),
         FirebaseAuth.getInstance(),
     )
+    private val userRepository = UserRepository()
     private var healthListenerRegistration: ListenerRegistration? = null
     private var summaryListenerRegistration: ListenerRegistration? = null
     private val _uiState = MutableStateFlow(TrackingUiState())
@@ -90,6 +96,7 @@ class TrackingViewModel : ViewModel() {
         }
         attachHealthDataListener(LocalDate.now())
         attachDailySummaryListener(LocalDate.now())
+        loadCalorieGoal()
     }
 
     fun selectDate(date: LocalDate) {
@@ -123,6 +130,47 @@ class TrackingViewModel : ViewModel() {
                 if (current.selectedDate == date) current.copy(dailySummary = summary) else current
             }
         }
+    }
+
+    /**
+     * Pide al backend C# el objetivo calórico/macros del usuario según sus
+     * métricas (altura, peso, edad, actividad, objetivo). Si falla (sin perfil
+     * completo, sin red o backend caído) se mantienen los valores por defecto.
+     */
+    private fun loadCalorieGoal() {
+        val uid = FirebaseAuth.getInstance().currentUser?.uid ?: return
+        viewModelScope.launch {
+            val profile = runCatching { userRepository.getUserProfile(uid) }.getOrNull() ?: return@launch
+            val heightCm = profile.heightCm ?: return@launch
+            val weightKg = profile.weightKg ?: return@launch
+            val age = ageFromBirthDate(profile.birthDate) ?: return@launch
+            val goal = AiRepository.calculateCalorieGoal(
+                AiCalorieGoalRequest(
+                    heightCm      = heightCm,
+                    weightKg      = weightKg,
+                    age           = age,
+                    activityLevel = profile.activityLevel.orEmpty(),
+                    goalType      = profile.goalType.orEmpty(),
+                )
+            ).getOrNull() ?: return@launch
+            _uiState.update {
+                it.copy(
+                    kcalGoal    = goal.targetKcal,
+                    proteinGoal = goal.proteinG,
+                    carbsGoal   = goal.carbsG,
+                    fatsGoal    = goal.fatG,
+                )
+            }
+        }
+    }
+
+    /** Edad en años a partir de la fecha "DD/MM/AAAA"; null si no es válida. */
+    private fun ageFromBirthDate(birthDate: String?): Int? {
+        if (birthDate.isNullOrBlank()) return null
+        return runCatching {
+            val date = LocalDate.parse(birthDate, DateTimeFormatter.ofPattern("dd/MM/uuuu"))
+            Period.between(date, LocalDate.now()).years
+        }.getOrNull()?.takeIf { it in 5..120 }
     }
 
     fun toggleMeal(mealId: String) {

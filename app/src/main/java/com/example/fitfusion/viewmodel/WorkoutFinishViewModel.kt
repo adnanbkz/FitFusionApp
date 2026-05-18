@@ -4,7 +4,9 @@ import android.app.Application
 import android.net.Uri
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
-import com.example.fitfusion.data.repository.WorkoutRepository
+import com.example.fitfusion.data.ai.AiWorkoutEstimateExercise
+import com.example.fitfusion.data.ai.AiWorkoutEstimateRequest
+import com.example.fitfusion.data.repository.AiRepository
 import com.example.fitfusion.data.workout.ActiveWorkoutManager
 import com.example.fitfusion.data.workout.ActiveWorkoutSession
 import com.google.firebase.auth.FirebaseAuth
@@ -18,6 +20,8 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.tasks.await
 import kotlinx.coroutines.withContext
+import kotlinx.coroutines.withTimeoutOrNull
+import kotlin.math.roundToInt
 
 data class WorkoutFinishUiState(
     val title: String = "",
@@ -88,12 +92,15 @@ class WorkoutFinishViewModel(app: Application) : AndroidViewModel(app) {
 
         viewModelScope.launch {
             _uiState.update { it.copy(isSaving = true, errorMessage = null) }
+            val durationMinutes = state.session.estimatedDurationMinutes()
+            val aiKcalEstimate = estimateKcalWithAi(state.session, durationMinutes)
             val saved = withContext(NonCancellable) {
                 runCatching {
                     ActiveWorkoutManager.finishSession(
-                        title       = title,
-                        description = state.description.trim(),
-                        mediaUrls   = emptyList(),
+                        title              = title,
+                        description        = state.description.trim(),
+                        mediaUrls          = emptyList(),
+                        kcalBurnedOverride = aiKcalEstimate,
                     )
                 }
             }
@@ -121,6 +128,24 @@ class WorkoutFinishViewModel(app: Application) : AndroidViewModel(app) {
         }
     }
 
+    private suspend fun estimateKcalWithAi(session: ActiveWorkoutSession, durationMinutes: Int): Int? =
+        withTimeoutOrNull(8_000L) {
+            AiRepository.estimateWorkoutKcal(
+                AiWorkoutEstimateRequest(
+                    durationMin = durationMinutes,
+                    exercises = session.exercises.map { exercise ->
+                        val sets = exercise.sets.filter { it.completed }.ifEmpty { exercise.sets }
+                        AiWorkoutEstimateExercise(
+                            name = exercise.name,
+                            sets = sets.size,
+                            reps = sets.map { it.reps }.averageOrNull()?.roundToInt(),
+                            weightKg = sets.map { it.weightKg }.filter { it > 0 }.averageOrNull()?.toFloat(),
+                        )
+                    },
+                )
+            ).getOrNull()?.kcal?.takeIf { it > 0 }
+        }
+
     private suspend fun uploadMedia(workoutId: String, uris: List<Uri>): List<String> = withContext(Dispatchers.IO) {
         val uid = auth.currentUser?.uid ?: return@withContext emptyList()
         val ctx = getApplication<Application>().applicationContext
@@ -139,4 +164,10 @@ class WorkoutFinishViewModel(app: Application) : AndroidViewModel(app) {
             }.getOrNull()
         }
     }
+
+    private fun ActiveWorkoutSession.estimatedDurationMinutes(): Int =
+        ((elapsedSeconds(System.currentTimeMillis()) + 59L) / 60L).toInt().coerceAtLeast(1)
+
+    private fun List<Int>.averageOrNull(): Double? =
+        takeIf { it.isNotEmpty() }?.average()?.takeIf { !it.isNaN() }
 }

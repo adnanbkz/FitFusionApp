@@ -5,6 +5,9 @@ import com.example.fitfusion.data.models.Food
 import com.example.fitfusion.data.models.Serving
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 import org.json.JSONArray
 import org.json.JSONObject
@@ -20,12 +23,12 @@ import java.util.UUID
 object OpenFoodFactsRepository {
 
     private const val TAG = "OpenFoodFacts"
-    private const val BASE_URL = "https://world.openfoodfacts.org/cgi/search.pl"
+    private const val SEARCH_URL = "https://search.openfoodfacts.org/search"
     private const val FIELDS   = "code,product_name,product_name_es,brands,nutriments,serving_size,serving_quantity,countries_tags"
-    private const val USER_AGENT = "FitFusion/1.0 (https://github.com/adnanbkz/FitFusionApp)"
+    private const val USER_AGENT = "FitFusion/1.0 (Android; https://github.com/adnanbkz/FitFusionApp)"
     private const val MIN_QUERY_LENGTH = 3
     private const val CACHE_TTL_MS = 10 * 60 * 1_000L
-    private const val MIN_SEARCH_INTERVAL_MS = 1_500L
+    private const val MIN_SEARCH_INTERVAL_MS = 6_000L
 
     data class SearchResult(
         val foods: List<Food> = emptyList(),
@@ -39,6 +42,7 @@ object OpenFoodFactsRepository {
     )
 
     private val cache = mutableMapOf<String, CacheEntry>()
+    private val searchRateLimitMutex = Mutex()
     private var lastNetworkSearchAtMs = 0L
 
     suspend fun search(query: String, pageSize: Int = 20, page: Int = 1): SearchResult = withContext(Dispatchers.IO) {
@@ -54,20 +58,21 @@ object OpenFoodFactsRepository {
             ?.takeIf { now - it.createdAtMs <= CACHE_TTL_MS }
             ?.let { return@withContext it.result }
 
-        synchronized(this@OpenFoodFactsRepository) {
-            val elapsedMs = now - lastNetworkSearchAtMs
-            if (elapsedMs < MIN_SEARCH_INTERVAL_MS) {
-                Log.d(TAG, "skipping query='$normalizedQuery': rate limited locally")
-                return@withContext SearchResult(failed = true)
+        searchRateLimitMutex.withLock {
+            val elapsedMs = System.currentTimeMillis() - lastNetworkSearchAtMs
+            val waitMs = MIN_SEARCH_INTERVAL_MS - elapsedMs
+            if (waitMs > 0L) {
+                Log.d(TAG, "waiting ${waitMs}ms before query='$normalizedQuery': local rate limit")
+                delay(waitMs)
             }
-            lastNetworkSearchAtMs = now
+            lastNetworkSearchAtMs = System.currentTimeMillis()
         }
 
         val url = buildSearchUrl(normalizedQuery, safePageSize, safePage)
         val connection = (url.openConnection() as HttpURLConnection).apply {
             requestMethod = "GET"
-            connectTimeout = 4_000
-            readTimeout    = 4_000
+            connectTimeout = 8_000
+            readTimeout    = 8_000
             setRequestProperty("User-Agent", USER_AGENT)
         }
         try {
@@ -97,12 +102,8 @@ object OpenFoodFactsRepository {
 
     private fun buildSearchUrl(query: String, pageSize: Int, page: Int): URL {
         val params = linkedMapOf(
-            "search_terms" to query,
-            "search_simple" to "1",
-            "action" to "process",
-            "json" to "1",
-            "lc" to "es",
-            "sort_by" to "unique_scans_n",
+            "q" to query,
+            "langs" to "es,en",
             "page" to page.toString(),
             "page_size" to pageSize.toString(),
             "fields" to FIELDS,
@@ -110,7 +111,7 @@ object OpenFoodFactsRepository {
         val encodedParams = params.entries.joinToString("&") { (key, value) ->
             "$key=${URLEncoder.encode(value, StandardCharsets.UTF_8.name())}"
         }
-        return URL("$BASE_URL?$encodedParams")
+        return URL("$SEARCH_URL?$encodedParams")
     }
 
     private fun JSONObject.hasMoreProducts(pageSize: Int, requestedPage: Int, returnedCount: Int): Boolean {
@@ -124,7 +125,7 @@ object OpenFoodFactsRepository {
     }
 
     private fun parseProducts(json: JSONObject): List<Food> {
-        val products = json.optJSONArray("products") ?: return emptyList()
+        val products = json.optJSONArray("hits") ?: json.optJSONArray("products") ?: return emptyList()
         return buildList<JSONObject> {
             for (i in 0 until products.length()) {
                 val p = products.optJSONObject(i) ?: continue
@@ -201,8 +202,7 @@ object OpenFoodFactsRepository {
         val carbs         = nutriments.optDouble("carbohydrates_100g", 0.0).toFloat()
         val fat           = nutriments.optDouble("fat_100g",         0.0).toFloat()
 
-        val brand         = optString("brands").trim()
-            .split(",").firstOrNull { it.isNotBlank() }?.trim()
+        val brand         = firstString("brands")
 
         val servingLabel  = optString("serving_size").trim().takeIf { it.isNotBlank() }
         val servingGrams  = optDouble("serving_quantity", 0.0).toFloat()
@@ -223,5 +223,22 @@ object OpenFoodFactsRepository {
             fatsPer100g    = fat,
             servingOptions = servingOptions,
         )
+    }
+
+    private fun JSONObject.firstString(key: String): String? {
+        val raw = opt(key) ?: return null
+        return when (raw) {
+            is JSONArray -> raw.firstStringOrNull()
+            is String -> raw.trim().split(",").firstOrNull { it.isNotBlank() }?.trim()
+            else -> raw.toString().trim().takeIf { it.isNotBlank() }
+        }
+    }
+
+    private fun JSONArray.firstStringOrNull(): String? {
+        for (i in 0 until length()) {
+            val value = optString(i).trim()
+            if (value.isNotBlank()) return value
+        }
+        return null
     }
 }

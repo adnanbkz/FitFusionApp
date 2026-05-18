@@ -61,11 +61,11 @@ class AddFoodViewModel : ViewModel() {
 
     private companion object {
         const val TAG = "AddFoodViewModel"
-        const val FOOD_SEARCH_DEBOUNCE_MS = 400L
+        const val FOOD_SEARCH_DEBOUNCE_MS = 1_200L
         const val FOOD_SEARCH_PAGE_SIZE = 20
         const val MIN_EXTERNAL_QUERY_LENGTH = 3
         const val MIN_LOCAL_RESULTS_BEFORE_EXTERNAL = 12
-        const val EXTERNAL_SEARCH_TIMEOUT_MS = 4_000L
+        const val EXTERNAL_SEARCH_TIMEOUT_MS = 12_000L
     }
 
     private val ingredientRepository = IngredientRepository()

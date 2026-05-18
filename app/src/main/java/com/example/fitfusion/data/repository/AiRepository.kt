@@ -1,6 +1,8 @@
 package com.example.fitfusion.data.repository
 
 import com.example.fitfusion.BuildConfig
+import com.example.fitfusion.data.ai.AiCalorieGoalRequest
+import com.example.fitfusion.data.ai.AiCalorieGoalResponse
 import com.example.fitfusion.data.ai.AiEndpoints
 import com.example.fitfusion.data.ai.AiEstimatePlateRequest
 import com.example.fitfusion.data.ai.AiEstimatePlateResponse
@@ -55,6 +57,9 @@ object AiRepository {
 
     suspend fun estimateWorkoutKcal(request: AiWorkoutEstimateRequest): Result<AiWorkoutEstimateResponse> =
         post(AiEndpoints.WORKOUT_ESTIMATE, request, AiWorkoutEstimateRequest.serializer(), AiWorkoutEstimateResponse.serializer())
+
+    suspend fun calculateCalorieGoal(request: AiCalorieGoalRequest): Result<AiCalorieGoalResponse> =
+        post(AiEndpoints.CALORIE_GOAL, request, AiCalorieGoalRequest.serializer(), AiCalorieGoalResponse.serializer())
 
     private suspend fun <Req, Res> post(
         path: String,

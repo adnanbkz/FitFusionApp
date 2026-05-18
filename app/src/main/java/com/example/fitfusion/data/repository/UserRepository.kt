@@ -95,14 +95,12 @@ class UserRepository(
             "username" to normalizeUsername(profile.username, profile.displayName),
             "bio" to profile.bio,
             "photoUrl" to profile.photoUrl,
+            "heightCm" to profile.heightCm,
+            "weightKg" to profile.weightKg,
             "goalType" to profile.goalType,
             "activityLevel" to profile.activityLevel,
             "updatedAt" to FieldValue.serverTimestamp(),
         )
-        // Solo incluir si no son nulos: con SetOptions.merge() un null explícito
-        // en el mapa SOBREESCRIBE el valor existente en Firestore.
-        profile.heightCm?.let { data["heightCm"] = it }
-        profile.weightKg?.let { data["weightKg"] = it }
         firestore.collection("users")
             .document(profile.uid)
             .set(data, SetOptions.merge())
