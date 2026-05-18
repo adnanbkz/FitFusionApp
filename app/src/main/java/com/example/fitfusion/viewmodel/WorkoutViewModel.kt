@@ -3,73 +3,77 @@ package com.example.fitfusion.viewmodel
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.fitfusion.data.models.LoggedWorkout
+import com.example.fitfusion.data.models.WorkoutExercise
 import com.example.fitfusion.data.repository.WorkoutRepository
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import java.time.DayOfWeek
 import java.time.LocalDate
 import java.time.temporal.TemporalAdjusters
 
-data class WorkoutUiState(
-    val selectedWorkoutDay: LocalDate = LocalDate.now(),
-    val selectedDayWorkouts: List<LoggedWorkout> = emptyList(),
-    val currentWeekMinutes: List<Int> = List(7) { 0 },
-    val previousWeekMinutes: List<Int> = List(7) { 0 },
-    val totalSessionsThisWeek: Int = 0,
-    val totalMinutesThisWeek: Int = 0,
-    val totalKcalThisWeek: Int = 0,
+/** Un punto en la curva de progreso de un ejercicio (volumen acumulado por fecha de entrenamiento). */
+data class ExerciseProgressPoint(
+    val date: LocalDate,
+    val totalVolume: Float,
+    val topSetVolume: Float,
 )
 
+/** Progreso histórico de un ejercicio concreto a lo largo de las sesiones registradas. */
+data class ExerciseProgress(
+    val name: String,
+    val documentId: String?,
+    val sessionsCount: Int,
+    val points: List<ExerciseProgressPoint>,
+) {
+    val bestSetVolume: Float get() = points.maxOfOrNull { it.topSetVolume } ?: 0f
+    val latestVolume: Float get() = points.lastOrNull()?.totalVolume ?: 0f
+    val firstVolume: Float get() = points.firstOrNull()?.totalVolume ?: 0f
+}
+
+data class WorkoutUiState(
+    val isLoading: Boolean = true,
+    val workouts: List<LoggedWorkout> = emptyList(),
+    val exerciseProgress: List<ExerciseProgress> = emptyList(),
+    val totalWorkouts: Int = 0,
+    val totalVolumeKg: Float = 0f,
+    val workoutsThisWeek: Int = 0,
+)
+
+/**
+ * Alimenta la pantalla de entrenamiento: historial de sesiones y progreso por ejercicio.
+ * Solo lee — toda la persistencia vive en [WorkoutRepository].
+ */
 class WorkoutViewModel : ViewModel() {
 
-    private val _uiState = MutableStateFlow(
-        WorkoutUiState(
-            selectedDayWorkouts = WorkoutRepository.getWorkoutsForDate(LocalDate.now())
-        )
-    )
+    private val _uiState = MutableStateFlow(WorkoutUiState())
     val uiState: StateFlow<WorkoutUiState> = _uiState.asStateFlow()
 
-    private var workoutsByDay: Map<LocalDate, List<LoggedWorkout>> = emptyMap()
-
     init {
+        WorkoutRepository.ensureInitialized()
         viewModelScope.launch {
-            WorkoutRepository.workouts.collect { workoutMap ->
-                val today = LocalDate.now()
-                val weekStart = today.with(TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY))
-                val prevStart = weekStart.minusWeeks(1)
-
-                val curMins = minutesPerDay(workoutMap, weekStart)
-                val prevMins = minutesPerDay(workoutMap, prevStart)
-                val thisWeek = (0L..6L).flatMap { offset ->
-                    workoutMap[weekStart.plusDays(offset)] ?: emptyList()
-                }
-
-                workoutsByDay = workoutMap
-
-                _uiState.update { s ->
-                    s.copy(
-                        currentWeekMinutes = curMins,
-                        previousWeekMinutes = prevMins,
-                        totalSessionsThisWeek = thisWeek.size,
-                        totalMinutesThisWeek = thisWeek.sumOf { it.durationMinutes },
-                        totalKcalThisWeek = thisWeek.sumOf { it.kcalBurned },
-                        selectedDayWorkouts = workoutMap[s.selectedWorkoutDay] ?: emptyList(),
-                    )
-                }
+            WorkoutRepository.workouts.collect { byDate ->
+                _uiState.value = buildState(byDate)
             }
         }
     }
 
-    fun selectWorkoutDay(date: LocalDate) {
-        _uiState.update {
-            it.copy(
-                selectedWorkoutDay = date,
-                selectedDayWorkouts = workoutsByDay[date] ?: emptyList(),
+    private fun buildState(byDate: Map<LocalDate, List<LoggedWorkout>>): WorkoutUiState {
+        val all = byDate.values.flatten()
+            .sortedWith(
+                compareByDescending<LoggedWorkout> { it.date }
+                    .thenByDescending { it.createdAtMs ?: 0L }
             )
-        }
+        val weekStart = LocalDate.now().with(TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY))
+        return WorkoutUiState(
+            isLoading = false,
+            workouts = all,
+            exerciseProgress = buildExerciseProgress(all),
+            totalWorkouts = all.size,
+            totalVolumeKg = all.sumOf { it.totalVolumeKg.toDouble() }.toFloat(),
+            workoutsThisWeek = all.count { !it.date.isBefore(weekStart) },
+        )
     }
 
     fun removeWorkoutFromDay(id: String, date: LocalDate) {
@@ -91,11 +95,35 @@ class WorkoutViewModel : ViewModel() {
         }
     }
 
-    private fun minutesPerDay(
-        map: Map<LocalDate, List<LoggedWorkout>>,
-        weekStart: LocalDate,
-    ): List<Int> = (0L..6L).map { offset ->
-        val date = weekStart.plusDays(offset)
-        map[date]?.sumOf { it.durationMinutes } ?: 0
+    private fun buildExerciseProgress(workouts: List<LoggedWorkout>): List<ExerciseProgress> {
+        val grouped = LinkedHashMap<String, MutableList<Pair<LocalDate, WorkoutExercise>>>()
+        for (workout in workouts) {
+            for (exercise in workout.exercises) {
+                val key = exercise.exerciseDocumentId?.takeIf { it.isNotBlank() }
+                    ?: exercise.name.trim().lowercase()
+                grouped.getOrPut(key) { mutableListOf() }.add(workout.date to exercise)
+            }
+        }
+        return grouped.values.map { pairs ->
+            val points = pairs.groupBy { it.first }
+                .map { (date, dayPairs) ->
+                    ExerciseProgressPoint(
+                        date = date,
+                        totalVolume = dayPairs.sumOf { it.second.totalVolume.toDouble() }.toFloat(),
+                        topSetVolume = dayPairs.flatMap { it.second.sets }
+                            .maxOfOrNull { it.reps * it.weightKg } ?: 0f,
+                    )
+                }
+                .sortedBy { it.date }
+            val latestName = pairs.maxByOrNull { it.first }!!.second.name
+            ExerciseProgress(
+                name = latestName,
+                documentId = pairs.firstNotNullOfOrNull { pair ->
+                    pair.second.exerciseDocumentId?.takeIf { it.isNotBlank() }
+                },
+                sessionsCount = points.size,
+                points = points,
+            )
+        }.sortedByDescending { it.points.lastOrNull()?.date }
     }
 }

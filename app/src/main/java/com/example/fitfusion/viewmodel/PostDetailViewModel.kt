@@ -68,17 +68,22 @@ class PostDetailViewModel : ViewModel() {
         _uiState.value = PostDetailUiState()
         attachCommentsListener(id)
         loadJob = viewModelScope.launch {
-            FeedRepository.items.collect { items ->
-                val item = items.firstOrNull {
-                    when (it) {
-                        is FeedItem.Workout   -> it.post.id == id
-                        is FeedItem.Nutrition -> it.post.id == id
-                    }
+            val initialItem = FeedRepository.items.value.findPost(id)
+                ?: runCatching { FeedRepository.getPostById(id) }.getOrNull()
+            if (initialItem != null) {
+                updatePost(initialItem)
+            } else if (FeedRepository.items.value.isEmpty()) {
+                _uiState.update {
+                    it.copy(
+                        title = "Publicación no encontrada",
+                        description = "No se pudo cargar este post.",
+                    )
                 }
+            }
+            FeedRepository.items.collect { items ->
+                val item = items.findPost(id)
                 if (item != null) {
-                    val currentCommentCount = _uiState.value.commentCount
-                    val currentPreview = _uiState.value.previewComments
-                    _uiState.value = item.toDetailState(currentCommentCount, currentPreview)
+                    updatePost(item)
                 } else if (items.isNotEmpty()) {
                     _uiState.update { it.copy(title = "Publicación no encontrada") }
                 }
@@ -104,6 +109,19 @@ class PostDetailViewModel : ViewModel() {
                     previewComments = comments.take(3),
                 )
             }
+        }
+    }
+
+    private fun updatePost(item: FeedItem) {
+        val currentCommentCount = _uiState.value.commentCount
+        val currentPreview = _uiState.value.previewComments
+        _uiState.value = item.toDetailState(currentCommentCount, currentPreview)
+    }
+
+    private fun List<FeedItem>.findPost(id: String): FeedItem? = firstOrNull {
+        when (it) {
+            is FeedItem.Workout   -> it.post.id == id
+            is FeedItem.Nutrition -> it.post.id == id
         }
     }
 

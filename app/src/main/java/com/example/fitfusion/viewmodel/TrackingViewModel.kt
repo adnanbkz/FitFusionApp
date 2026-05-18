@@ -35,6 +35,8 @@ data class TrackingUiState(
         emptyList()
     ),
     val expandedMeals: Set<String> = setOf(MealSlot.fromCurrentHour().id),
+    val showAddMealDialog: Boolean = false,
+    val addMealName: String = "",
     val showRenameMealDialog: Boolean = false,
     val renameMealId: String = "",
     val renameMealName: String = "",
@@ -136,6 +138,31 @@ class TrackingViewModel : ViewModel() {
         viewModelScope.launch { FoodRepository.removeFood(id, date) }
     }
 
+    fun showAddMealDialog() {
+        _uiState.update { it.copy(showAddMealDialog = true, addMealName = "") }
+    }
+
+    fun dismissAddMealDialog() {
+        _uiState.update { it.copy(showAddMealDialog = false, addMealName = "") }
+    }
+
+    fun onAddMealNameChange(name: String) {
+        _uiState.update { it.copy(addMealName = name) }
+    }
+
+    fun confirmAddMeal() {
+        val name = _uiState.value.addMealName.trim()
+        if (name.isBlank()) return
+        val date = _uiState.value.selectedDate
+        val meal = MealSlot(
+            id = java.util.UUID.randomUUID().toString(),
+            name = name,
+            isCustom = true,
+        )
+        dismissAddMealDialog()
+        viewModelScope.launch { FoodRepository.addMealToDay(date, meal) }
+    }
+
     fun applyAiMealPlan(plan: AiMealPlanResponse) {
         val date = _uiState.value.selectedDate
         val day = plan.days.firstOrNull() ?: return
@@ -183,7 +210,8 @@ class TrackingViewModel : ViewModel() {
     }
 
     fun removeMeal(mealId: String) {
-        FoodRepository.removeMealFromDay(_uiState.value.selectedDate, mealId)
+        val date = _uiState.value.selectedDate
+        viewModelScope.launch { FoodRepository.removeMealFromDay(date, mealId) }
     }
 
     fun showRenameMealDialog(mealId: String, currentName: String) {
@@ -201,8 +229,10 @@ class TrackingViewModel : ViewModel() {
     fun confirmRenameMeal() {
         val name = _uiState.value.renameMealName.trim()
         if (name.isBlank()) return
-        FoodRepository.renameMealInDay(_uiState.value.selectedDate, _uiState.value.renameMealId, name)
+        val date = _uiState.value.selectedDate
+        val mealId = _uiState.value.renameMealId
         dismissRenameMealDialog()
+        viewModelScope.launch { FoodRepository.renameMealInDay(date, mealId, name) }
     }
 
     fun openEditSheet(logged: LoggedFood) {

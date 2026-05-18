@@ -14,6 +14,7 @@ import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Clear
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.icons.outlined.Info
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -251,6 +252,11 @@ fun PantallaAddWorkout(
                                         "${Screens.ExerciseDetailScreen.name}/${exercise.documentId}"
                                     )
                                 }
+                            },
+                            onInfoClick = {
+                                navController.navigate(
+                                    "${Screens.ExerciseDetailScreen.name}/${exercise.documentId}"
+                                )
                             }
                         )
                     }
@@ -273,6 +279,7 @@ private fun ExerciseCatalogRow(
     isLogMode: Boolean = false,
     isSelected: Boolean = false,
     onClick: () -> Unit = {},
+    onInfoClick: () -> Unit = {},
 ) {
     ElevatedCard(
         onClick = onClick,
@@ -326,20 +333,33 @@ private fun ExerciseCatalogRow(
             }
 
             if (isLogMode) {
-                Box(
-                    modifier = Modifier
-                        .size(26.dp)
-                        .clip(CircleShape)
-                        .background(if (isSelected) Primary else SurfaceContainerHigh),
-                    contentAlignment = Alignment.Center
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(4.dp),
                 ) {
-                    if (isSelected) {
+                    IconButton(onClick = onInfoClick, modifier = Modifier.size(32.dp)) {
                         Icon(
-                            Icons.Default.Check,
-                            contentDescription = null,
-                            tint     = Color.White,
-                            modifier = Modifier.size(16.dp)
+                            Icons.Outlined.Info,
+                            contentDescription = "Ver detalle del ejercicio",
+                            tint = OnSurfaceVariant,
+                            modifier = Modifier.size(20.dp),
                         )
+                    }
+                    Box(
+                        modifier = Modifier
+                            .size(26.dp)
+                            .clip(CircleShape)
+                            .background(if (isSelected) Primary else SurfaceContainerHigh),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        if (isSelected) {
+                            Icon(
+                                Icons.Default.Check,
+                                contentDescription = null,
+                                tint     = Color.White,
+                                modifier = Modifier.size(16.dp)
+                            )
+                        }
                     }
                 }
             }

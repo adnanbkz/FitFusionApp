@@ -1,11 +1,13 @@
 package com.example.fitfusion.ui.screens
 
+import android.content.Intent
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.pager.HorizontalPager
@@ -15,7 +17,6 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import android.content.Intent
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.Send
 import androidx.compose.material.icons.filled.*
@@ -106,8 +107,9 @@ fun PantallaPostDetail(
                                 val text = commentInput
                                 scope.launch {
                                     isSendingComment = true
-                                    runCatching { PostInteractionRepository.addComment(postId, text) }
-                                    commentInput = ""
+                                    if (runCatching { PostInteractionRepository.addComment(postId, text) }.isSuccess) {
+                                        commentInput = ""
+                                    }
                                     isSendingComment = false
                                 }
                             },
@@ -204,18 +206,31 @@ fun PantallaPostDetail(
 
             // ── Exercise list (workout) ───────────────────────────────────
             if (state.isWorkout && state.exercises.isNotEmpty()) {
-                Column(modifier = Modifier.padding(horizontal = 16.dp)) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 20.dp, vertical = 10.dp),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Box(modifier = Modifier.size(8.dp).clip(CircleShape).background(Primary))
+                    Text(
+                        "EJERCICIOS · ${state.exercises.size}",
+                        fontSize = 10.sp,
+                        fontWeight = FontWeight.Bold,
+                        letterSpacing = 2.sp,
+                        color = Primary,
+                    )
+                }
+                Column(
+                    modifier = Modifier.padding(horizontal = 16.dp),
+                    verticalArrangement = Arrangement.spacedBy(10.dp),
+                ) {
                     state.exercises.forEachIndexed { idx, exercise ->
-                        DetailExerciseRow(exercise)
-                        if (idx < state.exercises.size - 1) {
-                            HorizontalDivider(
-                                color = SurfaceContainerHigh,
-                                modifier = Modifier.padding(start = 20.dp),
-                            )
-                        }
+                        WorkoutExerciseCard(index = idx + 1, exercise = exercise)
                     }
                 }
-                Spacer(modifier = Modifier.height(8.dp))
+                Spacer(modifier = Modifier.height(12.dp))
             }
 
             // ── Nutrition description + macros (image now shown in card) ──
@@ -280,7 +295,10 @@ fun PantallaPostDetail(
                         val shareText = buildString {
                             append(state.title)
                             if (state.authorName.isNotBlank()) append("\n— ${state.authorName}")
-                            if (!state.description.isNullOrBlank()) append("\n${state.description}")
+                            if (state.description.isNotBlank()) append("\n${state.description}")
+                            if (!postId.isNullOrBlank()) {
+                                append("\n\nÁbrelo en FitFusion: fitfusion://post/$postId")
+                            }
                         }
                         val intent = Intent(Intent.ACTION_SEND).apply {
                             type = "text/plain"
@@ -510,31 +528,94 @@ private fun CardStat(value: String, label: String) {
     }
 }
 
-// ── Exercise row ──────────────────────────────────────────────────────────────
+// ── Exercise card (workout) ─────────────────────────────────────────────────────
 @Composable
-private fun DetailExerciseRow(exercise: ExerciseItem) {
-    Row(
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(10.dp),
+private fun WorkoutExerciseCard(index: Int, exercise: ExerciseItem) {
+    val sets = exercise.setBreakdown
+        .split(" · ")
+        .map { it.trim() }
+        .filter { it.isNotBlank() }
+    val headline = exercise.summary.ifBlank { "${exercise.sets} series" }
+
+    Column(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(vertical = 10.dp),
+            .clip(RoundedCornerShape(20.dp))
+            .background(SurfaceContainerLow)
+            .border(1.dp, SurfaceContainerHigh, RoundedCornerShape(20.dp))
+            .padding(16.dp),
+        verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
-        Box(
-            modifier = Modifier
-                .size(10.dp)
-                .clip(CircleShape)
-                .background(Primary),
-        )
-        Text(exercise.name, fontSize = 14.sp, color = OnSurface, modifier = Modifier.weight(1f))
-        Text(
-            buildString {
-                append("${exercise.sets}x${exercise.reps}")
-                if (exercise.weightKg > 0.0) append(" · ${exercise.weightKg.toInt()}kg")
-            },
-            fontSize = 14.sp,
-            color = OnSurface,
-        )
+        // Header: index badge + name + summary pill
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
+        ) {
+            Box(
+                modifier = Modifier
+                    .size(30.dp)
+                    .clip(RoundedCornerShape(8.dp))
+                    .background(Primary.copy(alpha = 0.12f)),
+                contentAlignment = Alignment.Center,
+            ) {
+                Text("$index", fontSize = 13.sp, fontWeight = FontWeight.Bold, color = Primary)
+            }
+            Text(
+                exercise.name,
+                fontSize = 15.sp,
+                fontWeight = FontWeight.Bold,
+                color = OnSurface,
+                modifier = Modifier.weight(1f),
+                maxLines = 2,
+                overflow = TextOverflow.Ellipsis,
+            )
+            Box(
+                modifier = Modifier
+                    .clip(RoundedCornerShape(8.dp))
+                    .background(Primary.copy(alpha = 0.10f))
+                    .padding(horizontal = 10.dp, vertical = 5.dp),
+            ) {
+                Text(headline, fontSize = 12.sp, fontWeight = FontWeight.Bold, color = Primary)
+            }
+        }
+
+        // Per-set breakdown (only when stored — posts antiguos no lo tienen)
+        if (sets.isNotEmpty()) {
+            Column {
+                sets.forEachIndexed { setIdx, setText ->
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(vertical = 7.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(10.dp),
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .size(width = 3.dp, height = 14.dp)
+                                .clip(RoundedCornerShape(2.dp))
+                                .background(Primary.copy(alpha = 0.45f)),
+                        )
+                        Text(
+                            "Serie ${setIdx + 1}",
+                            fontSize = 12.sp,
+                            fontWeight = FontWeight.SemiBold,
+                            color = OnSurfaceVariant,
+                            modifier = Modifier.weight(1f),
+                        )
+                        Text(
+                            setText,
+                            fontSize = 13.sp,
+                            fontWeight = FontWeight.SemiBold,
+                            color = OnSurface,
+                        )
+                    }
+                    if (setIdx < sets.size - 1) {
+                        HorizontalDivider(color = SurfaceContainerHigh.copy(alpha = 0.5f))
+                    }
+                }
+            }
+        }
     }
 }
 

@@ -11,6 +11,7 @@ import android.content.pm.ServiceInfo
 import android.os.Build
 import android.os.IBinder
 import androidx.core.app.NotificationCompat
+import androidx.core.content.ContextCompat
 import com.example.fitfusion.MainActivity
 import com.example.fitfusion.R
 import com.example.fitfusion.data.workout.ActiveWorkoutManager
@@ -71,6 +72,8 @@ class WorkoutForegroundService : Service() {
                         elapsedSeconds = elapsed,
                         name           = session.name.ifBlank { "Entrenamiento activo" },
                         isPaused       = session.isPaused,
+                        exerciseCount  = session.exerciseCount,
+                        totalSets      = session.totalSets,
                     )
                     val nm = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
                     nm.notify(NOTIFICATION_ID, notification)
@@ -117,6 +120,8 @@ class WorkoutForegroundService : Service() {
         elapsedSeconds: Long,
         name: String,
         isPaused: Boolean = false,
+        exerciseCount: Int = 0,
+        totalSets: Int = 0,
     ): Notification {
         val openIntent = Intent(this, MainActivity::class.java).apply {
             flags = Intent.FLAG_ACTIVITY_SINGLE_TOP or Intent.FLAG_ACTIVITY_CLEAR_TOP
@@ -127,8 +132,13 @@ class WorkoutForegroundService : Service() {
             openIntent,
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
         )
-        val statusLine = if (isPaused) "Sesión en pausa · ${formatElapsed(elapsedSeconds)}"
+        val statusLine = if (isPaused) "En pausa · ${formatElapsed(elapsedSeconds)}"
         else "En curso · ${formatElapsed(elapsedSeconds)}"
+        val subText = if (exerciseCount > 0) {
+            val ejercicios = if (exerciseCount == 1) "ejercicio" else "ejercicios"
+            val series = if (totalSets == 1) "serie" else "series"
+            "$exerciseCount $ejercicios · $totalSets $series"
+        } else null
 
         val pauseIntent = Intent(this, WorkoutForegroundService::class.java).apply { action = ACTION_TOGGLE_PAUSE }
         val pausePending = PendingIntent.getService(
@@ -146,17 +156,24 @@ class WorkoutForegroundService : Service() {
         )
 
         return NotificationCompat.Builder(this, CHANNEL_ID)
-            .setSmallIcon(R.drawable.ic_dumbbell)
+            .setSmallIcon(R.drawable.ic_stat_workout)
+            .setColor(ContextCompat.getColor(this, R.color.notification_accent))
             .setContentTitle(name)
             .setContentText(statusLine)
+            .setSubText(subText)
             .setContentIntent(pending)
             .setOngoing(true)
             .setOnlyAlertOnce(true)
             .setShowWhen(false)
             .setPriority(NotificationCompat.PRIORITY_LOW)
+            .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
             .setCategory(NotificationCompat.CATEGORY_SERVICE)
-            .addAction(0, if (isPaused) "Reanudar" else "Pausar", pausePending)
-            .addAction(0, "Cancelar", finishPending)
+            .addAction(
+                if (isPaused) R.drawable.ic_notif_play else R.drawable.ic_notif_pause,
+                if (isPaused) "Reanudar" else "Pausar",
+                pausePending,
+            )
+            .addAction(R.drawable.ic_notif_stop, "Cancelar", finishPending)
             .build()
     }
 

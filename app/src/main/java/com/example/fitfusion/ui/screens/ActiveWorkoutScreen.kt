@@ -1,7 +1,12 @@
 package com.example.fitfusion.ui.screens
 
-import android.R
 import androidx.activity.compose.BackHandler
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -13,16 +18,21 @@ import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.NotificationsActive
 import androidx.compose.material.icons.filled.Pause
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Remove
+import androidx.compose.material.icons.outlined.Info
 import androidx.compose.material.icons.outlined.Timer
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -30,9 +40,11 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavHostController
 import com.example.fitfusion.data.workout.ActiveExerciseEntry
 import com.example.fitfusion.data.workout.ActiveSetEntry
+import com.example.fitfusion.data.workout.SetRecordEvent
 import com.example.fitfusion.ui.theme.*
 import com.example.fitfusion.viewmodel.ActiveWorkoutViewModel
 import com.example.fitfusion.viewmodel.formatElapsed
+import kotlinx.coroutines.delay
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -44,15 +56,31 @@ fun PantallaActiveWorkout(
     val elapsed by activeWorkoutViewModel.elapsedSeconds.collectAsState()
     var showCancelDialog by remember { mutableStateOf(false) }
     var showRenameDialog by remember { mutableStateOf(false) }
+    var recordBanner by remember { mutableStateOf<SetRecordEvent?>(null) }
+    val haptics = LocalHapticFeedback.current
 
     LaunchedEffect(session) {
         if (session == null) navController.popBackStack()
+    }
+
+    LaunchedEffect(Unit) {
+        activeWorkoutViewModel.recordEvents.collect { event ->
+            recordBanner = event
+            haptics.performHapticFeedback(HapticFeedbackType.LongPress)
+        }
+    }
+    LaunchedEffect(recordBanner) {
+        if (recordBanner != null) {
+            delay(4000)
+            recordBanner = null
+        }
     }
 
     BackHandler { showCancelDialog = true }
 
     val current = session ?: return
 
+    Box(modifier = Modifier.fillMaxSize()) {
     Scaffold(
         containerColor = Surface,
         topBar = {
@@ -116,6 +144,11 @@ fun PantallaActiveWorkout(
             items(current.exercises, key = { it.exerciseDocumentId }) { exercise ->
                 ExerciseSetEditor(
                     exercise          = exercise,
+                    onOpenDetail      = {
+                        navController.navigate(
+                            "${Screens.ExerciseDetailScreen.name}/${exercise.exerciseDocumentId}"
+                        )
+                    },
                     onAddSet          = { activeWorkoutViewModel.addSet(exercise.exerciseDocumentId) },
                     onRemoveSet       = { idx -> activeWorkoutViewModel.removeSet(exercise.exerciseDocumentId, idx) },
                     onRepsChange      = { idx, v ->
@@ -154,6 +187,14 @@ fun PantallaActiveWorkout(
                 }
             }
         }
+    }
+
+        RecordCelebrationBanner(
+            event = recordBanner,
+            modifier = Modifier
+                .align(Alignment.TopCenter)
+                .padding(top = 8.dp, start = 12.dp, end = 12.dp),
+        )
     }
 
     if (showCancelDialog) {
@@ -255,6 +296,7 @@ private fun TimerCard(
 @Composable
 private fun ExerciseSetEditor(
     exercise: ActiveExerciseEntry,
+    onOpenDetail: () -> Unit,
     onAddSet: () -> Unit,
     onRemoveSet: (Int) -> Unit,
     onRepsChange: (Int, Int) -> Unit,
@@ -278,8 +320,13 @@ private fun ExerciseSetEditor(
                     Text(exercise.name, fontSize = 16.sp, fontWeight = FontWeight.Bold, color = OnSurface)
                     Text(exercise.muscleGroup, fontSize = 12.sp, color = OnSurfaceVariant)
                 }
-                IconButton(onClick = onRemoveExercise) {
-                    Icon(Icons.Default.Close, contentDescription = "Quitar ejercicio", tint = OnSurfaceVariant)
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    IconButton(onClick = onOpenDetail) {
+                        Icon(Icons.Outlined.Info, contentDescription = "Ver detalle del ejercicio", tint = OnSurfaceVariant)
+                    }
+                    IconButton(onClick = onRemoveExercise) {
+                        Icon(Icons.Default.Close, contentDescription = "Quitar ejercicio", tint = OnSurfaceVariant)
+                    }
                 }
             }
             Row(
@@ -405,6 +452,66 @@ private fun SetStepper(
             modifier = Modifier.size(28.dp),
         ) {
             Icon(Icons.Default.Add, contentDescription = null, modifier = Modifier.size(14.dp))
+        }
+    }
+}
+
+@Composable
+private fun RecordCelebrationBanner(
+    event: SetRecordEvent?,
+    modifier: Modifier = Modifier,
+) {
+    var lastEvent by remember { mutableStateOf<SetRecordEvent?>(null) }
+    LaunchedEffect(event) { if (event != null) lastEvent = event }
+
+    AnimatedVisibility(
+        visible = event != null,
+        enter = slideInVertically(tween(280)) { -it } + fadeIn(tween(280)),
+        exit  = slideOutVertically(tween(220)) { -it } + fadeOut(tween(220)),
+        modifier = modifier,
+    ) {
+        (event ?: lastEvent)?.let { RecordBannerCard(it) }
+    }
+}
+
+@Composable
+private fun RecordBannerCard(event: SetRecordEvent) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(16.dp))
+            .background(Brush.horizontalGradient(listOf(Primary, PrimaryContainer)))
+            .padding(horizontal = 16.dp, vertical = 12.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(12.dp),
+    ) {
+        Box(
+            modifier = Modifier
+                .size(40.dp)
+                .clip(CircleShape)
+                .background(Color.White.copy(alpha = 0.22f)),
+            contentAlignment = Alignment.Center,
+        ) {
+            Icon(
+                Icons.Default.NotificationsActive,
+                contentDescription = null,
+                tint = Color.White,
+                modifier = Modifier.size(22.dp),
+            )
+        }
+        Column(modifier = Modifier.weight(1f)) {
+            Text(
+                "¡Nuevo récord de serie!",
+                fontSize = 15.sp,
+                fontWeight = FontWeight.Bold,
+                color = Color.White,
+            )
+            Text(
+                "${event.exerciseName} · ${event.volumeKg.toInt()} kg de volumen",
+                fontSize = 12.sp,
+                fontWeight = FontWeight.Medium,
+                color = Color.White.copy(alpha = 0.9f),
+            )
         }
     }
 }

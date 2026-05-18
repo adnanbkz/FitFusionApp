@@ -4,6 +4,111 @@ Aquí voy apuntando los marrones que me he ido encontrando y cómo los he resuel
 
 ---
 
+## Las cinco features del navbar de entreno y social (17 may 2026)
+
+Cinco cosas pedidas de una tacada: poder entrar a cada ejercicio, notificación de entreno más estética, cambiar la UI de entreno para que enseñe historial y progreso, una campanita de récord de serie dentro del entreno, y que los botones de compartir posts manden un link de verdad. Lo primero, mirar qué estaba ya hecho antes de picar nada.
+
+### Cómo estaba la cosa
+
+- **Detalle de ejercicio:** `ExerciseDetailScreen` ya existía entera (músculos, equipo, técnica, vídeos), pero solo se abría tocando un ejercicio en el selector en modo rutina.
+- **Notificación de entreno:** existía y funcionaba (`WorkoutForegroundService`), pero el icono pequeño era un `.jpeg`.
+- **Historial / progreso:** no había pantalla; la pestaña "Ejercicio" del navbar era el selector de ejercicios pelado.
+- **Campanita de volumen:** no existía. Y no hay backend .NET en el repo.
+- **Compartir posts:** los botones abrían el selector del sistema pero mandaban solo texto, sin link.
+
+### Qué hice
+
+1. **Entrar a cada ejercicio.** La pantalla ya estaba; solo faltaban accesos. Añadí un icono de info en las filas del selector en modo log (`AddWorkoutScreen`) y en la cabecera de cada ejercicio del entreno activo (`ActiveWorkoutScreen`); en esos dos sitios no había manera de abrir el detalle.
+
+2. **Notificación más estética.** El marrón de fondo era `ic_dumbbell.jpeg` como icono pequeño: un JPEG no tiene canal alpha y el sistema usa el alpha como máscara del icono de la barra de estado, así que se veía como un cuadrado blanco. Creé iconos vectoriales (`ic_stat_workout` con la mancuerna, más pausa/play/stop para las acciones), color de acento verde de marca (`setColor`), subtítulo con "N ejercicios · M series" y las acciones ya con icono. Todo con APIs estándar de `NotificationCompat`, sin `RemoteViews` (que se renderiza distinto en cada fabricante).
+
+3. **UI de entreno con historial y progreso.** La pestaña "Ejercicio" pasa de selector pelado a un hub: `WorkoutScreen` + `WorkoutViewModel` nuevos. Estadísticas (entrenos, esta semana, volumen total), botón de empezar entreno, y dos pestañas — Historial (tarjetas expandibles por sesión) y Progreso (una tarjeta por ejercicio con mejor serie, último volumen y una mini-gráfica de evolución dibujada con `Canvas`). La persistencia ya estaba toda en `WorkoutRepository`, así que esto es puro UI + un VM de solo lectura. *El rediseño no traía las acciones de editar/borrar entrenos del historial; eso se restauró justo después (punto 7 de la entrada anterior).*
+
+4. **Campanita de récord de serie.** Decisión tomada: client-side, nada de API C# .NET. La campanita es un evento en tiempo real dentro del entreno y el dato ya vive en `ActiveWorkoutManager`; meter un backend solo añade latencia y un proyecto más que mantener. En `ActiveWorkoutManager.toggleSetCompleted`, al marcar una serie como completada se compara su volumen (peso×reps) con la mejor serie previa de ese ejercicio — histórico de `WorkoutRepository` más las series ya completadas de la sesión en curso. Si lo supera, emite un `SetRecordEvent` por un `SharedFlow` y `ActiveWorkoutScreen` enseña un banner animado con campana y vibración. De-dup por clave `docId#índice` para que la misma serie no vuelva a sonar si la destildas y la marcas otra vez.
+
+5. **Compartir posts con link.** La mitad ya estaba: el cargado de `fitfusion://post/{id}` se arregló en su día (punto 6 de la entrada anterior — el fallback por ID en `FeedRepository`/`PostDetailViewModel`). Faltaba la entrada del link: `intent-filter` con `scheme=fitfusion`/`host=post` en el manifest, el enrutado en `MainActivity` (arranque en frío leyendo `intent.data` + `onNewIntent`, con `launchMode=singleTop` para que el arranque en caliente reuse la activity en vez de apilar otra), y que los tres botones de compartir (`PostDetailScreen` y las dos tarjetas del feed en `HomeScreen`) metieran `fitfusion://post/{id}` en el texto.
+
+### Verificación
+
+`./gradlew :app:assembleDebug` verde y `git diff --check` limpio. Sin commitear.
+
+### Lo que me llevo
+
+- "Compruébalo y si no, hazlo": dos de las cinco (detalle de ejercicio y notificación) ya existían a medias. Mirar antes de picar evitó rehacer pantallas enteras.
+- Icono de notificación = vector, nunca un `.jpeg`/`.png` con fondo opaco: el sistema lo trata como silueta por el canal alpha.
+- Para feedback inmediato durante el entreno, el cálculo va en el cliente. El dato ya está en RAM; una API solo aporta latencia y mantenimiento.
+- El deep link de esquema propio (`fitfusion://`) abre la app, pero las apps de mensajería no lo hacen clicable. Si se quiere que el link viaje bien por WhatsApp/Telegram, el siguiente paso es un App Link con dominio propio y su `assetlinks.json`.
+
+---
+
+## Revisión post-GLM 5.1 y apagado inesperado (16 may 2026)
+
+### Qué revisé
+
+El último commit había tocado integración IA de plan de comidas, Tracking, posts de workout y perfil. Después de un apagado del ordenador comprobé el workspace:
+
+- `git diff --check` limpio.
+- `./gradlew :app:assembleDebug` verde tras reiniciar Gradle.
+- Quedó `.kotlin/sessions/` como artefacto local de Kotlin/Gradle; se añadió `.kotlin/` a `.gitignore`.
+
+### Arreglos aplicados
+
+1. **Foto de perfil no podía fallar en silencio**
+   - Problema: `AccountViewModel.saveProfile()` tragaba cualquier error de Firebase Storage. Si fallaba la subida, podía guardar un `content://` local en Firestore/Auth y mostrar éxito falso.
+   - Fix: la URI local ya no se considera URL remota válida; si hay foto pendiente, se sube a Storage, se cierra el `InputStream` con `use`, y si falla se muestra error en vez de guardar basura.
+
+2. **Posts de entrenamiento mostraban reps/peso mal**
+   - Problema: `PostRepository` guardaba `reps` como suma total y `weightKg` como peso de la primera serie. Eso podía renderizar cosas falsas como `60 kg · 3×24`.
+   - Fix: se guarda `summary` y `setBreakdown` desde `WorkoutExercise`, además de `totalReps`. El feed y detalle usan esos textos cuando existen. Para posts legacy sin `summary`, el fallback trata `reps` como reps totales (`3 series · 24 reps totales`) y no como reps por serie (`3×24`).
+
+3. **Contraste del feed en modo claro**
+   - Problema: nombres de ejercicios y títulos seguían en blanco sobre degradados/containers claros.
+   - Fix: se usa `overlayTextColor` dependiente de tema en `WorkoutPostCard`, y el fondo de la lista de ejercicios es más legible en claro.
+
+4. **Regresión en Tracking: GLM quitó `+ Comida` y duplicó `Plan IA`**
+   - Problema: el botón IA quedó dos veces en el header y se eliminó la posibilidad de crear comidas personalizadas.
+   - Fix: se dejó un solo `Plan IA` y se restauró `+ Comida`, `AddMealDialog` y el estado/métodos del `TrackingViewModel`. También se ajustó `FoodRepository.rebuildDayLogs()` para que una comida custom no oculte Desayuno/Almuerzo/Merienda/Cena en días vacíos, y las comidas custom vacías se persisten en `users/{uid}/mealSlots/{yyyy-MM-dd}_{mealId}`.
+
+5. **Archivo local de Android Studio versionado**
+   - Problema: `.idea/deploymentTargetSelector.xml` entró en el commit anterior.
+   - Fix: eliminado del árbol y añadido a `.gitignore`.
+
+6. **Deep links a posts podían quedarse cargando**
+   - Problema: `PostDetailViewModel` solo buscaba en `FeedRepository.items`; sin sesión, el feed queda vacío y `fitfusion://post/{id}` podía mostrar `Cargando publicación` para siempre.
+   - Fix: `FeedRepository` expone carga puntual por ID y el detalle usa ese fallback antes de quedarse escuchando el feed.
+
+7. **Historial de entrenos perdió editar/eliminar**
+   - Problema: el rediseño de `WorkoutScreen` mantenía tarjetas expandibles, pero había quitado las acciones para corregir o borrar entrenamientos loggeados.
+   - Fix: se restauraron editar/eliminar sobre la tarjeta actual y los métodos `WorkoutViewModel` que llaman a `WorkoutRepository`.
+
+### Verificación cruzada de los cambios
+
+- Revisados los cambios sin commitear (AccountViewModel, PostRepository/FeedRepository, HomeScreen/PostDetailScreen, Tracking): coherentes y compilan. `:app:assembleDebug` y `dotnet build` de `FitFusion.Api` verdes.
+- El punto 5 estaba a medias: añadir el archivo a `.gitignore` **no** destrackea uno ya versionado. `.idea/deploymentTargetSelector.xml` seguía en el índice de git. Ejecutado `git rm --cached .idea/deploymentTargetSelector.xml`; ahora sí está fuera del control de versiones (el archivo permanece en disco).
+- Punto 4 (`+ Comida`): confirmado con decisión de producto que se mantiene restaurado y convive con el botón de Plan IA. No es regresión a revertir.
+
+### Bug corregido: las imágenes de los posts no se subían a Firebase
+
+- **Problema:** `ProfileViewModel.publishPost()` escribía la URI **local** directamente en el documento de Firestore — `nutritionPhotoUri` en posts de nutrición y `workoutVideoUri` en posts de entreno. Una `content://` del picker o de la cámara solo es válida en el dispositivo que la creó; en el feed de cualquier otro usuario la imagen no carga. La imagen nunca llegaba a Firebase Storage.
+- **Fix:** `publishPost()` ahora sube el medio a Storage vía un helper `uploadPostMedia()` (`users/{uid}/posts/{ts}.{jpg|mp4}`, el mismo árbol que la media de workouts que sí funcionaba) y guarda la URL `https` de descarga. Si la subida falla, el post falla con error visible en vez de publicar una imagen rota — mismo criterio que el arreglo 1 de la foto de perfil.
+- Las fotos de workout (`workoutMediaUrls`) ya se subían bien desde `WorkoutFinishViewModel`; no se tocaron.
+- **Caveat:** los posts antiguos con `content://` ya guardado en Firestore son datos rotos históricos; el fix solo cubre publicaciones nuevas, no migra las viejas. Pendiente de confirmar en dispositivo que las reglas de Storage permiten escribir en `users/{uid}/posts/...` (no están en el repo, `firebase.json` está vacío).
+
+### Rediseño: vista de entreno en el detalle de post
+
+- **Contexto:** al abrir un entreno desde el perfil (pestaña Publicaciones → post de workout) se llega a `PostDetailScreen`. La lista de ejercicios era una fila apretada de una sola línea (`• Nombre  10 reps @ 60 kg · 10 reps @ 60 kg…`), poco legible.
+- **Cambio:** la rama de workout de `PostDetailScreen` ahora muestra una cabecera de sección `EJERCICIOS · N` (estilo de las cabeceras de Tracking: punto + texto en mayúsculas) y una tarjeta por ejercicio: badge numerado, nombre, pill de resumen y desglose serie a serie (partiendo `setBreakdown` por `" · "`). La tarjeta calca `NeonSurfaceContainerLow` de Tracking (`RoundedCornerShape(20)`, `SurfaceContainerLow` + borde `SurfaceContainerHigh`).
+- No se tocó `PostStatsCard` (la cabecera con foto/stats ya estaba bien) ni likes/comentarios/compartir. `DetailExerciseRow` se eliminó (era su único uso).
+- Posts antiguos sin `setBreakdown` guardado: muestran solo la pill de resumen, sin desglose por serie (no se reconstruye desde datos legacy).
+
+### Pendiente real detectado
+
+- No hay backend .NET dentro de este repo; Android solo tiene contrato/cliente `AiRepository` y espera `AI_API_BASE_URL`. Para producción falta asegurar despliegue HTTPS real del backend IA y configuración de `local.properties`/variables.
+- No hay `functions/` ni Cloud Functions actuales; la documentación vieja de FatSecret quedó obsoleta. La ruta vigente es Open Food Facts directo desde Android.
+- Falta probar en dispositivo real el flujo completo: cambiar foto de perfil, publicar workout con series heterogéneas, abrir detalle del post y aplicar plan IA a Tracking.
+
+---
+
 ## FatSecret + Cloud Functions: el agujero negro (29 abr – 4 may 2026) — DESCARTADO
 
 ### Decisión final

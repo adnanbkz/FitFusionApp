@@ -9,6 +9,7 @@ class ActiveWorkoutViewModel : ViewModel() {
 
     val session: StateFlow<ActiveWorkoutSession?> = ActiveWorkoutManager.session
     val elapsedSeconds: StateFlow<Long> = ActiveWorkoutManager.elapsedSeconds
+    val recordEvents = ActiveWorkoutManager.recordEvents
 
     fun pause()  = ActiveWorkoutManager.pause()
     fun resume() = ActiveWorkoutManager.resume()

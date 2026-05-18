@@ -180,6 +180,14 @@ object FeedRepository {
         }
     }
 
+    suspend fun getPostById(postId: String): FeedItem? = firestore.collection(POSTS_COLLECTION)
+        .document(postId)
+        .get()
+        .await()
+        .takeIf { it.exists() }
+        ?.toFeedItemOrNull()
+        ?.withPersistedInteractionState()
+
     private fun com.google.firebase.firestore.DocumentSnapshot.toFeedItemOrNull(): FeedItem? {
         val id = id
         val authorName = getString("authorName").orEmpty().ifBlank { "Usuario FitFusion" }
@@ -243,11 +251,25 @@ object FeedRepository {
             .orEmpty()
             .mapNotNull { raw ->
                 val map = raw as? Map<*, *> ?: return@mapNotNull null
+                val sets = (map["sets"] as? Number)?.toInt() ?: 0
+                val reps = (map["reps"] as? Number)?.toInt() ?: 0
+                val weightKg = (map["weightKg"] as? Number)?.toDouble() ?: 0.0
                 ExerciseItem(
                     name = (map["name"] as? String).orEmpty().ifBlank { return@mapNotNull null },
-                    sets = (map["sets"] as? Number)?.toInt() ?: 0,
-                    reps = (map["reps"] as? Number)?.toInt() ?: 0,
-                    weightKg = (map["weightKg"] as? Number)?.toDouble() ?: 0.0,
+                    sets = sets,
+                    reps = reps,
+                    weightKg = weightKg,
+                    summary = (map["summary"] as? String).orEmpty().ifBlank {
+                        if (reps > 0) {
+                            buildString {
+                                append("$sets series · $reps reps totales")
+                                if (weightKg > 0.0) append(" · ${weightKg.toInt()} kg")
+                            }
+                        } else {
+                            "$sets series"
+                        }
+                    },
+                    setBreakdown = (map["setBreakdown"] as? String).orEmpty(),
                 )
             }
 

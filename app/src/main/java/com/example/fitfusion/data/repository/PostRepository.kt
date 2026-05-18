@@ -88,11 +88,16 @@ object PostRepository {
             "workoutMediaUrls" to workoutMediaUrls,
             "workoutTotalWeightKg" to workoutTotalWeightKg,
             "workoutExercises" to workoutExercises.map { exercise ->
+                val firstSet = exercise.sets.firstOrNull()
+                val sameWeight = firstSet != null && exercise.sets.all { it.weightKg == firstSet.weightKg }
                 mapOf(
                     "name" to exercise.name,
                     "sets" to exercise.sets.size,
-                    "reps" to exercise.sets.sumOf { it.reps },
-                    "weightKg" to (exercise.sets.firstOrNull()?.weightKg?.toDouble() ?: 0.0),
+                    "reps" to (firstSet?.reps ?: 0),
+                    "totalReps" to exercise.totalReps,
+                    "weightKg" to if (sameWeight) firstSet?.weightKg?.toDouble() ?: 0.0 else 0.0,
+                    "summary" to exercise.summary,
+                    "setBreakdown" to exercise.setBreakdown,
                 )
             },
             "nutritionPhotoUri" to nutritionPhotoUri,

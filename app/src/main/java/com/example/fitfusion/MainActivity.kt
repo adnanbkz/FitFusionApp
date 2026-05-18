@@ -1,6 +1,8 @@
 package com.example.fitfusion
 
 import android.Manifest
+import android.content.Intent
+import android.net.Uri
 import android.os.Build
 import android.os.Bundle
 import androidx.activity.ComponentActivity
@@ -45,6 +47,9 @@ import com.google.firebase.FirebaseApp
 
 @OptIn(ExperimentalMaterial3Api::class)
 class MainActivity : ComponentActivity() {
+
+    private val deepLinkUri = mutableStateOf<Uri?>(null)
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
@@ -52,6 +57,7 @@ class MainActivity : ComponentActivity() {
         UserProfileStore.ensureInitialized(applicationContext)
         AppThemeStore.ensureInitialized(applicationContext)
         ActiveWorkoutManager.init(applicationContext)
+        deepLinkUri.value = intent?.data
         setContent {
             val themeMode by AppThemeStore.themeMode.collectAsState()
             FitFusionTheme(themeMode = themeMode) {
@@ -79,6 +85,17 @@ class MainActivity : ComponentActivity() {
                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
                     notificationLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
                 }
+            }
+
+            val deepLink by deepLinkUri
+            LaunchedEffect(deepLink) {
+                val uri = deepLink ?: return@LaunchedEffect
+                if (uri.scheme == "fitfusion" && uri.host == "post") {
+                    uri.lastPathSegment?.takeIf { it.isNotBlank() }?.let { postId ->
+                        navController.navigate("${Screens.PostDetailScreen.name}/$postId")
+                    }
+                }
+                deepLinkUri.value = null
             }
 
             Scaffold(
@@ -268,5 +285,11 @@ class MainActivity : ComponentActivity() {
             }
             } // FitFusionTheme
         }
+    }
+
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        setIntent(intent)
+        deepLinkUri.value = intent.data
     }
 }

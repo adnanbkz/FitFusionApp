@@ -185,7 +185,7 @@ fun PantallaHome(
                     onAuthorClick = { uid -> navController.navigate("${Screens.UserScreen.name}/$uid") },
                 )
                 1 -> PantallaTracking(navController = navController)
-                2 -> PantallaAddWorkout(navController = navController, isLogMode = true)
+                2 -> PantallaWorkout(navController = navController)
                 3 -> PantallaProfile(
                     navController = navController,
                     userName = userName,
@@ -511,8 +511,12 @@ private fun WorkoutPostCard(
     val isDark = colors.isDark
     val overlayTextColor = if (isDark) Color.White else colors.onSurface
     val overlaySubTextColor = if (isDark) Color.White.copy(alpha = 0.7f) else colors.onSurface.copy(alpha = 0.7f)
-    val overlayBadgeBg = if (isDark) Color.White.copy(alpha = 0.08f) else Color.Black.copy(alpha = 0.06f)
-    val gradientColors = listOf(Primary.copy(alpha = 0.9f), PrimaryContainer.copy(alpha = 0.75f), Primary)
+    val overlayBadgeBg = if (isDark) Color.White.copy(alpha = 0.08f) else Color.White.copy(alpha = 0.55f)
+    val gradientColors = if (isDark) {
+        listOf(Primary.copy(alpha = 0.9f), PrimaryContainer.copy(alpha = 0.75f), Primary)
+    } else {
+        listOf(SurfaceContainerLowest, Primary.copy(alpha = 0.18f), PrimaryContainer.copy(alpha = 0.35f))
+    }
     var showHeart by remember { mutableStateOf(false) }
     LaunchedEffect(showHeart) { if (showHeart) { delay(700); showHeart = false } }
 
@@ -643,7 +647,7 @@ private fun WorkoutPostCard(
                                 post.workoutName,
                                 fontSize = 26.sp,
                                 fontWeight = FontWeight.Black,
-                                color = Color.White,
+                                color = overlayTextColor,
                                 textAlign = TextAlign.Center,
                                 lineHeight = 30.sp,
                             )
@@ -687,14 +691,13 @@ private fun WorkoutPostCard(
                                             Text(
                                                 ex.name,
                                                 fontSize = 12.sp,
-                                                color = Color.White,
+                                                color = overlayTextColor,
                                                 modifier = Modifier.weight(1f),
                                                 maxLines = 1,
                                                 overflow = TextOverflow.Ellipsis,
                                             )
-                                            val detail = buildString {
-                                                if (ex.weightKg > 0) append("${ex.weightKg.toInt()} kg · ")
-                                                if (ex.reps > 0) append("${ex.sets}×${ex.reps}") else append("${ex.sets} series")
+                                            val detail = ex.summary.ifBlank {
+                                                if (ex.reps > 0) "${ex.sets}×${ex.reps}" else "${ex.sets} series"
                                             }
                                             Text(detail, fontSize = 11.sp, color = overlaySubTextColor)
                                         }
@@ -728,7 +731,11 @@ private fun WorkoutPostCard(
                 context.startActivity(
                     Intent(Intent.ACTION_SEND).apply {
                         type = "text/plain"
-                        putExtra(Intent.EXTRA_TEXT, "${post.author} compartió un entrenamiento: ${post.workoutName}")
+                        putExtra(
+                            Intent.EXTRA_TEXT,
+                            "${post.author} compartió un entrenamiento: ${post.workoutName}" +
+                                "\n\nÁbrelo en FitFusion: fitfusion://post/${post.id}",
+                        )
                     }.let { Intent.createChooser(it, "Compartir") }
                 )
             },
@@ -883,7 +890,11 @@ private fun NutritionPostCard(
                 context.startActivity(
                     Intent(Intent.ACTION_SEND).apply {
                         type = "text/plain"
-                        putExtra(Intent.EXTRA_TEXT, "${post.author} compartió una receta: ${post.title}")
+                        putExtra(
+                            Intent.EXTRA_TEXT,
+                            "${post.author} compartió una receta: ${post.title}" +
+                                "\n\nÁbrelo en FitFusion: fitfusion://post/${post.id}",
+                        )
                     }.let { Intent.createChooser(it, "Compartir") }
                 )
             },

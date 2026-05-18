@@ -16,6 +16,8 @@ data class ExerciseItem(
     val sets: Int,
     val reps: Int,
     val weightKg: Double = 0.0,
+    val summary: String = "",
+    val setBreakdown: String = "",
 )
 
 data class WorkoutPost(

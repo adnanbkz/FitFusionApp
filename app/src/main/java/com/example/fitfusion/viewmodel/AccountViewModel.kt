@@ -96,19 +96,19 @@ class AccountViewModel(
         viewModelScope.launch {
             _uiState.update { it.copy(isSaving = true, saveSuccess = false, errorMessage = null) }
             try {
-                var photoUrl = state.photoUrl.ifBlank { user.photoUrl?.toString() }
+                var photoUrl = state.photoUrl
+                    .takeUnless { it.isLocalPhotoUri() }
+                    .orEmpty()
+                    .ifBlank { user.photoUrl?.toString() }
                 val localUri = pendingPhotoUri
                 if (localUri != null) {
-                    try {
-                        val stream = getApplication<Application>().contentResolver.openInputStream(localUri)
-                        if (stream != null) {
-                            val ref = storage.reference
-                                .child("profile_photos/${user.uid}/${System.currentTimeMillis()}.jpg")
-                            ref.putStream(stream).await()
-                            photoUrl = ref.downloadUrl.await().toString()
-                            UserProfileStore.updatePhotoUri(getApplication(), Uri.parse(photoUrl))
-                        }
-                    } catch (_: Exception) { }
+                    val stream = getApplication<Application>().contentResolver.openInputStream(localUri)
+                        ?: throw IllegalStateException("No se pudo leer la imagen seleccionada")
+                    val ref = storage.reference
+                        .child("profile_photos/${user.uid}/${System.currentTimeMillis()}.jpg")
+                    stream.use { ref.putStream(it).await() }
+                    photoUrl = ref.downloadUrl.await().toString()
+                    UserProfileStore.updatePhotoUri(getApplication(), Uri.parse(photoUrl))
                     pendingPhotoUri = null
                 }
                 val profile = UserProfile(
@@ -198,4 +198,6 @@ class AccountViewModel(
             }
         }
     }
+
+    private fun String.isLocalPhotoUri(): Boolean = startsWith("content:") || startsWith("file:")
 }

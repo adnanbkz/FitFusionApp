@@ -13,8 +13,11 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
@@ -56,6 +59,13 @@ data class ActiveWorkoutSession(
     val totalSets: Int get() = exercises.sumOf { it.sets.size }
 }
 
+/** Se emite cuando una serie completada supera en volumen (peso × reps) la mejor serie previa de ese ejercicio. */
+data class SetRecordEvent(
+    val exerciseName: String,
+    val volumeKg: Float,
+    val previousBestKg: Float,
+)
+
 object ActiveWorkoutManager {
 
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
@@ -71,6 +81,12 @@ object ActiveWorkoutManager {
     private val _uploadingWorkoutIds = MutableStateFlow<Set<String>>(emptySet())
     val uploadingWorkoutIds: StateFlow<Set<String>> = _uploadingWorkoutIds.asStateFlow()
 
+    private val _recordEvents = MutableSharedFlow<SetRecordEvent>(extraBufferCapacity = 4)
+    val recordEvents: SharedFlow<SetRecordEvent> = _recordEvents.asSharedFlow()
+
+    /** Claves "docId#setIndex" de series que ya dispararon la campanita en esta sesión. */
+    private val celebratedSetKeys = mutableSetOf<String>()
+
     val isActive: Boolean get() = _session.value != null
 
     fun init(context: Context) {
@@ -82,6 +98,7 @@ object ActiveWorkoutManager {
         exercises: List<ExerciseCatalogItem>,
     ) {
         if (_session.value != null) return
+        celebratedSetKeys.clear()
         val now = System.currentTimeMillis()
         val resolvedName = name.ifBlank { buildAutoName(exercises) }
         _session.value = ActiveWorkoutSession(
@@ -178,7 +195,12 @@ object ActiveWorkoutManager {
     }
 
     fun toggleSetCompleted(exerciseDocumentId: String, setIndex: Int) {
-        updateSet(exerciseDocumentId, setIndex) { it.copy(completed = !it.completed) }
+        val exercise = _session.value?.exercises
+            ?.firstOrNull { it.exerciseDocumentId == exerciseDocumentId } ?: return
+        val set = exercise.sets.getOrNull(setIndex) ?: return
+        val willComplete = !set.completed
+        updateSet(exerciseDocumentId, setIndex) { it.copy(completed = willComplete) }
+        if (willComplete) checkSetRecord(exercise, setIndex, set)
     }
 
     private fun updateSet(
@@ -196,6 +218,49 @@ object ActiveWorkoutManager {
             }) }
         }
     }
+
+    private fun checkSetRecord(exercise: ActiveExerciseEntry, setIndex: Int, set: ActiveSetEntry) {
+        val volume = (set.reps * set.weightKg).toFloat()
+        if (volume <= 0f) return
+        val key = "${exercise.exerciseDocumentId}#$setIndex"
+        if (key in celebratedSetKeys) return
+        val previousBest = bestPriorSetVolume(exercise, excludeSetIndex = setIndex)
+        if (previousBest <= 0f || volume <= previousBest) return
+        celebratedSetKeys += key
+        _recordEvents.tryEmit(
+            SetRecordEvent(
+                exerciseName   = exercise.name,
+                volumeKg       = volume,
+                previousBestKg = previousBest,
+            )
+        )
+    }
+
+    /**
+     * Mejor volumen de serie (peso × reps) del ejercicio: histórico de [WorkoutRepository]
+     * más las series ya completadas de la sesión en curso.
+     */
+    private fun bestPriorSetVolume(exercise: ActiveExerciseEntry, excludeSetIndex: Int): Float {
+        val historicalBest = WorkoutRepository.workouts.value.values
+            .flatten()
+            .flatMap { it.exercises }
+            .filter { it.matchesActiveExercise(exercise) }
+            .flatMap { it.sets }
+            .maxOfOrNull { it.reps * it.weightKg } ?: 0f
+
+        val sessionBest = _session.value?.exercises
+            ?.firstOrNull { it.exerciseDocumentId == exercise.exerciseDocumentId }
+            ?.sets
+            ?.filterIndexed { idx, s -> idx != excludeSetIndex && s.completed }
+            ?.maxOfOrNull { (it.reps * it.weightKg).toFloat() }
+            ?: 0f
+
+        return maxOf(historicalBest, sessionBest)
+    }
+
+    private fun WorkoutExercise.matchesActiveExercise(active: ActiveExerciseEntry): Boolean =
+        exerciseDocumentId == active.exerciseDocumentId ||
+            (exerciseDocumentId == null && name.equals(active.name, ignoreCase = true))
 
     suspend fun finishSession(
         title: String,
@@ -253,6 +318,7 @@ object ActiveWorkoutManager {
         tickerJob = null
         _session.value = null
         _elapsedSeconds.value = 0L
+        celebratedSetKeys.clear()
         appContext?.let { WorkoutForegroundService.stop(it) }
     }
 

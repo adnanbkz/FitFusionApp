@@ -15,12 +15,15 @@ import com.example.fitfusion.data.repository.UserRepository
 import com.example.fitfusion.data.repository.WorkoutRepository
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.ListenerRegistration
+import com.google.firebase.storage.FirebaseStorage
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
-import java.lang.Exception
+import kotlinx.coroutines.tasks.await
+import kotlinx.coroutines.withContext
 import java.time.DayOfWeek
 import java.time.LocalDate
 import java.time.temporal.TemporalAdjusters
@@ -107,15 +110,11 @@ class ProfileViewModel(application: Application) : AndroidViewModel(application)
 
     private val prefs = application.getSharedPreferences(PREFS_NAME, android.content.Context.MODE_PRIVATE)
     private val auth = FirebaseAuth.getInstance()
+    private val storage = FirebaseStorage.getInstance()
     private val userRepository = UserRepository()
     private var profileListenerRegistration: ListenerRegistration? = null
 
     private var workoutsByDay: Map<LocalDate, List<LoggedWorkout>> = emptyMap()
-
-    init {
-        UserProfileStore.ensureInitialized(application)
-        attachUserProfileListener()
-    }
 
     private val _uiState = MutableStateFlow(ProfileUiState(
         profilePhotoUri = prefs.getString(KEY_PHOTO_URI, null)?.let { Uri.parse(it) },
@@ -161,6 +160,9 @@ class ProfileViewModel(application: Application) : AndroidViewModel(application)
     }
 
     init {
+        UserProfileStore.ensureInitialized(application)
+        attachUserProfileListener()
+
         viewModelScope.launch {
             WorkoutRepository.workouts.collect { workoutMap ->
                 val today     = LocalDate.now()
@@ -372,36 +374,44 @@ class ProfileViewModel(application: Application) : AndroidViewModel(application)
         val state = _uiState.value
         if (!state.canPublish || state.isPublishingPost) return
 
-        val post = when (state.createPostType) {
-            UserPostType.WORKOUT -> {
-                val w = state.selectedWorkout ?: return
-                UserPost(
-                    type                   = UserPostType.WORKOUT,
-                    caption                = state.postCaption.ifBlank { w.name },
-                    workoutName            = w.name,
-                    workoutDurationMinutes = w.durationMinutes,
-                    workoutKcal            = w.kcalBurned,
-                    workoutVideoUri        = state.capturedVideoUri?.toString(),
-                    workoutMediaUrls       = w.mediaUrls,
-                    workoutTotalWeightKg   = w.totalVolumeKg,
-                    workoutExercises        = w.exercises,
-                )
-            }
-            UserPostType.NUTRITION -> UserPost(
-                type                    = UserPostType.NUTRITION,
-                caption                 = state.nutritionTitle,
-                nutritionPhotoUri       = state.nutritionPhotoUri?.toString(),
-                nutritionKcal           = state.nutritionKcal.toIntOrNull(),
-                nutritionIngredients    = state.nutritionIngredients.ifBlank { null },
-                nutritionInstructions   = state.nutritionInstructions.ifBlank { null },
-                nutritionCookTimeMinutes = state.nutritionCookTime.toIntOrNull(),
-                nutritionBestMoment     = state.nutritionBestMoment.ifBlank { null },
-            )
-        }
-
         viewModelScope.launch {
             _uiState.update { it.copy(isPublishingPost = true, createPostErrorMessage = null) }
             try {
+                val uid = auth.currentUser?.uid
+                    ?: throw IllegalStateException("Inicia sesión para publicar.")
+
+                val post = when (state.createPostType) {
+                    UserPostType.WORKOUT -> {
+                        val w = state.selectedWorkout
+                            ?: throw IllegalStateException("Selecciona un entrenamiento.")
+                        val videoUrl = state.capturedVideoUri?.let { uploadPostMedia(it, uid, isVideo = true) }
+                        UserPost(
+                            type                   = UserPostType.WORKOUT,
+                            caption                = state.postCaption.ifBlank { w.name },
+                            workoutName            = w.name,
+                            workoutDurationMinutes = w.durationMinutes,
+                            workoutKcal            = w.kcalBurned,
+                            workoutVideoUri        = videoUrl,
+                            workoutMediaUrls       = w.mediaUrls,
+                            workoutTotalWeightKg   = w.totalVolumeKg,
+                            workoutExercises       = w.exercises,
+                        )
+                    }
+                    UserPostType.NUTRITION -> {
+                        val photoUrl = state.nutritionPhotoUri?.let { uploadPostMedia(it, uid, isVideo = false) }
+                        UserPost(
+                            type                     = UserPostType.NUTRITION,
+                            caption                  = state.nutritionTitle,
+                            nutritionPhotoUri        = photoUrl,
+                            nutritionKcal            = state.nutritionKcal.toIntOrNull(),
+                            nutritionIngredients     = state.nutritionIngredients.ifBlank { null },
+                            nutritionInstructions    = state.nutritionInstructions.ifBlank { null },
+                            nutritionCookTimeMinutes = state.nutritionCookTime.toIntOrNull(),
+                            nutritionBestMoment      = state.nutritionBestMoment.ifBlank { null },
+                        )
+                    }
+                }
+
                 PostRepository.addPost(post, authorName = state.displayName)
                 dismissCreatePost()
             } catch (exception: Exception) {
@@ -414,6 +424,22 @@ class ProfileViewModel(application: Application) : AndroidViewModel(application)
             }
         }
     }
+
+    /**
+     * Sube una imagen/vídeo local (content:// del picker o file:// de la cámara) a
+     * Firebase Storage y devuelve la URL de descarga remota. Los posts deben guardar
+     * URLs https, nunca URIs locales: una URI local no es accesible desde otros
+     * dispositivos. El llamante indica el tipo con [isVideo]; no se infiere del MIME
+     * porque las URIs file:// de la cámara no lo resuelven de forma fiable.
+     */
+    private suspend fun uploadPostMedia(uri: Uri, uid: String, isVideo: Boolean): String =
+        withContext(Dispatchers.IO) {
+            val ext = if (isVideo) "mp4" else "jpg"
+            val ref = storage.reference
+                .child("users/$uid/posts/${System.currentTimeMillis()}.$ext")
+            ref.putFile(uri).await()
+            ref.downloadUrl.await().toString()
+        }
 
     private fun minutesPerDay(
         map: Map<LocalDate, List<LoggedWorkout>>,
