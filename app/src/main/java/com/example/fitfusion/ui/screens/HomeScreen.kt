@@ -106,6 +106,7 @@ import com.example.fitfusion.viewmodel.HomeViewModel
 import com.example.fitfusion.viewmodel.NutritionPost
 import com.example.fitfusion.viewmodel.ProfileViewModel
 import com.example.fitfusion.viewmodel.WorkoutPost
+import com.google.firebase.auth.FirebaseAuth
 import java.time.LocalTime
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -182,7 +183,14 @@ fun PantallaHome(
                     onFilterSelect = homeViewModel::setFilter,
                     onSaveClick = homeViewModel::toggleSave,
                     onSearchClick = { navController.navigate(Screens.UserSearchScreen.name) },
-                    onAuthorClick = { uid -> navController.navigate("${Screens.UserScreen.name}/$uid") },
+                    onAuthorClick = { uid ->
+                        if (uid == FirebaseAuth.getInstance().currentUser?.uid) {
+                            selectedTab = 3
+                            scope.launch { pagerState.animateScrollToPage(3) }
+                        } else {
+                            navController.navigate("${Screens.UserScreen.name}/$uid")
+                        }
+                    },
                 )
                 1 -> PantallaTracking(navController = navController)
                 2 -> PantallaWorkout(navController = navController)

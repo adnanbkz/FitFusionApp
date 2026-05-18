@@ -364,7 +364,7 @@ private fun UserFitnessSummary(
         }
         goalType?.takeIf { it.isNotBlank() }?.let { add(it to "OBJETIVO") }
         activityLevel?.takeIf { it.isNotBlank() }?.let { add(it to "ACTIVIDAD") }
-    }.take(3)
+    }.take(4)
     if (items.isEmpty()) return
 
     Row(

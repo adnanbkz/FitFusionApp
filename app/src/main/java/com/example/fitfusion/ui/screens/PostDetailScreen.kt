@@ -50,6 +50,7 @@ import com.example.fitfusion.ui.components.CommentsBottomSheet
 import com.example.fitfusion.ui.theme.*
 import com.example.fitfusion.viewmodel.ExerciseItem
 import com.example.fitfusion.viewmodel.PostDetailViewModel
+import com.google.firebase.auth.FirebaseAuth
 import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class)
@@ -150,7 +151,11 @@ fun PantallaPostDetail(
                         .clip(CircleShape)
                         .background(SurfaceContainerHigh)
                         .clickable(enabled = state.authorId.isNotBlank()) {
-                            navController.navigate("${Screens.UserScreen.name}/${state.authorId}")
+                            if (state.authorId == FirebaseAuth.getInstance().currentUser?.uid) {
+                                navController.navigate(Screens.ProfileScreen.name)
+                            } else {
+                                navController.navigate("${Screens.UserScreen.name}/${state.authorId}")
+                            }
                         },
                     contentAlignment = Alignment.Center,
                 ) {

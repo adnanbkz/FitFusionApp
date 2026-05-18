@@ -47,8 +47,7 @@ fun PantallaAccount(
 
     LaunchedEffect(state.saveSuccess) {
         if (state.saveSuccess) {
-            snackbarHostState.showSnackbar("Cambios guardados correctamente")
-            accountViewModel.clearError()
+            navController.popBackStack()
         }
     }
     LaunchedEffect(state.errorMessage) {

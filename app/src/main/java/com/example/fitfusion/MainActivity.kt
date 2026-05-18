@@ -163,6 +163,13 @@ class MainActivity : ComponentActivity() {
                             )
                         }
 
+                        composable(Screens.ProfileScreen.name) {
+                            PantallaProfile(
+                                navController = navController,
+                                userName = loggedUser,
+                            )
+                        }
+
                         composable(Screens.SettingsScreen.name) {
                             PantallaSettings(
                                 navController = navController,
