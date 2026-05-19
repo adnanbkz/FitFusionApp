@@ -30,6 +30,14 @@ data class UserProfile(
     val showActivity: Boolean = true,
 )
 
+/** Objetivo diario de calorías y macros fijado manualmente por el usuario. */
+data class MacroGoals(
+    val kcal: Int,
+    val protein: Int,
+    val carbs: Int,
+    val fats: Int,
+)
+
 class UserRepository(
     private val firestore: FirebaseFirestore = FirebaseFirestore.getInstance(),
 ) {
@@ -208,6 +216,37 @@ class UserRepository(
         firestore.collection("users")
             .document(uid)
             .set(data, SetOptions.merge())
+            .await()
+    }
+
+    /**
+     * Objetivo de macros fijado a mano por el usuario ("Editar Macros"). Si existe
+     * tiene prioridad sobre el cálculo de la IA. Devuelve null si nunca se guardó.
+     */
+    suspend fun getMacroGoals(uid: String): MacroGoals? {
+        val snapshot = firestore.collection("users").document(uid).get().await()
+        val kcal = snapshot.getLong("macroGoalKcal")?.toInt() ?: return null
+        return MacroGoals(
+            kcal    = kcal,
+            protein = snapshot.getLong("macroGoalProtein")?.toInt() ?: 0,
+            carbs   = snapshot.getLong("macroGoalCarbs")?.toInt() ?: 0,
+            fats    = snapshot.getLong("macroGoalFats")?.toInt() ?: 0,
+        )
+    }
+
+    suspend fun saveMacroGoals(uid: String, goals: MacroGoals) {
+        firestore.collection("users")
+            .document(uid)
+            .set(
+                mapOf(
+                    "macroGoalKcal"    to goals.kcal,
+                    "macroGoalProtein" to goals.protein,
+                    "macroGoalCarbs"   to goals.carbs,
+                    "macroGoalFats"    to goals.fats,
+                    "updatedAt"        to FieldValue.serverTimestamp(),
+                ),
+                SetOptions.merge(),
+            )
             .await()
     }
 

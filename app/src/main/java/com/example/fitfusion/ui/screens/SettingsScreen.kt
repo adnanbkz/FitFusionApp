@@ -34,6 +34,7 @@ import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Email
 import androidx.compose.material.icons.filled.Lock
+import androidx.compose.material.icons.filled.MonitorHeart
 import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Refresh
@@ -330,7 +331,7 @@ fun PantallaSettings(
         ) {
             Column {
                 SettingsToggleRow(
-                    iconPainter = R.drawable.ic_tracking,
+                    icon = Icons.Default.MonitorHeart,
                     title = "Sincronización Health Connect",
                     subtitle = when (state.hcStatus) {
                         HealthConnectStatus.AVAILABLE -> "Lee pasos y frecuencia cardíaca"

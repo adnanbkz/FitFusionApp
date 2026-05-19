@@ -247,6 +247,15 @@ class ProfileViewModel(application: Application) : AndroidViewModel(application)
                         displayName = profile.displayName,
                         handle = profile.username,
                         bio = profile.bio.ifBlank { "Edita tu perfil para contar tus objetivos y progreso." },
+                        // La foto se guarda como URL https en el doc de usuario
+                        // (la sube el onboarding o la pantalla de Cuenta). Antes
+                        // este listener la ignoraba y solo se usaba la URI local
+                        // de SharedPreferences, así que la foto del onboarding no
+                        // aparecía nunca. Si Firestore tiene photoUrl, mandа esa.
+                        profilePhotoUri = profile.photoUrl
+                            ?.takeIf { url -> url.isNotBlank() }
+                            ?.let { url -> Uri.parse(url) }
+                            ?: it.profilePhotoUri,
                         heightCm = profile.heightCm,
                         weightKg = profile.weightKg,
                         goalType = profile.goalType,

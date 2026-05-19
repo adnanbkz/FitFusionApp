@@ -1,15 +1,10 @@
 package com.example.fitfusion.ui.components
 
-import androidx.activity.compose.rememberLauncherForActivityResult
-import androidx.activity.result.PickVisualMediaRequest
-import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.ExperimentalLayoutApi
-import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -25,20 +20,15 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.CameraAlt
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.FitnessCenter
 import androidx.compose.material.icons.filled.PlayArrow
-import androidx.compose.material.icons.filled.Restaurant
 import androidx.compose.material3.BottomSheetDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.FilterChip
-import androidx.compose.material3.FilterChipDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedTextField
@@ -54,13 +44,11 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil3.compose.AsyncImage
-import com.example.fitfusion.data.models.UserPostType
 import com.example.fitfusion.ui.theme.GreenGradientBrush
 import com.example.fitfusion.ui.theme.OnSurface
 import com.example.fitfusion.ui.theme.OnSurfaceVariant
@@ -132,50 +120,12 @@ private fun CreatePostSheetContent(
             )
         }
 
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .clip(RoundedCornerShape(14.dp))
-                .background(SurfaceContainerLow)
-                .padding(4.dp),
-            horizontalArrangement = Arrangement.spacedBy(4.dp)
-        ) {
-            listOf(
-                Triple(UserPostType.WORKOUT, "Entreno", Icons.Default.FitnessCenter),
-                Triple(UserPostType.NUTRITION, "Nutrición", Icons.Default.Restaurant),
-            ).forEach { (type, label, icon) ->
-                val isSelected = state.createPostType == type
-                Row(
-                    modifier = Modifier
-                        .weight(1f)
-                        .clip(RoundedCornerShape(12.dp))
-                        .background(if (isSelected) SurfaceContainerLowest else Color.Transparent)
-                        .clickable { viewModel.setCreatePostType(type) }
-                        .padding(vertical = 10.dp),
-                    horizontalArrangement = Arrangement.Center,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Icon(
-                        icon,
-                        contentDescription = null,
-                        modifier = Modifier.size(16.dp),
-                        tint = if (isSelected) Primary else OnSurfaceVariant
-                    )
-                    Spacer(Modifier.width(6.dp))
-                    Text(
-                        label,
-                        fontSize   = 14.sp,
-                        fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
-                        color      = if (isSelected) OnSurface else OnSurfaceVariant
-                    )
-                }
-            }
-        }
-
-        when (state.createPostType) {
-            UserPostType.WORKOUT   -> WorkoutPostForm(state = state, viewModel = viewModel, onAddWorkout = onAddWorkout, onEditAndPublish = onEditAndPublish)
-            UserPostType.NUTRITION -> NutritionPostForm(state = state, viewModel = viewModel)
-        }
+        WorkoutPostForm(
+            state = state,
+            viewModel = viewModel,
+            onAddWorkout = onAddWorkout,
+            onEditAndPublish = onEditAndPublish,
+        )
 
         state.createPostErrorMessage?.let { message ->
             Text(
@@ -363,145 +313,6 @@ private fun WorkoutPostForm(
                 focusedBorderColor      = Primary,
             )
         )
-    }
-}
-
-@OptIn(ExperimentalLayoutApi::class)
-@Composable
-private fun NutritionPostForm(
-    state: ProfileUiState,
-    viewModel: ProfileViewModel,
-) {
-    val photoLauncher = rememberLauncherForActivityResult(
-        contract = ActivityResultContracts.PickVisualMedia()
-    ) { uri -> uri?.let { viewModel.onNutritionPhotoChange(it) } }
-
-    val fieldColors = OutlinedTextFieldDefaults.colors(
-        unfocusedContainerColor = SurfaceContainerLow,
-        focusedContainerColor   = SurfaceContainerLow,
-        unfocusedBorderColor    = Color.Transparent,
-        focusedBorderColor      = Primary,
-    )
-
-    Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-
-        Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(160.dp)
-                .clip(RoundedCornerShape(14.dp))
-                .background(SurfaceContainerLow)
-                .clickable {
-                    photoLauncher.launch(
-                        PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)
-                    )
-                },
-            contentAlignment = Alignment.Center
-        ) {
-            if (state.nutritionPhotoUri != null) {
-                AsyncImage(
-                    model            = state.nutritionPhotoUri,
-                    contentDescription = null,
-                    contentScale     = ContentScale.Crop,
-                    modifier         = Modifier.fillMaxSize()
-                )
-            } else {
-                Column(
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                    verticalArrangement = Arrangement.spacedBy(6.dp)
-                ) {
-                    Icon(
-                        Icons.Default.CameraAlt,
-                        contentDescription = null,
-                        tint     = OnSurfaceVariant,
-                        modifier = Modifier.size(32.dp)
-                    )
-                    Text("Añadir foto de la receta", fontSize = 13.sp, color = OnSurfaceVariant)
-                }
-            }
-        }
-
-        OutlinedTextField(
-            value         = state.nutritionTitle,
-            onValueChange = viewModel::onNutritionTitleChange,
-            placeholder   = { Text("Nombre de la receta *", color = OnSurfaceVariant, fontSize = 14.sp) },
-            singleLine    = true,
-            modifier      = Modifier.fillMaxWidth(),
-            shape         = RoundedCornerShape(12.dp),
-            colors        = fieldColors,
-        )
-
-        OutlinedTextField(
-            value         = state.nutritionIngredients,
-            onValueChange = viewModel::onNutritionIngredientsChange,
-            placeholder   = { Text("Ingredientes (ej: 200g arroz, 1 pechuga...)", color = OnSurfaceVariant, fontSize = 14.sp) },
-            label         = { Text("Ingredientes", fontSize = 12.sp) },
-            minLines      = 3,
-            maxLines      = 5,
-            modifier      = Modifier.fillMaxWidth(),
-            shape         = RoundedCornerShape(12.dp),
-            colors        = fieldColors,
-        )
-
-        OutlinedTextField(
-            value         = state.nutritionInstructions,
-            onValueChange = viewModel::onNutritionInstructionsChange,
-            placeholder   = { Text("Pasos de preparación...", color = OnSurfaceVariant, fontSize = 14.sp) },
-            label         = { Text("Instrucciones", fontSize = 12.sp) },
-            minLines      = 3,
-            maxLines      = 6,
-            modifier      = Modifier.fillMaxWidth(),
-            shape         = RoundedCornerShape(12.dp),
-            colors        = fieldColors,
-        )
-
-        Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-            OutlinedTextField(
-                value           = state.nutritionCookTime,
-                onValueChange   = viewModel::onNutritionCookTimeChange,
-                placeholder     = { Text("Tiempo (min)", color = OnSurfaceVariant, fontSize = 13.sp) },
-                singleLine      = true,
-                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                modifier        = Modifier.weight(1f),
-                shape           = RoundedCornerShape(12.dp),
-                colors          = fieldColors,
-            )
-            OutlinedTextField(
-                value           = state.nutritionKcal,
-                onValueChange   = viewModel::onNutritionKcalChange,
-                placeholder     = { Text("Kcal totales", color = OnSurfaceVariant, fontSize = 13.sp) },
-                singleLine      = true,
-                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                modifier        = Modifier.weight(1f),
-                shape           = RoundedCornerShape(12.dp),
-                colors          = fieldColors,
-            )
-        }
-
-        Text(
-            "Mejor momento para comer",
-            fontSize   = 12.sp,
-            fontWeight = FontWeight.SemiBold,
-            color      = OnSurfaceVariant,
-        )
-        FlowRow(
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
-            verticalArrangement   = Arrangement.spacedBy(8.dp),
-        ) {
-            listOf("Desayuno", "Pre-entreno", "Post-entreno", "Almuerzo", "Cena", "Snack").forEach { moment ->
-                val selected = state.nutritionBestMoment == moment
-                FilterChip(
-                    selected = selected,
-                    onClick  = { viewModel.onNutritionBestMomentChange(if (selected) "" else moment) },
-                    label    = { Text(moment, fontSize = 12.sp) },
-                    shape    = RoundedCornerShape(20.dp),
-                    colors   = FilterChipDefaults.filterChipColors(
-                        selectedContainerColor = Primary.copy(alpha = 0.15f),
-                        selectedLabelColor     = Primary,
-                    )
-                )
-            }
-        }
     }
 }
 

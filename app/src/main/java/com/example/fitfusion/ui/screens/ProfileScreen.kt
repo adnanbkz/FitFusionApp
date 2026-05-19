@@ -218,6 +218,10 @@ fun PantallaProfile(
                     weightKg      = state.weightKg,
                     goalType      = state.goalType,
                     activityLevel = state.activityLevel,
+                    showHeight    = state.showHeight,
+                    showWeight    = state.showWeight,
+                    showGoal      = state.showGoal,
+                    showActivity  = state.showActivity,
                     onEditVisibility = { showVisibilitySheet = true },
                 )
 
@@ -365,18 +369,28 @@ private fun ProfileFitnessSummary(
     weightKg: Float?,
     goalType: String?,
     activityLevel: String?,
+    showHeight: Boolean,
+    showWeight: Boolean,
+    showGoal: Boolean,
+    showActivity: Boolean,
     onEditVisibility: () -> Unit,
 ) {
+    // Cada dato se muestra solo si su switch de visibilidad está activo, igual
+    // que en el perfil que ven los demás (UserFitnessSummary).
     val items = buildList {
-        heightCm?.let { add("${it} cm" to "ALTURA") }
-        weightKg?.let { weight ->
+        if (showHeight) heightCm?.let { add("${it} cm" to "ALTURA") }
+        if (showWeight) weightKg?.let { weight ->
             val formatted = if (weight % 1f == 0f) weight.toInt().toString() else "%.1f".format(Locale.US, weight)
             add("$formatted kg" to "PESO")
         }
-        goalType?.takeIf { it.isNotBlank() }?.let { add(it to "OBJETIVO") }
-        activityLevel?.takeIf { it.isNotBlank() }?.let { add(it to "ACTIVIDAD") }
+        if (showGoal) goalType?.takeIf { it.isNotBlank() }?.let { add(it to "OBJETIVO") }
+        if (showActivity) activityLevel?.takeIf { it.isNotBlank() }?.let { add(it to "ACTIVIDAD") }
     }.take(4)
-    if (items.isEmpty()) return
+    // Si no hay ningún dato registrado, no mostramos la sección. Pero si los hay
+    // y están todos ocultos, seguimos mostrando la cabecera para poder reactivarlos.
+    val hasAnyData = heightCm != null || weightKg != null ||
+        !goalType.isNullOrBlank() || !activityLevel.isNullOrBlank()
+    if (!hasAnyData) return
 
     Column(
         modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp),
@@ -404,18 +418,25 @@ private fun ProfileFitnessSummary(
                 Text("Visibilidad", fontSize = 11.sp, fontWeight = FontWeight.SemiBold, color = Primary)
             }
         }
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
-        ) {
-            items.forEach { (value, label) ->
-                val chipColor = when (label) {
-                    "ALTURA"    -> Color(0xFF4A90D9)
-                    "PESO"      -> Color(0xFFE0844A)
-                    "OBJETIVO"  -> Primary
-                    else        -> Tertiary
+        if (items.isEmpty()) {
+            Text(
+                "Todos tus datos fitness están ocultos para otros usuarios.",
+                fontSize = 12.sp, color = OnSurfaceVariant,
+            )
+        } else {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                items.forEach { (value, label) ->
+                    val chipColor = when (label) {
+                        "ALTURA"    -> Color(0xFF4A90D9)
+                        "PESO"      -> Color(0xFFE0844A)
+                        "OBJETIVO"  -> Primary
+                        else        -> Tertiary
+                    }
+                    StatChip(value = value, label = label, color = chipColor, modifier = Modifier.weight(1f))
                 }
-                StatChip(value = value, label = label, color = chipColor, modifier = Modifier.weight(1f))
             }
         }
     }

@@ -12,6 +12,7 @@ import com.example.fitfusion.data.repository.DailySummary
 import com.example.fitfusion.data.repository.DailySummaryRepository
 import com.example.fitfusion.data.repository.FoodRepository
 import com.example.fitfusion.data.repository.HealthRepository
+import com.example.fitfusion.data.repository.MacroGoals
 import com.example.fitfusion.data.repository.UserRepository
 import com.example.fitfusion.data.repository.WorkoutRepository
 import com.google.firebase.auth.FirebaseAuth
@@ -140,6 +141,20 @@ class TrackingViewModel : ViewModel() {
     private fun loadCalorieGoal() {
         val uid = FirebaseAuth.getInstance().currentUser?.uid ?: return
         viewModelScope.launch {
+            // Si el usuario fijó sus macros a mano ("Editar Macros"), esos mandan:
+            // no llamamos a la IA para no sobrescribir su elección.
+            val manualGoals = runCatching { userRepository.getMacroGoals(uid) }.getOrNull()
+            if (manualGoals != null) {
+                _uiState.update {
+                    it.copy(
+                        kcalGoal    = manualGoals.kcal,
+                        proteinGoal = manualGoals.protein,
+                        carbsGoal   = manualGoals.carbs,
+                        fatsGoal    = manualGoals.fats,
+                    )
+                }
+                return@launch
+            }
             val profile = runCatching { userRepository.getUserProfile(uid) }.getOrNull() ?: return@launch
             val heightCm = profile.heightCm ?: return@launch
             val weightKg = profile.weightKg ?: return@launch
@@ -161,6 +176,32 @@ class TrackingViewModel : ViewModel() {
                     fatsGoal    = goal.fatG,
                 )
             }
+        }
+    }
+
+    /**
+     * Guarda el objetivo de macros editado a mano y lo persiste en el perfil para
+     * que sobreviva a reinicios y tenga prioridad sobre el cálculo de la IA.
+     */
+    fun saveMacroGoals(kcal: Int, protein: Int, carbs: Int, fats: Int) {
+        // kcalGoal nunca puede ser 0: netProgress divide por él.
+        val goals = MacroGoals(
+            kcal    = kcal.coerceIn(1, 20000),
+            protein = protein.coerceIn(0, 2000),
+            carbs   = carbs.coerceIn(0, 2000),
+            fats    = fats.coerceIn(0, 2000),
+        )
+        _uiState.update {
+            it.copy(
+                kcalGoal    = goals.kcal,
+                proteinGoal = goals.protein,
+                carbsGoal   = goals.carbs,
+                fatsGoal    = goals.fats,
+            )
+        }
+        val uid = FirebaseAuth.getInstance().currentUser?.uid ?: return
+        viewModelScope.launch {
+            runCatching { userRepository.saveMacroGoals(uid, goals) }
         }
     }
 

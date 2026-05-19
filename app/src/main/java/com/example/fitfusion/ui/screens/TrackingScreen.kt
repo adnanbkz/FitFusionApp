@@ -14,6 +14,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Close
@@ -35,6 +36,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -75,6 +77,7 @@ fun PantallaTracking(
 ) {
     val state by trackingViewModel.uiState.collectAsState()
     var showDatePicker by remember { mutableStateOf(false) }
+    var showEditMacrosDialog by remember { mutableStateOf(false) }
 
     LazyColumn(
         modifier = Modifier
@@ -105,6 +108,28 @@ fun PantallaTracking(
                         "Seguimiento",
                         fontSize = 22.sp, fontWeight = FontWeight.Black, color = OnSurface
                     )
+                    Row(
+                        modifier = Modifier
+                            .padding(top = 8.dp)
+                            .clip(RoundedCornerShape(10.dp))
+                            .background(SurfaceContainerLow)
+                            .border(1.dp, SurfaceContainerHigh, RoundedCornerShape(10.dp))
+                            .clickable { showEditMacrosDialog = true }
+                            .padding(horizontal = 12.dp, vertical = 7.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(6.dp),
+                    ) {
+                        Icon(
+                            Icons.Default.Edit,
+                            contentDescription = null,
+                            tint = Primary,
+                            modifier = Modifier.size(14.dp),
+                        )
+                        Text(
+                            "Editar Macros",
+                            fontSize = 12.sp, fontWeight = FontWeight.SemiBold, color = Primary,
+                        )
+                    }
                 }
                 Column(
                     horizontalAlignment = Alignment.End,
@@ -354,6 +379,20 @@ fun PantallaTracking(
             onNameChange = trackingViewModel::onRenameMealNameChange,
             onConfirm    = trackingViewModel::confirmRenameMeal,
             onDismiss    = trackingViewModel::dismissRenameMealDialog
+        )
+    }
+
+    if (showEditMacrosDialog) {
+        EditMacrosDialog(
+            initialKcal    = state.kcalGoal,
+            initialProtein = state.proteinGoal,
+            initialCarbs   = state.carbsGoal,
+            initialFats    = state.fatsGoal,
+            onSave         = { kcal, protein, carbs, fats ->
+                trackingViewModel.saveMacroGoals(kcal, protein, carbs, fats)
+                showEditMacrosDialog = false
+            },
+            onDismiss      = { showEditMacrosDialog = false },
         )
     }
 
@@ -807,5 +846,78 @@ private fun RenameMealDialog(name: String, onNameChange: (String) -> Unit, onCon
         dismissButton = {
             TextButton(onClick = onDismiss) { Text("Cancelar", color = OnSurfaceVariant) }
         }
+    )
+}
+
+@Composable
+private fun EditMacrosDialog(
+    initialKcal: Int,
+    initialProtein: Int,
+    initialCarbs: Int,
+    initialFats: Int,
+    onSave: (kcal: Int, protein: Int, carbs: Int, fats: Int) -> Unit,
+    onDismiss: () -> Unit,
+) {
+    var kcal by remember { mutableStateOf(initialKcal.toString()) }
+    var protein by remember { mutableStateOf(initialProtein.toString()) }
+    var carbs by remember { mutableStateOf(initialCarbs.toString()) }
+    var fats by remember { mutableStateOf(initialFats.toString()) }
+
+    val canSave = (kcal.toIntOrNull() ?: 0) >= 1 &&
+        protein.toIntOrNull() != null && carbs.toIntOrNull() != null && fats.toIntOrNull() != null
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        containerColor = SurfaceContainerLow,
+        title = { Text("Editar macros", fontWeight = FontWeight.Bold, fontSize = 18.sp, color = OnSurface) },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                Text(
+                    "Define tu objetivo diario de calorías y macronutrientes.",
+                    fontSize = 14.sp, color = OnSurfaceVariant,
+                )
+                MacroField("Calorías (kcal)", kcal) { kcal = it }
+                MacroField("Proteínas (g)", protein) { protein = it }
+                MacroField("Carbohidratos (g)", carbs) { carbs = it }
+                MacroField("Grasas (g)", fats) { fats = it }
+            }
+        },
+        confirmButton = {
+            TextButton(
+                onClick = {
+                    onSave(
+                        kcal.toIntOrNull() ?: 0,
+                        protein.toIntOrNull() ?: 0,
+                        carbs.toIntOrNull() ?: 0,
+                        fats.toIntOrNull() ?: 0,
+                    )
+                },
+                enabled = canSave,
+            ) { Text("Guardar", color = Primary, fontWeight = FontWeight.Bold) }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) { Text("Cancelar", color = OnSurfaceVariant) }
+        },
+    )
+}
+
+@Composable
+private fun MacroField(label: String, value: String, onChange: (String) -> Unit) {
+    OutlinedTextField(
+        value = value,
+        onValueChange = { input -> if (input.all { it.isDigit() } && input.length <= 6) onChange(input) },
+        label = { Text(label, fontSize = 12.sp) },
+        singleLine = true,
+        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+        shape = RoundedCornerShape(12.dp),
+        colors = OutlinedTextFieldDefaults.colors(
+            unfocusedContainerColor = SurfaceContainerLowest,
+            focusedContainerColor = SurfaceContainerLowest,
+            unfocusedBorderColor = SurfaceContainerHigh,
+            focusedBorderColor = Primary,
+            focusedTextColor = OnSurface,
+            unfocusedTextColor = OnSurface,
+        ),
+        modifier = Modifier.fillMaxWidth(),
     )
 }
