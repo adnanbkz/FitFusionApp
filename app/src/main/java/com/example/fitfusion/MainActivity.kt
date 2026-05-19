@@ -324,6 +324,20 @@ class MainActivity : ComponentActivity() {
                                 uid = backStackEntry.arguments?.getString("uid") ?: "",
                             )
                         }
+
+                        composable(
+                            route = "${Screens.FollowListScreen.name}/{uid}/{mode}",
+                            arguments = listOf(
+                                navArgument("uid") { type = NavType.StringType },
+                                navArgument("mode") { type = NavType.StringType },
+                            )
+                        ) { backStackEntry ->
+                            PantallaFollowList(
+                                navController = navController,
+                                uid = backStackEntry.arguments?.getString("uid") ?: "",
+                                mode = backStackEntry.arguments?.getString("mode") ?: "followers",
+                            )
+                        }
                     }
                 }
             }

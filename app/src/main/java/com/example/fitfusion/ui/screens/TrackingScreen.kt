@@ -140,6 +140,7 @@ fun PantallaTracking(
                         accent          = Primary,
                         textColor       = OnSurface,
                         mutedTextColor  = OnSurfaceVariant,
+                        defaultTargetKcal = state.kcalGoal,
                         onPlanGenerated = trackingViewModel::applyAiMealPlan,
                     )
                 }

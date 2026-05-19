@@ -24,6 +24,10 @@ data class UserProfile(
     val isOnboarded: Boolean = false,
     val followersCount: Int = 0,
     val followingCount: Int = 0,
+    val showHeight: Boolean = true,
+    val showWeight: Boolean = true,
+    val showGoal: Boolean = true,
+    val showActivity: Boolean = true,
 )
 
 class UserRepository(
@@ -53,6 +57,10 @@ class UserRepository(
             "isOnboarded" to false,
             "followersCount" to 0,
             "followingCount" to 0,
+            "showHeight" to true,
+            "showWeight" to true,
+            "showGoal" to true,
+            "showActivity" to true,
         )
 
         firestore.collection("users")
@@ -146,6 +154,29 @@ class UserRepository(
             .take(10)
     }
 
+    /** Guarda qué datos fitness (altura/peso/objetivo/actividad) son visibles para otros. */
+    suspend fun updateFitnessVisibility(
+        uid: String,
+        showHeight: Boolean,
+        showWeight: Boolean,
+        showGoal: Boolean,
+        showActivity: Boolean,
+    ) {
+        firestore.collection("users")
+            .document(uid)
+            .set(
+                mapOf(
+                    "showHeight" to showHeight,
+                    "showWeight" to showWeight,
+                    "showGoal" to showGoal,
+                    "showActivity" to showActivity,
+                    "updatedAt" to FieldValue.serverTimestamp(),
+                ),
+                SetOptions.merge(),
+            )
+            .await()
+    }
+
     suspend fun markOnboarded(uid: String) {
         firestore.collection("users")
             .document(uid)
@@ -199,6 +230,10 @@ class UserRepository(
             isOnboarded = getBoolean("isOnboarded") ?: false,
             followersCount = getLong("followersCount")?.toInt() ?: 0,
             followingCount = getLong("followingCount")?.toInt() ?: 0,
+            showHeight = getBoolean("showHeight") ?: true,
+            showWeight = getBoolean("showWeight") ?: true,
+            showGoal = getBoolean("showGoal") ?: true,
+            showActivity = getBoolean("showActivity") ?: true,
         )
     }
 

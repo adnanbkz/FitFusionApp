@@ -68,6 +68,10 @@ data class ProfileUiState(
     val recentWorkouts: List<LoggedWorkout> = emptyList(),
     val likedFeedItems: List<FeedItem> = emptyList(),
     val isLoadingLikedPosts: Boolean = false,
+    val showHeight: Boolean = true,
+    val showWeight: Boolean = true,
+    val showGoal: Boolean = true,
+    val showActivity: Boolean = true,
 ) {
     val postCount: String get() = userPosts.size.toString()
 
@@ -247,6 +251,10 @@ class ProfileViewModel(application: Application) : AndroidViewModel(application)
                         weightKg = profile.weightKg,
                         goalType = profile.goalType,
                         activityLevel = profile.activityLevel,
+                        showHeight = profile.showHeight,
+                        showWeight = profile.showWeight,
+                        showGoal = profile.showGoal,
+                        showActivity = profile.showActivity,
                     )
                 }
             },
@@ -280,6 +288,29 @@ class ProfileViewModel(application: Application) : AndroidViewModel(application)
 
     fun onTabSelected(index: Int) {
         _uiState.update { it.copy(selectedTab = index) }
+    }
+
+    /** Cambia qué datos fitness son visibles para otros usuarios (optimista + Firestore). */
+    fun setFitnessVisibility(
+        showHeight: Boolean,
+        showWeight: Boolean,
+        showGoal: Boolean,
+        showActivity: Boolean,
+    ) {
+        _uiState.update {
+            it.copy(
+                showHeight = showHeight,
+                showWeight = showWeight,
+                showGoal = showGoal,
+                showActivity = showActivity,
+            )
+        }
+        val uid = auth.currentUser?.uid ?: return
+        viewModelScope.launch {
+            runCatching {
+                userRepository.updateFitnessVisibility(uid, showHeight, showWeight, showGoal, showActivity)
+            }
+        }
     }
 
     fun showCreatePost() {

@@ -56,6 +56,7 @@ fun AiMealPlanButton(
     accent: Color,
     textColor: Color,
     mutedTextColor: Color,
+    defaultTargetKcal: Int,
     onPlanGenerated: (AiMealPlanResponse) -> Unit,
 ) {
     var showForm by remember { mutableStateOf(false) }
@@ -80,6 +81,7 @@ fun AiMealPlanButton(
             textColor = textColor,
             mutedTextColor = mutedTextColor,
             cardColor = backgroundColor,
+            defaultTargetKcal = defaultTargetKcal,
             onDismiss = { showForm = false },
             onResult = {
                 showForm = false
@@ -96,11 +98,14 @@ private fun MealPlanFormSheet(
     textColor: Color,
     mutedTextColor: Color,
     cardColor: Color,
+    defaultTargetKcal: Int,
     onDismiss: () -> Unit,
     onResult: (AiMealPlanResponse) -> Unit,
 ) {
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
-    var targetKcal by remember { mutableStateOf("2000") }
+    // Arranca con el objetivo calórico calculado del usuario; el key hace que se
+    // re-inicialice si el objetivo llega después de abrir la hoja.
+    var targetKcal by remember(defaultTargetKcal) { mutableStateOf(defaultTargetKcal.toString()) }
     var mealsPerDay by remember { mutableStateOf(4) }
     val restrictions = remember { mutableStateListOf<String>() }
     var isGenerating by remember { mutableStateOf(false) }

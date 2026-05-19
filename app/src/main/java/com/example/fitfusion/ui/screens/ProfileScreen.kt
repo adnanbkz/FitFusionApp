@@ -20,6 +20,7 @@ import androidx.compose.material.icons.filled.GridView
 import androidx.compose.material.icons.filled.LocalFireDepartment
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material.icons.filled.Visibility
 import androidx.compose.material.icons.outlined.BookmarkBorder
 import androidx.compose.material.icons.outlined.FitnessCenter
 import androidx.compose.material.icons.outlined.Restaurant
@@ -41,6 +42,7 @@ import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavHostController
 import coil3.compose.AsyncImage
+import com.google.firebase.auth.FirebaseAuth
 import java.util.Locale
 import com.example.fitfusion.data.models.UserPost
 import com.example.fitfusion.data.models.UserPostType
@@ -62,6 +64,8 @@ fun PantallaProfile(
         Triple("Guardado", Icons.Default.Bookmark, 1),
         Triple("Me gusta", Icons.Default.Favorite, 2),
     )
+    var showVisibilitySheet by remember { mutableStateOf(false) }
+    val myUid = FirebaseAuth.getInstance().currentUser?.uid
 
     val photoLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.PickVisualMedia()
@@ -172,8 +176,20 @@ fun PantallaProfile(
                         verticalAlignment   = Alignment.CenterVertically
                     ) {
                         StatBlock(value = state.postCount, label = "Publicaciones")
-                        StatBlock(value = state.followers, label = "Seguidores")
-                        StatBlock(value = state.following, label = "Siguiendo")
+                        StatBlock(
+                            value = state.followers,
+                            label = "Seguidores",
+                            onClick = myUid?.let {
+                                { navController.navigate("${Screens.FollowListScreen.name}/$it/followers") }
+                            },
+                        )
+                        StatBlock(
+                            value = state.following,
+                            label = "Siguiendo",
+                            onClick = myUid?.let {
+                                { navController.navigate("${Screens.FollowListScreen.name}/$it/following") }
+                            },
+                        )
                     }
                 }
 
@@ -202,6 +218,7 @@ fun PantallaProfile(
                     weightKg      = state.weightKg,
                     goalType      = state.goalType,
                     activityLevel = state.activityLevel,
+                    onEditVisibility = { showVisibilitySheet = true },
                 )
 
                 // Edit profile button (Instagram style: full-width outlined)
@@ -309,12 +326,33 @@ fun PantallaProfile(
             }
         }
     }
+
+    if (showVisibilitySheet) {
+        FitnessVisibilitySheet(
+            showHeight   = state.showHeight,
+            showWeight   = state.showWeight,
+            showGoal     = state.showGoal,
+            showActivity = state.showActivity,
+            onChange     = { h, w, g, a -> profileViewModel.setFitnessVisibility(h, w, g, a) },
+            onDismiss    = { showVisibilitySheet = false },
+        )
+    }
 }
 
 // ─── StatBlock: number + label stacked (Instagram style) ─────────────────────
 @Composable
-private fun StatBlock(value: String, label: String) {
-    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+private fun StatBlock(value: String, label: String, onClick: (() -> Unit)? = null) {
+    Column(
+        horizontalAlignment = Alignment.CenterHorizontally,
+        modifier = if (onClick != null) {
+            Modifier
+                .clip(RoundedCornerShape(8.dp))
+                .clickable(onClick = onClick)
+                .padding(horizontal = 10.dp, vertical = 4.dp)
+        } else {
+            Modifier
+        },
+    ) {
         Text(value, fontSize = 17.sp, fontWeight = FontWeight.Bold, color = OnSurface)
         Text(label, fontSize = 12.sp, color = OnSurfaceVariant)
     }
@@ -327,6 +365,7 @@ private fun ProfileFitnessSummary(
     weightKg: Float?,
     goalType: String?,
     activityLevel: String?,
+    onEditVisibility: () -> Unit,
 ) {
     val items = buildList {
         heightCm?.let { add("${it} cm" to "ALTURA") }
@@ -339,21 +378,94 @@ private fun ProfileFitnessSummary(
     }.take(4)
     if (items.isEmpty()) return
 
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(vertical = 8.dp),
-        horizontalArrangement = Arrangement.spacedBy(8.dp)
+    Column(
+        modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp),
+        verticalArrangement = Arrangement.spacedBy(6.dp),
     ) {
-        items.forEach { (value, label) ->
-            val chipColor = when (label) {
-                "ALTURA"    -> Color(0xFF4A90D9)
-                "PESO"      -> Color(0xFFE0844A)
-                "OBJETIVO"  -> Primary
-                else        -> Tertiary
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Text(
+                "DATOS FITNESS",
+                fontSize = 10.sp, fontWeight = FontWeight.Bold,
+                letterSpacing = 1.5.sp, color = OnSurfaceVariant,
+            )
+            Row(
+                modifier = Modifier
+                    .clip(RoundedCornerShape(8.dp))
+                    .clickable(onClick = onEditVisibility)
+                    .padding(horizontal = 6.dp, vertical = 2.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(4.dp),
+            ) {
+                Icon(Icons.Default.Visibility, contentDescription = null, modifier = Modifier.size(14.dp), tint = Primary)
+                Text("Visibilidad", fontSize = 11.sp, fontWeight = FontWeight.SemiBold, color = Primary)
             }
-            StatChip(value = value, label = label, color = chipColor, modifier = Modifier.weight(1f))
         }
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            items.forEach { (value, label) ->
+                val chipColor = when (label) {
+                    "ALTURA"    -> Color(0xFF4A90D9)
+                    "PESO"      -> Color(0xFFE0844A)
+                    "OBJETIVO"  -> Primary
+                    else        -> Tertiary
+                }
+                StatChip(value = value, label = label, color = chipColor, modifier = Modifier.weight(1f))
+            }
+        }
+    }
+}
+
+// ─── FitnessVisibilitySheet: switches para mostrar/ocultar cada dato ─────────────
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun FitnessVisibilitySheet(
+    showHeight: Boolean,
+    showWeight: Boolean,
+    showGoal: Boolean,
+    showActivity: Boolean,
+    onChange: (Boolean, Boolean, Boolean, Boolean) -> Unit,
+    onDismiss: () -> Unit,
+) {
+    val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+    ModalBottomSheet(
+        onDismissRequest = onDismiss,
+        sheetState       = sheetState,
+        containerColor   = SurfaceContainerLow,
+        dragHandle       = { BottomSheetDefaults.DragHandle(color = OnSurfaceVariant) },
+    ) {
+        Column(
+            modifier = Modifier.fillMaxWidth().padding(horizontal = 24.dp).padding(bottom = 32.dp),
+            verticalArrangement = Arrangement.spacedBy(2.dp),
+        ) {
+            Text("Datos visibles en tu perfil", fontWeight = FontWeight.Bold, fontSize = 18.sp, color = OnSurface)
+            Text(
+                "Elige qué datos pueden ver otros usuarios al visitar tu perfil.",
+                fontSize = 13.sp, color = OnSurfaceVariant,
+                modifier = Modifier.padding(bottom = 10.dp),
+            )
+            VisibilityRow("Altura", showHeight) { onChange(it, showWeight, showGoal, showActivity) }
+            VisibilityRow("Peso", showWeight) { onChange(showHeight, it, showGoal, showActivity) }
+            VisibilityRow("Objetivo", showGoal) { onChange(showHeight, showWeight, it, showActivity) }
+            VisibilityRow("Actividad", showActivity) { onChange(showHeight, showWeight, showGoal, it) }
+        }
+    }
+}
+
+@Composable
+private fun VisibilityRow(label: String, checked: Boolean, onCheckedChange: (Boolean) -> Unit) {
+    Row(
+        modifier = Modifier.fillMaxWidth().padding(vertical = 6.dp),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Text(label, fontSize = 15.sp, color = OnSurface)
+        Switch(checked = checked, onCheckedChange = onCheckedChange)
     }
 }
 

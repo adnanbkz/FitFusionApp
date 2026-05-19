@@ -161,6 +161,38 @@ object FoodRepository {
         pushFoodSummary(date)
     }
 
+    /**
+     * Reemplaza la dieta generada por IA del día: borra las entradas anteriores
+     * marcadas como IA (`food.id` empieza por "ai-") y escribe la dieta nueva,
+     * todo en un único batch. Las comidas registradas a mano no se tocan.
+     */
+    suspend fun replaceAiMealPlan(date: LocalDate, newFoods: List<LoggedFood>) {
+        ensureInitialized()
+        val uid = auth.currentUser?.uid ?: return
+        val col = firestore.collection(USERS_COLLECTION).document(uid)
+            .collection(FOOD_LOGS_COLLECTION)
+
+        val survivors = rawEntries.filter { it.date == date && !it.food.id.startsWith("ai-") }
+
+        val batch = firestore.batch()
+        rawEntries.filter { it.date == date && it.food.id.startsWith("ai-") }
+            .forEach { batch.delete(col.document(it.id)) }
+        newFoods.forEach { batch.set(col.document(it.id), it.toFirestoreMap()) }
+        batch.commit().await()
+
+        // El resumen se calcula explícitamente (supervivientes + dieta nueva): tras
+        // el commit el listener aún no ha refrescado _dayLogs, así que getDayLog
+        // devolvería datos obsoletos.
+        val all = survivors + newFoods
+        DailySummaryRepository.mergeFoodSummary(
+            date         = date,
+            kcalConsumed = all.sumOf { it.kcal },
+            proteinG     = all.sumOf { it.protein },
+            carbsG       = all.sumOf { it.carbs },
+            fatG         = all.sumOf { it.fat },
+        )
+    }
+
     suspend fun addMealToDay(date: LocalDate, meal: MealSlot) {
         upsertCustomMealLocally(date, meal.copy(isCustom = true))
         auth.currentUser?.uid?.let { uid ->

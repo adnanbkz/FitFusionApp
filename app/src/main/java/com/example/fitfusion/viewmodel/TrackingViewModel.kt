@@ -211,16 +211,20 @@ class TrackingViewModel : ViewModel() {
         viewModelScope.launch { FoodRepository.addMealToDay(date, meal) }
     }
 
+    /**
+     * Aplica un plan de comidas generado por IA al día seleccionado. La dieta IA
+     * anterior del día se borra (la reemplaza esta); las comidas registradas a
+     * mano se conservan.
+     */
     fun applyAiMealPlan(plan: AiMealPlanResponse) {
         val date = _uiState.value.selectedDate
         val day = plan.days.firstOrNull() ?: return
         viewModelScope.launch {
-            day.meals.forEach { meal ->
+            val foods = day.meals.flatMap { meal ->
                 val slot = resolveSlot(meal.slotName)
-                meal.dishes.forEach { dish ->
-                    FoodRepository.addFood(dish.toLoggedFood(slot, date))
-                }
+                meal.dishes.map { dish -> dish.toLoggedFood(slot, date) }
             }
+            FoodRepository.replaceAiMealPlan(date, foods)
         }
     }
 

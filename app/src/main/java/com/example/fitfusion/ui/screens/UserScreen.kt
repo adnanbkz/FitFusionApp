@@ -176,8 +176,16 @@ fun PantallaUserScreen(
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
                         UserStatBlock(value = state.posts.size.toString(), label = "Publicaciones")
-                        UserStatBlock(value = compactCount(state.followersCount), label = "Seguidores")
-                        UserStatBlock(value = compactCount(state.followingCount), label = "Siguiendo")
+                        UserStatBlock(
+                            value = compactCount(state.followersCount),
+                            label = "Seguidores",
+                            onClick = { navController.navigate("${Screens.FollowListScreen.name}/$uid/followers") },
+                        )
+                        UserStatBlock(
+                            value = compactCount(state.followingCount),
+                            label = "Siguiendo",
+                            onClick = { navController.navigate("${Screens.FollowListScreen.name}/$uid/following") },
+                        )
                     }
                 }
 
@@ -206,6 +214,10 @@ fun PantallaUserScreen(
                     weightKg = profile.weightKg,
                     goalType = profile.goalType,
                     activityLevel = profile.activityLevel,
+                    showHeight = profile.showHeight,
+                    showWeight = profile.showWeight,
+                    showGoal = profile.showGoal,
+                    showActivity = profile.showActivity,
                 )
 
                 // Follow / Unfollow button (full-width, Instagram style)
@@ -342,8 +354,18 @@ private fun UserPostsTab(posts: List<UserPost>, onPostClick: (String) -> Unit) {
 }
 
 @Composable
-private fun UserStatBlock(value: String, label: String) {
-    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+private fun UserStatBlock(value: String, label: String, onClick: (() -> Unit)? = null) {
+    Column(
+        horizontalAlignment = Alignment.CenterHorizontally,
+        modifier = if (onClick != null) {
+            Modifier
+                .clip(RoundedCornerShape(8.dp))
+                .clickable(onClick = onClick)
+                .padding(horizontal = 10.dp, vertical = 4.dp)
+        } else {
+            Modifier
+        },
+    ) {
         Text(value, fontSize = 17.sp, fontWeight = FontWeight.Bold, color = OnSurface)
         Text(label, fontSize = 12.sp, color = OnSurfaceVariant)
     }
@@ -355,15 +377,19 @@ private fun UserFitnessSummary(
     weightKg: Float?,
     goalType: String?,
     activityLevel: String?,
+    showHeight: Boolean,
+    showWeight: Boolean,
+    showGoal: Boolean,
+    showActivity: Boolean,
 ) {
     val items = buildList {
-        heightCm?.let { add("${it} cm" to "ALTURA") }
-        weightKg?.let { w ->
+        if (showHeight) heightCm?.let { add("${it} cm" to "ALTURA") }
+        if (showWeight) weightKg?.let { w ->
             val fmt = if (w % 1f == 0f) w.toInt().toString() else "%.1f".format(Locale.US, w)
             add("$fmt kg" to "PESO")
         }
-        goalType?.takeIf { it.isNotBlank() }?.let { add(it to "OBJETIVO") }
-        activityLevel?.takeIf { it.isNotBlank() }?.let { add(it to "ACTIVIDAD") }
+        if (showGoal) goalType?.takeIf { it.isNotBlank() }?.let { add(it to "OBJETIVO") }
+        if (showActivity) activityLevel?.takeIf { it.isNotBlank() }?.let { add(it to "ACTIVIDAD") }
     }.take(4)
     if (items.isEmpty()) return
 
