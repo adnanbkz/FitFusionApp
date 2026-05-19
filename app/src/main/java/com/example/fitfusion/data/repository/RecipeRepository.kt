@@ -8,6 +8,7 @@ import com.google.firebase.firestore.DocumentSnapshot
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.Query
 import com.google.firebase.storage.FirebaseStorage
+import kotlinx.coroutines.tasks.await
 
 class RecipeRepository(
     private val firestore: FirebaseFirestore = FirebaseFirestore.getInstance(),
@@ -114,6 +115,19 @@ class RecipeRepository(
         personal.document(copy.id).set(copy.toMap())
             .addOnSuccessListener { onSuccess() }
             .addOnFailureListener(onError)
+    }
+
+    suspend fun searchCommunity(query: String): List<Recipe> {
+        val q = query.trim().lowercase()
+        if (q.isBlank()) return emptyList()
+        // whereEqualTo("isPublic") + orderBy("createdAt") exigiría índice compuesto:
+        // usamos solo orderBy (igual que fetchCommunity) y filtramos client-side.
+        val snap = communityRecipes()
+            .orderBy("createdAt", Query.Direction.DESCENDING)
+            .limit(100)
+            .get().await()
+        return snap.documents.mapNotNull { it.toRecipe() }
+            .filter { it.name.lowercase().contains(q) }
     }
 
     fun delete(recipeId: String, onSuccess: () -> Unit, onError: (Exception) -> Unit) {

@@ -543,4 +543,41 @@ object FoodRepository {
 ### Lo que me llevo
 
 - Auth listener para enganchar el listener Firestore es el patrón que mejor me funciona en singletons. Si conviertes el singleton en clase normal, hay que rehacerlo.
+
+---
+
+## Bloqueo de usuarios real + filtro de búsqueda (19 may 2026)
+
+### Tareas completadas en esta sesión
+
+Además de las correcciones previas (cursor fecha de nacimiento, visibilidad fitness, foto de perfil, icono Health Connect, quitar Nutrición del sheet, botón Editar Macros), se implementó:
+
+#### Usuarios bloqueados con Firestore
+
+**Problema**: `PrivacyViewModel` era un `ViewModel` simple con una lista hardcodeada (`listOf("user_spammer", "old_account_123")`). Bloquear/desbloquear no se persistía en ningún sitio.
+
+**Solución**:
+- `UserRepository`: nuevos métodos `blockUser`, `unblockUser`, `getBlockedUsers`, `isUserBlocked`. Subcollección Firestore: `users/{uid}/blocked/{targetUid}` con campos `displayName`, `username`, `blockedAt`.
+- `PrivacyViewModel` reescrito como `AndroidViewModel`: carga la lista real al iniciarse, expone `List<BlockedUser>` con uid + displayName. `unblockUser(uid)` borra optimista + persiste en background.
+- `UserScreenViewModel`: añade `isBlocked: Boolean` al estado, se comprueba al hacer `load()`. Nuevas funciones `blockUser()` / `unblockUser()` que actualizan estado optimista y persisten.
+- `UserScreen.kt`: botón `MoreVert` en la barra de título abre un `DropdownMenu` con "Bloquear usuario" / "Desbloquear usuario" según el estado actual.
+- `PrivacyScreen.kt`: la lista de bloqueados muestra displayName + @username en lugar del string antiguo. Gestiona el estado de carga con `CircularProgressIndicator`.
+
+#### Filtro de búsqueda (Perfiles / Entrenos / Recetas)
+
+**Problema**: `UserSearchScreen` solo buscaba perfiles de usuario.
+
+**Solución**:
+- `SearchCategory` enum: `PROFILES`, `WORKOUTS`, `RECIPES`.
+- `UserSearchViewModel` reescrito: carga la lista de bloqueados al init y la usa para filtrar resultados. Cada categoría tiene su propia búsqueda:
+  - `PROFILES`: búsqueda existente en Firestore por `displayNameLower` / `username`, con filtro de bloqueados.
+  - `WORKOUTS`: consulta `posts` donde `type == "workout"`, filtra client-side por `workoutName` / `caption` que contengan el query (top 100 más recientes). Excluye posts de bloqueados.
+  - `RECIPES`: nueva función `RecipeRepository.searchCommunity(query)` que consulta `recipes` públicas y filtra client-side por nombre.
+- `UserSearchScreen.kt` rediseñado: `LazyRow` de chips de categoría bajo la barra de búsqueda; resultados adaptados por tipo (filas de perfil, entreno con icono de mancuerna, receta con foto/icono).
+
+### Patrón aprendido
+
+Para búsquedas con Firestore sin índice full-text: fetch de top-N más recientes y filtrado client-side funciona bien para volúmenes moderados (< 1000 docs). Para escalar hay que usar Algolia o Typesense.
+
+La lista de bloqueados se carga una sola vez al init del ViewModel (no listener en tiempo real) porque cambios en la lista de bloqueados son infrecuentes. Si se necesita reactividad, convertir a `addSnapshotListener`.
 - `suspend` se contagia: la cadena de callers también pasa a `suspend`/`viewModelScope.launch`. Asumirlo desde el principio.

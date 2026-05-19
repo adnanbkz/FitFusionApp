@@ -9,7 +9,9 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.Block
 import androidx.compose.material.icons.filled.GridView
+import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.outlined.FitnessCenter
 import androidx.compose.material.icons.outlined.Restaurant
@@ -44,6 +46,7 @@ fun PantallaUserScreen(
     viewModel: UserScreenViewModel = viewModel(),
 ) {
     val state by viewModel.uiState.collectAsState()
+    var showBlockMenu by remember { mutableStateOf(false) }
 
     LaunchedEffect(uid) { viewModel.load(uid) }
 
@@ -102,7 +105,7 @@ fun PantallaUserScreen(
         horizontalAlignment = Alignment.CenterHorizontally,
         contentPadding = PaddingValues(bottom = 24.dp),
     ) {
-        // ── Top bar: back arrow (left) + @handle (right) ──────────────────
+        // ── Top bar: back arrow (left) + @handle (center) + menu (right) ─
         item {
             Row(
                 modifier = Modifier
@@ -119,8 +122,41 @@ fun PantallaUserScreen(
                     fontSize = 18.sp,
                     fontWeight = FontWeight.Bold,
                     color = OnSurface,
-                    modifier = Modifier.padding(end = 16.dp),
+                    modifier = Modifier.weight(1f).padding(start = 4.dp),
                 )
+                Box {
+                    IconButton(onClick = { showBlockMenu = true }) {
+                        Icon(Icons.Default.MoreVert, contentDescription = "Más opciones", tint = OnSurface)
+                    }
+                    DropdownMenu(
+                        expanded = showBlockMenu,
+                        onDismissRequest = { showBlockMenu = false },
+                    ) {
+                        if (state.isBlocked) {
+                            DropdownMenuItem(
+                                text = { Text("Desbloquear usuario") },
+                                leadingIcon = {
+                                    Icon(Icons.Default.Block, null, tint = OnSurfaceVariant)
+                                },
+                                onClick = {
+                                    showBlockMenu = false
+                                    viewModel.unblockUser()
+                                },
+                            )
+                        } else {
+                            DropdownMenuItem(
+                                text = { Text("Bloquear usuario", color = MaterialTheme.colorScheme.error) },
+                                leadingIcon = {
+                                    Icon(Icons.Default.Block, null, tint = MaterialTheme.colorScheme.error)
+                                },
+                                onClick = {
+                                    showBlockMenu = false
+                                    viewModel.blockUser()
+                                },
+                            )
+                        }
+                    }
+                }
             }
         }
 

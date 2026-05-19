@@ -30,6 +30,8 @@ data class UserProfile(
     val showActivity: Boolean = true,
 )
 
+data class BlockedUser(val uid: String, val displayName: String, val username: String)
+
 /** Objetivo diario de calorías y macros fijado manualmente por el usuario. */
 data class MacroGoals(
     val kcal: Int,
@@ -232,6 +234,45 @@ class UserRepository(
             carbs   = snapshot.getLong("macroGoalCarbs")?.toInt() ?: 0,
             fats    = snapshot.getLong("macroGoalFats")?.toInt() ?: 0,
         )
+    }
+
+    suspend fun blockUser(myUid: String, targetUid: String, displayName: String, username: String) {
+        firestore.collection("users").document(myUid)
+            .collection("blocked").document(targetUid)
+            .set(
+                mapOf(
+                    "displayName" to displayName,
+                    "username"    to username,
+                    "blockedAt"   to FieldValue.serverTimestamp(),
+                ),
+            )
+            .await()
+    }
+
+    suspend fun unblockUser(myUid: String, targetUid: String) {
+        firestore.collection("users").document(myUid)
+            .collection("blocked").document(targetUid)
+            .delete()
+            .await()
+    }
+
+    suspend fun getBlockedUsers(myUid: String): List<BlockedUser> {
+        val snap = firestore.collection("users").document(myUid)
+            .collection("blocked").get().await()
+        return snap.documents.mapNotNull { doc ->
+            val displayName = doc.getString("displayName") ?: return@mapNotNull null
+            BlockedUser(
+                uid         = doc.id,
+                displayName = displayName,
+                username    = doc.getString("username").orEmpty(),
+            )
+        }
+    }
+
+    suspend fun isUserBlocked(myUid: String, targetUid: String): Boolean {
+        val doc = firestore.collection("users").document(myUid)
+            .collection("blocked").document(targetUid).get().await()
+        return doc.exists()
     }
 
     suspend fun saveMacroGoals(uid: String, goals: MacroGoals) {

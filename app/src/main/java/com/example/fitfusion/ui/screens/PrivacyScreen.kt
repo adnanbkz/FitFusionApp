@@ -149,62 +149,81 @@ fun PantallaPrivacy(
                 elevation = CardDefaults.cardElevation(0.dp),
                 modifier = Modifier.fillMaxWidth().padding(horizontal = 24.dp)
             ) {
-                if (state.blockedUsers.isEmpty()) {
-                    Box(
-                        modifier = Modifier.fillMaxWidth().padding(24.dp),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Text(
-                            "No tienes usuarios bloqueados",
-                            fontSize = 14.sp,
-                            color = OnSurfaceVariant
-                        )
+                when {
+                    state.isLoadingBlocked -> {
+                        Box(
+                            modifier = Modifier.fillMaxWidth().padding(24.dp),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            CircularProgressIndicator(color = Primary, modifier = Modifier.size(24.dp))
+                        }
                     }
-                } else {
-                    Column(modifier = Modifier.padding(vertical = 8.dp)) {
-                        state.blockedUsers.forEachIndexed { index, username ->
-                            Row(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(horizontal = 20.dp, vertical = 12.dp),
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                Box(
+                    state.blockedUsers.isEmpty() -> {
+                        Box(
+                            modifier = Modifier.fillMaxWidth().padding(24.dp),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Text(
+                                "No tienes usuarios bloqueados",
+                                fontSize = 14.sp,
+                                color = OnSurfaceVariant
+                            )
+                        }
+                    }
+                    else -> {
+                        Column(modifier = Modifier.padding(vertical = 8.dp)) {
+                            state.blockedUsers.forEachIndexed { index, blocked ->
+                                Row(
                                     modifier = Modifier
-                                        .size(36.dp)
-                                        .clip(CircleShape)
-                                        .background(SurfaceContainerHigh),
-                                    contentAlignment = Alignment.Center
+                                        .fillMaxWidth()
+                                        .padding(horizontal = 20.dp, vertical = 12.dp),
+                                    verticalAlignment = Alignment.CenterVertically
                                 ) {
-                                    Icon(
-                                        Icons.Default.Person, null,
-                                        Modifier.size(18.dp), tint = OnSurfaceVariant
+                                    Box(
+                                        modifier = Modifier
+                                            .size(36.dp)
+                                            .clip(CircleShape)
+                                            .background(SurfaceContainerHigh),
+                                        contentAlignment = Alignment.Center
+                                    ) {
+                                        Icon(
+                                            Icons.Default.Person, null,
+                                            Modifier.size(18.dp), tint = OnSurfaceVariant
+                                        )
+                                    }
+                                    Spacer(modifier = Modifier.width(12.dp))
+                                    Column(modifier = Modifier.weight(1f)) {
+                                        Text(
+                                            blocked.displayName,
+                                            fontWeight = FontWeight.Medium,
+                                            fontSize = 14.sp,
+                                            color = OnSurface
+                                        )
+                                        if (blocked.username.isNotBlank()) {
+                                            Text(
+                                                blocked.username,
+                                                fontSize = 12.sp,
+                                                color = OnSurfaceVariant
+                                            )
+                                        }
+                                    }
+                                    TextButton(
+                                        onClick = { privacyViewModel.unblockUser(blocked.uid) }
+                                    ) {
+                                        Text(
+                                            "Desbloquear",
+                                            fontSize = 13.sp,
+                                            color = Primary,
+                                            fontWeight = FontWeight.SemiBold
+                                        )
+                                    }
+                                }
+                                if (index < state.blockedUsers.lastIndex) {
+                                    HorizontalDivider(
+                                        modifier = Modifier.padding(horizontal = 20.dp),
+                                        color = OutlineVariant.copy(alpha = 0.3f)
                                     )
                                 }
-                                Spacer(modifier = Modifier.width(12.dp))
-                                Text(
-                                    username,
-                                    modifier = Modifier.weight(1f),
-                                    fontWeight = FontWeight.Medium,
-                                    fontSize = 14.sp,
-                                    color = OnSurface
-                                )
-                                TextButton(
-                                    onClick = { privacyViewModel.unblockUser(username) }
-                                ) {
-                                    Text(
-                                        "Desbloquear",
-                                        fontSize = 13.sp,
-                                        color = Primary,
-                                        fontWeight = FontWeight.SemiBold
-                                    )
-                                }
-                            }
-                            if (index < state.blockedUsers.lastIndex) {
-                                HorizontalDivider(
-                                    modifier = Modifier.padding(horizontal = 20.dp),
-                                    color = OutlineVariant.copy(alpha = 0.3f)
-                                )
                             }
                         }
                     }

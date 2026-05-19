@@ -4,6 +4,7 @@ import android.app.Application
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.fitfusion.data.models.UserPost
+import com.example.fitfusion.data.repository.FeedRepository
 import com.example.fitfusion.data.repository.UserProfile
 import com.example.fitfusion.data.repository.UserRepository
 import com.google.firebase.auth.FirebaseAuth
@@ -20,6 +21,7 @@ data class UserScreenUiState(
     val posts: List<UserPost> = emptyList(),
     val isLoading: Boolean = true,
     val isFollowing: Boolean = false,
+    val isBlocked: Boolean = false,
     val followersCount: Int = 0,
     val followingCount: Int = 0,
     val errorMessage: String? = null,
@@ -107,6 +109,39 @@ class UserScreenViewModel(application: Application) : AndroidViewModel(applicati
                 .addOnSuccessListener { doc ->
                     _uiState.update { it.copy(isFollowing = doc.exists()) }
                 }
+
+            viewModelScope.launch {
+                val blocked = runCatching { repo.isUserBlocked(currentUid, uid) }.getOrDefault(false)
+                _uiState.update { it.copy(isBlocked = blocked) }
+            }
+        }
+    }
+
+    fun blockUser() {
+        val targetUid = _uiState.value.profile?.uid ?: return
+        val targetProfile = _uiState.value.profile ?: return
+        val myUid = currentUid ?: return
+        _uiState.update { it.copy(isBlocked = true) }
+        viewModelScope.launch {
+            runCatching {
+                repo.blockUser(
+                    myUid       = myUid,
+                    targetUid   = targetUid,
+                    displayName = targetProfile.displayName,
+                    username    = targetProfile.username,
+                )
+            }
+            FeedRepository.refreshBlockedUsers()
+        }
+    }
+
+    fun unblockUser() {
+        val targetUid = _uiState.value.profile?.uid ?: return
+        val myUid = currentUid ?: return
+        _uiState.update { it.copy(isBlocked = false) }
+        viewModelScope.launch {
+            runCatching { repo.unblockUser(myUid, targetUid) }
+            FeedRepository.refreshBlockedUsers()
         }
     }
 

@@ -7,9 +7,13 @@ import com.example.fitfusion.viewmodel.WorkoutPost
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.ListenerRegistration
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.tasks.await
 
 object FeedRepository {
@@ -36,6 +40,9 @@ object FeedRepository {
     private var userLikesListenerRegistration: ListenerRegistration? = null
     private var authListenerRegistered = false
     private var currentUid: String? = null
+    private var blockedUids: Set<String> = emptySet()
+
+    private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
 
     init {
         ensureInitialized()
@@ -48,6 +55,19 @@ object FeedRepository {
         }
         authListenerRegistered = true
         attachFeedListener(auth.currentUser?.uid)
+    }
+
+    /** Llámalo tras bloquear/desbloquear para que el feed se actualice al instante. */
+    fun refreshBlockedUsers() {
+        val uid = currentUid ?: return
+        scope.launch {
+            blockedUids = runCatching {
+                firestore.collection("users").document(uid)
+                    .collection("blocked").get().await()
+                    .documents.map { it.id }.toSet()
+            }.getOrDefault(blockedUids)
+            emitItems()
+        }
     }
 
     fun toggleSave(itemId: String) {
@@ -119,8 +139,18 @@ object FeedRepository {
 
         if (uid.isNullOrBlank()) {
             baseItems = emptyList()
+            blockedUids = emptySet()
             _items.value = emptyList()
             return
+        }
+
+        scope.launch {
+            blockedUids = runCatching {
+                firestore.collection("users").document(uid)
+                    .collection("blocked").get().await()
+                    .documents.map { it.id }.toSet()
+            }.getOrDefault(emptySet())
+            emitItems()
         }
 
         feedListenerRegistration = firestore.collection(POSTS_COLLECTION)
@@ -303,7 +333,9 @@ object FeedRepository {
     }
 
     private fun emitItems() {
-        val itemsWithState = baseItems.map { it.withPersistedInteractionState() }
+        val itemsWithState = baseItems
+            .filter { it.authorId !in blockedUids }
+            .map { it.withPersistedInteractionState() }
         _items.value = itemsWithState
         // Los posts con "me gusta" se derivan del feed completo filtrado por
         // likedPostIds (que mantienen los listeners por post). Antes se usaba una
@@ -331,6 +363,12 @@ object FeedRepository {
         get() = when (this) {
             is FeedItem.Workout -> post.id
             is FeedItem.Nutrition -> post.id
+        }
+
+    private val FeedItem.authorId: String
+        get() = when (this) {
+            is FeedItem.Workout   -> post.authorId
+            is FeedItem.Nutrition -> post.authorId
         }
 
     private val FeedItem.likeCount: Int

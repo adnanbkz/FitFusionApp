@@ -4,11 +4,14 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.FitnessCenter
+import androidx.compose.material.icons.filled.MenuBook
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.*
@@ -19,16 +22,21 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavHostController
 import coil3.compose.AsyncImage
+import com.example.fitfusion.data.models.Recipe
+import com.example.fitfusion.data.models.UserPost
 import com.example.fitfusion.data.repository.UserProfile
 import com.example.fitfusion.ui.theme.*
+import com.example.fitfusion.viewmodel.SearchCategory
 import com.example.fitfusion.viewmodel.UserSearchViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -50,7 +58,14 @@ fun PantallaUserSearch(
                     OutlinedTextField(
                         value = state.query,
                         onValueChange = viewModel::onQueryChange,
-                        placeholder = { Text("Buscar usuarios…", color = OnSurfaceVariant, fontSize = 15.sp) },
+                        placeholder = {
+                            val hint = when (state.category) {
+                                SearchCategory.PROFILES -> "Buscar usuarios…"
+                                SearchCategory.WORKOUTS -> "Buscar entrenos…"
+                                SearchCategory.RECIPES  -> "Buscar recetas…"
+                            }
+                            Text(hint, color = OnSurfaceVariant, fontSize = 15.sp)
+                        },
                         leadingIcon = { Icon(Icons.Default.Search, null, tint = OnSurfaceVariant) },
                         singleLine = true,
                         shape = RoundedCornerShape(24.dp),
@@ -74,54 +89,131 @@ fun PantallaUserSearch(
             )
         },
     ) { innerPadding ->
-        Box(
+        Column(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(innerPadding),
         ) {
-            when {
-                state.isLoading -> {
-                    CircularProgressIndicator(
-                        color = Primary,
-                        modifier = Modifier.align(Alignment.Center),
+            // Category filter chips
+            LazyRow(
+                contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                items(SearchCategory.entries) { cat ->
+                    val icon: ImageVector = when (cat) {
+                        SearchCategory.PROFILES -> Icons.Default.Person
+                        SearchCategory.WORKOUTS -> Icons.Default.FitnessCenter
+                        SearchCategory.RECIPES  -> Icons.Default.MenuBook
+                    }
+                    FilterChip(
+                        selected = state.category == cat,
+                        onClick = { viewModel.onCategoryChange(cat) },
+                        label = { Text(cat.label, fontSize = 13.sp) },
+                        leadingIcon = {
+                            Icon(icon, contentDescription = null, modifier = Modifier.size(16.dp))
+                        },
+                        colors = FilterChipDefaults.filterChipColors(
+                            selectedContainerColor = Primary.copy(alpha = 0.15f),
+                            selectedLabelColor     = Primary,
+                            selectedLeadingIconColor = Primary,
+                        ),
+                        shape = RoundedCornerShape(20.dp),
                     )
                 }
+            }
 
-                state.query.isBlank() -> {
-                    SearchEmptyHint(modifier = Modifier.align(Alignment.Center))
-                }
+            HorizontalDivider(color = SurfaceContainerHigh, thickness = 0.5.dp)
 
-                state.errorMessage != null -> {
-                    SearchErrorState(
-                        message = state.errorMessage!!,
-                        modifier = Modifier.align(Alignment.Center),
-                    )
-                }
+            Box(modifier = Modifier.fillMaxSize()) {
+                when {
+                    state.isLoading -> {
+                        CircularProgressIndicator(
+                            color = Primary,
+                            modifier = Modifier.align(Alignment.Center),
+                        )
+                    }
 
-                state.hasSearched && state.results.isEmpty() -> {
-                    NoResultsState(
-                        query = state.query,
-                        modifier = Modifier.align(Alignment.Center),
-                    )
-                }
+                    state.query.isBlank() -> {
+                        SearchEmptyHint(
+                            category = state.category,
+                            modifier = Modifier.align(Alignment.Center),
+                        )
+                    }
 
-                state.results.isNotEmpty() -> {
-                    LazyColumn(
-                        modifier = Modifier.fillMaxSize(),
-                        contentPadding = PaddingValues(vertical = 8.dp),
-                    ) {
-                        items(state.results, key = { it.uid }) { profile ->
-                            UserResultRow(
-                                profile = profile,
-                                onClick = {
-                                    navController.navigate("${Screens.UserScreen.name}/${profile.uid}")
-                                },
-                            )
-                            HorizontalDivider(
-                                color = SurfaceContainerHigh,
-                                thickness = 0.5.dp,
-                                modifier = Modifier.padding(start = 76.dp),
-                            )
+                    state.errorMessage != null -> {
+                        SearchErrorState(
+                            message = state.errorMessage!!,
+                            modifier = Modifier.align(Alignment.Center),
+                        )
+                    }
+
+                    state.category == SearchCategory.PROFILES -> {
+                        if (state.hasSearched && state.profileResults.isEmpty()) {
+                            NoResultsState(query = state.query, modifier = Modifier.align(Alignment.Center))
+                        } else {
+                            LazyColumn(
+                                modifier = Modifier.fillMaxSize(),
+                                contentPadding = PaddingValues(vertical = 8.dp),
+                            ) {
+                                items(state.profileResults, key = { it.uid }) { profile ->
+                                    UserResultRow(
+                                        profile = profile,
+                                        onClick = {
+                                            navController.navigate("${Screens.UserScreen.name}/${profile.uid}")
+                                        },
+                                    )
+                                    HorizontalDivider(
+                                        color = SurfaceContainerHigh,
+                                        thickness = 0.5.dp,
+                                        modifier = Modifier.padding(start = 76.dp),
+                                    )
+                                }
+                            }
+                        }
+                    }
+
+                    state.category == SearchCategory.WORKOUTS -> {
+                        if (state.hasSearched && state.workoutResults.isEmpty()) {
+                            NoResultsState(query = state.query, modifier = Modifier.align(Alignment.Center))
+                        } else {
+                            LazyColumn(
+                                modifier = Modifier.fillMaxSize(),
+                                contentPadding = PaddingValues(vertical = 8.dp),
+                            ) {
+                                items(state.workoutResults, key = { it.id }) { post ->
+                                    WorkoutResultRow(
+                                        post = post,
+                                        onClick = {
+                                            navController.navigate("${Screens.PostDetailScreen.name}/${post.id}")
+                                        },
+                                    )
+                                    HorizontalDivider(
+                                        color = SurfaceContainerHigh,
+                                        thickness = 0.5.dp,
+                                        modifier = Modifier.padding(start = 16.dp),
+                                    )
+                                }
+                            }
+                        }
+                    }
+
+                    state.category == SearchCategory.RECIPES -> {
+                        if (state.hasSearched && state.recipeResults.isEmpty()) {
+                            NoResultsState(query = state.query, modifier = Modifier.align(Alignment.Center))
+                        } else {
+                            LazyColumn(
+                                modifier = Modifier.fillMaxSize(),
+                                contentPadding = PaddingValues(vertical = 8.dp),
+                            ) {
+                                items(state.recipeResults, key = { it.id }) { recipe ->
+                                    RecipeResultRow(recipe = recipe)
+                                    HorizontalDivider(
+                                        color = SurfaceContainerHigh,
+                                        thickness = 0.5.dp,
+                                        modifier = Modifier.padding(start = 16.dp),
+                                    )
+                                }
+                            }
                         }
                     }
                 }
@@ -163,6 +255,114 @@ private fun UserResultRow(profile: UserProfile, onClick: () -> Unit) {
 }
 
 @Composable
+private fun WorkoutResultRow(post: UserPost, onClick: () -> Unit) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable(onClick = onClick)
+            .padding(horizontal = 16.dp, vertical = 12.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(12.dp),
+    ) {
+        Box(
+            modifier = Modifier
+                .size(44.dp)
+                .clip(RoundedCornerShape(10.dp))
+                .background(Primary.copy(alpha = 0.12f)),
+            contentAlignment = Alignment.Center,
+        ) {
+            Icon(
+                Icons.Default.FitnessCenter,
+                contentDescription = null,
+                tint = Primary,
+                modifier = Modifier.size(22.dp),
+            )
+        }
+        Column(modifier = Modifier.weight(1f)) {
+            Text(
+                post.workoutName?.takeIf { it.isNotBlank() } ?: "Entreno",
+                fontWeight = FontWeight.SemiBold,
+                fontSize = 15.sp,
+                color = OnSurface,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
+            if (post.caption.isNotBlank()) {
+                Text(
+                    post.caption,
+                    fontSize = 12.sp,
+                    color = OnSurfaceVariant,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
+            }
+            if (post.workoutDurationMinutes != null) {
+                Text(
+                    "${post.workoutDurationMinutes} min",
+                    fontSize = 11.sp,
+                    color = OnSurfaceVariant.copy(alpha = 0.7f),
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun RecipeResultRow(recipe: Recipe) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp, vertical = 12.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(12.dp),
+    ) {
+        if (!recipe.photoUrl.isNullOrBlank()) {
+            AsyncImage(
+                model = recipe.photoUrl,
+                contentDescription = null,
+                contentScale = ContentScale.Crop,
+                modifier = Modifier
+                    .size(44.dp)
+                    .clip(RoundedCornerShape(10.dp)),
+            )
+        } else {
+            Box(
+                modifier = Modifier
+                    .size(44.dp)
+                    .clip(RoundedCornerShape(10.dp))
+                    .background(Primary.copy(alpha = 0.12f)),
+                contentAlignment = Alignment.Center,
+            ) {
+                Icon(
+                    Icons.Default.MenuBook,
+                    contentDescription = null,
+                    tint = Primary,
+                    modifier = Modifier.size(22.dp),
+                )
+            }
+        }
+        Column(modifier = Modifier.weight(1f)) {
+            Text(
+                recipe.name,
+                fontWeight = FontWeight.SemiBold,
+                fontSize = 15.sp,
+                color = OnSurface,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
+            val meta = listOfNotNull(
+                recipe.authorName?.let { "por $it" },
+                recipe.kcal?.let { "$it kcal" },
+                recipe.cookTimeMin?.let { "${it} min" },
+            ).joinToString(" · ")
+            if (meta.isNotBlank()) {
+                Text(meta, fontSize = 12.sp, color = OnSurfaceVariant, maxLines = 1)
+            }
+        }
+    }
+}
+
+@Composable
 internal fun UserAvatar(photoUrl: String?, displayName: String, size: Int) {
     val initials = displayName.trim().split(' ')
         .filter { it.isNotBlank() }
@@ -196,7 +396,12 @@ internal fun UserAvatar(photoUrl: String?, displayName: String, size: Int) {
 }
 
 @Composable
-private fun SearchEmptyHint(modifier: Modifier = Modifier) {
+private fun SearchEmptyHint(category: SearchCategory, modifier: Modifier = Modifier) {
+    val text = when (category) {
+        SearchCategory.PROFILES -> "Busca usuarios por nombre\no por @usuario"
+        SearchCategory.WORKOUTS -> "Busca entrenos por nombre\no descripción"
+        SearchCategory.RECIPES  -> "Busca recetas de la comunidad\npor nombre"
+    }
     Column(
         modifier = modifier.padding(horizontal = 40.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
@@ -208,12 +413,7 @@ private fun SearchEmptyHint(modifier: Modifier = Modifier) {
             tint = OnSurfaceVariant.copy(alpha = 0.4f),
             modifier = Modifier.size(48.dp),
         )
-        Text(
-            "Busca usuarios por nombre\no por @usuario",
-            fontSize = 15.sp,
-            color = OnSurfaceVariant,
-            textAlign = androidx.compose.ui.text.style.TextAlign.Center,
-        )
+        Text(text, fontSize = 15.sp, color = OnSurfaceVariant, textAlign = TextAlign.Center)
     }
 }
 
@@ -227,7 +427,7 @@ private fun SearchErrorState(message: String, modifier: Modifier = Modifier) {
         Icon(
             Icons.Default.Search,
             contentDescription = null,
-            tint = androidx.compose.ui.graphics.Color(0xFFE53935).copy(alpha = 0.7f),
+            tint = Color(0xFFE53935).copy(alpha = 0.7f),
             modifier = Modifier.size(48.dp),
         )
         Text(
@@ -235,14 +435,9 @@ private fun SearchErrorState(message: String, modifier: Modifier = Modifier) {
             fontSize = 15.sp,
             fontWeight = FontWeight.SemiBold,
             color = OnSurface,
-            textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+            textAlign = TextAlign.Center,
         )
-        Text(
-            message,
-            fontSize = 12.sp,
-            color = OnSurfaceVariant,
-            textAlign = androidx.compose.ui.text.style.TextAlign.Center,
-        )
+        Text(message, fontSize = 12.sp, color = OnSurfaceVariant, textAlign = TextAlign.Center)
     }
 }
 
@@ -264,13 +459,13 @@ private fun NoResultsState(query: String, modifier: Modifier = Modifier) {
             fontSize = 15.sp,
             fontWeight = FontWeight.SemiBold,
             color = OnSurface,
-            textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+            textAlign = TextAlign.Center,
         )
         Text(
-            "Prueba con otro nombre o usuario",
+            "Prueba con otro término",
             fontSize = 13.sp,
             color = OnSurfaceVariant,
-            textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+            textAlign = TextAlign.Center,
         )
     }
 }
