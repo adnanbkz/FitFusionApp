@@ -44,10 +44,10 @@ data class OnboardingUiState(
 
 class OnboardingViewModel(
     app: Application,
-    private val auth: FirebaseAuth = FirebaseAuth.getInstance(),
-    private val userRepository: UserRepository = UserRepository(),
 ) : AndroidViewModel(app) {
 
+    private val auth: FirebaseAuth = FirebaseAuth.getInstance()
+    private val userRepository: UserRepository = UserRepository()
     private val storage = FirebaseStorage.getInstance()
 
     private val _uiState = MutableStateFlow(OnboardingUiState())
